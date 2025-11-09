@@ -78,6 +78,10 @@ namespace PresentationLayer
 
             // Register Services
             builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<IChargingStationService, ChargingStationService>();
+            builder.Services.AddScoped<IChargingSpotService, ChargingSpotService>();
+            builder.Services.AddScoped<IStationMaintenanceService, StationMaintenanceService>();
+            builder.Services.AddScoped<IStationErrorService, StationErrorService>();
 
             // Add Controllers
             builder.Services.AddControllers();
