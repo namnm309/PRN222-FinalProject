@@ -15,6 +15,10 @@ namespace DataAccessLayer.Data
         //Khai báo entities tại đây dùm
         public DbSet<Users> Users { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<ChargingStation> ChargingStations { get; set; }
+        public DbSet<ChargingSpot> ChargingSpots { get; set; }
+        public DbSet<StationMaintenance> StationMaintenances { get; set; }
+        public DbSet<StationError> StationErrors { get; set; }
 
 
         //Cấu hình chi tiết entities thì tại đây
@@ -32,6 +36,89 @@ namespace DataAccessLayer.Data
                     .WithMany()
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure ChargingStation entity
+            modelBuilder.Entity<ChargingStation>(entity =>
+            {
+                entity.HasIndex(e => e.Name);
+                entity.HasIndex(e => e.Status);
+            });
+
+            // Configure ChargingSpot entity
+            modelBuilder.Entity<ChargingSpot>(entity =>
+            {
+                entity.HasIndex(e => e.ChargingStationId);
+                entity.HasIndex(e => e.SpotNumber);
+                entity.HasIndex(e => e.Status);
+                
+                entity.HasOne(e => e.ChargingStation)
+                    .WithMany(s => s.ChargingSpots)
+                    .HasForeignKey(e => e.ChargingStationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure StationMaintenance entity
+            modelBuilder.Entity<StationMaintenance>(entity =>
+            {
+                entity.HasIndex(e => e.ChargingStationId);
+                entity.HasIndex(e => e.ChargingSpotId);
+                entity.HasIndex(e => e.ReportedByUserId);
+                entity.HasIndex(e => e.AssignedToUserId);
+                entity.HasIndex(e => e.Status);
+                entity.HasIndex(e => e.ScheduledDate);
+                
+                entity.HasOne(e => e.ChargingStation)
+                    .WithMany()
+                    .HasForeignKey(e => e.ChargingStationId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                entity.HasOne(e => e.ChargingSpot)
+                    .WithMany()
+                    .HasForeignKey(e => e.ChargingSpotId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                entity.HasOne(e => e.ReportedByUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.ReportedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                entity.HasOne(e => e.AssignedToUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.AssignedToUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure StationError entity
+            modelBuilder.Entity<StationError>(entity =>
+            {
+                entity.HasIndex(e => e.ChargingStationId);
+                entity.HasIndex(e => e.ChargingSpotId);
+                entity.HasIndex(e => e.ReportedByUserId);
+                entity.HasIndex(e => e.ResolvedByUserId);
+                entity.HasIndex(e => e.Status);
+                entity.HasIndex(e => e.ErrorCode);
+                entity.HasIndex(e => e.ReportedAt);
+                
+                entity.HasOne(e => e.ChargingStation)
+                    .WithMany()
+                    .HasForeignKey(e => e.ChargingStationId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                entity.HasOne(e => e.ChargingSpot)
+                    .WithMany()
+                    .HasForeignKey(e => e.ChargingSpotId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                entity.HasOne(e => e.ReportedByUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.ReportedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                entity.HasOne(e => e.ResolvedByUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.ResolvedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

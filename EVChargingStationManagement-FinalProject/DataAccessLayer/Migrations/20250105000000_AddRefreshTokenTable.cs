@@ -11,40 +11,28 @@ namespace DataAccessLayer.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "tbl_refresh_token",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Token = table.Column<string>(type: "text", nullable: false),
-                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    IsRevoked = table.Column<bool>(type: "boolean", nullable: false),
-                    RevokedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_tbl_refresh_token", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_tbl_refresh_token_tbl_user_UserId",
-                        column: x => x.UserId,
-                        principalTable: "tbl_user",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
+            // Check if table already exists before creating
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS tbl_refresh_token (
+                    ""Id"" uuid NOT NULL,
+                    ""Token"" text NOT NULL,
+                    ""UserId"" uuid NOT NULL,
+                    ""ExpiresAt"" timestamp with time zone NOT NULL,
+                    ""IsRevoked"" boolean NOT NULL,
+                    ""RevokedAt"" timestamp with time zone,
+                    ""CreatedAt"" timestamp with time zone NOT NULL,
+                    ""UpdatedAt"" timestamp with time zone NOT NULL,
+                    CONSTRAINT ""PK_tbl_refresh_token"" PRIMARY KEY (""Id""),
+                    CONSTRAINT ""FK_tbl_refresh_token_tbl_user_UserId"" FOREIGN KEY (""UserId"") REFERENCES tbl_user (""Id"") ON DELETE CASCADE
+                );
+            ");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_tbl_refresh_token_Token",
-                table: "tbl_refresh_token",
-                column: "Token",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_tbl_refresh_token_UserId",
-                table: "tbl_refresh_token",
-                column: "UserId");
+            // Create indexes if they don't exist
+            migrationBuilder.Sql(@"
+                CREATE INDEX IF NOT EXISTS ""IX_tbl_refresh_token_Token"" ON tbl_refresh_token (""Token"");
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_tbl_refresh_token_Token_Unique"" ON tbl_refresh_token (""Token"") WHERE ""Token"" IS NOT NULL;
+                CREATE INDEX IF NOT EXISTS ""IX_tbl_refresh_token_UserId"" ON tbl_refresh_token (""UserId"");
+            ");
         }
 
         /// <inheritdoc />
