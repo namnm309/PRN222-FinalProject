@@ -9,7 +9,6 @@ namespace PresentationLayer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
     public class ChargingStationController : ControllerBase
     {
         private readonly IChargingStationService _stationService;
@@ -24,6 +23,7 @@ namespace PresentationLayer.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous] // Cho phép xem danh sách trạm sạc mà không cần đăng nhập
         public async Task<IActionResult> GetAllStations()
         {
             var stations = await _stationService.GetAllStationsAsync();

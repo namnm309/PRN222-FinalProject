@@ -59,32 +59,34 @@ namespace BusinessLayer.Services
 				.Include(s => s.ChargingStation)
 				.FirstOrDefaultAsync(s => s.Id == request.ChargingSpotId && s.ChargingStationId == request.ChargingStationId);
 			if (spot == null)
-				throw new InvalidOperationException("Charging spot not found in the specified station");
+				throw new InvalidOperationException("Không tìm thấy cổng sạc trong trạm này.");
 
 			// Validate vehicle ownership
 			var vehicleExists = await _context.Vehicles.AnyAsync(v => v.Id == request.VehicleId && v.UserId == userId);
 			if (!vehicleExists)
-				throw new InvalidOperationException("Vehicle does not belong to the user or not found");
+				throw new InvalidOperationException("Xe không thuộc về bạn hoặc không tồn tại.");
 
 			// Validate time
 			if (request.EndTime <= request.StartTime)
-				throw new InvalidOperationException("EndTime must be after StartTime");
+				throw new InvalidOperationException("Thời gian kết thúc phải sau thời gian bắt đầu.");
 
 			// Normalize to UTC
 			var startUtc = request.StartTime.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(request.StartTime, DateTimeKind.Utc) : request.StartTime.ToUniversalTime();
 			var endUtc = request.EndTime.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(request.EndTime, DateTimeKind.Utc) : request.EndTime.ToUniversalTime();
 
 			// Check for overlapping bookings on the same spot
+			// Only check active bookings (Pending, Confirmed, InProgress) - not Cancelled or Completed
 			var overlaps = await _context.Bookings.AnyAsync(b =>
 				b.ChargingSpotId == request.ChargingSpotId &&
 				b.Status != "Cancelled" &&
+				b.Status != "Completed" &&
 				((startUtc < b.EndTime) && (endUtc > b.StartTime)));
 			if (overlaps)
-				throw new InvalidOperationException("Time slot overlaps with an existing booking for this spot");
+				throw new InvalidOperationException("Khung giờ này đã được đặt bởi người khác. Vui lòng chọn thời gian khác.");
 
 			// Optional: ensure spot is available
 			if (spot.Status == SpotStatus.Occupied || spot.Status == SpotStatus.Maintenance)
-				throw new InvalidOperationException("Charging spot is not available");
+				throw new InvalidOperationException("Cổng sạc này hiện không khả dụng. Vui lòng chọn cổng khác.");
 
 			var entity = new Booking
 			{

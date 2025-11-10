@@ -363,6 +363,29 @@ namespace BusinessLayer.Services
         }
 
         #endregion
+
+        #region User Validation Methods
+
+        public async Task<bool> UsernameExistsAsync(string username)
+        {
+            return await _context.Users.AnyAsync(u => u.Username == username);
+        }
+
+        public async Task<bool> EmailExistsAsync(string email)
+        {
+            return await _context.Users.AnyAsync(u => u.Email == email);
+        }
+
+        public async Task<Users?> GetUserByRefreshTokenAsync(string refreshToken)
+        {
+            var refreshTokenEntity = await _context.RefreshTokens
+                .Include(rt => rt.User)
+                .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+
+            return refreshTokenEntity?.User;
+        }
+
+        #endregion
     }
 }
 

@@ -43,8 +43,22 @@ namespace PresentationLayer.Controllers
 		{
 			if (!ModelState.IsValid) return BadRequest(ModelState);
 			var userId = GetUserId();
-			var created = await _bookingService.CreateAsync(userId, request);
-			return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+			
+			try
+			{
+				var created = await _bookingService.CreateAsync(userId, request);
+				return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+			}
+			catch (InvalidOperationException ex)
+			{
+				// Return user-friendly error message
+				return BadRequest(new { message = ex.Message });
+			}
+			catch (Exception ex)
+			{
+				// Log unexpected errors
+				return StatusCode(500, new { message = "An error occurred while creating the booking. Please try again." });
+			}
 		}
 
 		[HttpPost("{id}/status")]
@@ -94,19 +108,48 @@ namespace PresentationLayer.Controllers
 			string tmnCode = _config["Vnpay:TmnCode"]!;
 			string hashSecret = _config["Vnpay:HashSecret"]!;
 			string baseUrl = _config["Vnpay:BaseUrl"]!;
-			string returnUrl = _config["Vnpay:ReturnUrl"]!;
+			var returnUrlPath = _config["Vnpay:ReturnUrl"]!;
+			// Build absolute URL - check if already absolute, otherwise build from request
+			string returnUrl;
+			if (returnUrlPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
+			    returnUrlPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+			{
+				// Already absolute URL, use as is
+				returnUrl = returnUrlPath.TrimEnd('/');
+			}
+			else
+			{
+				// Relative path, build absolute URL from request
+				returnUrl = $"{Request.Scheme}://{Request.Host}{returnUrlPath}".TrimEnd('/');
+			}
+
+			// Format vnp_TxnRef: VNPay requires max 50 chars, unique per transaction
+			// Use timestamp (14 chars) + first 8 chars of Guid = 22 chars total (safe)
+			var now = DateTime.UtcNow.AddHours(7);
+			var dateStr = now.ToString("yyyyMMddHHmmss");
+			var guidStr = id.ToString("N").Substring(0, 8); // First 8 chars only
+			var txnRef = $"{dateStr}{guidStr}"; // Total: 22 chars
+			
+			// Format vnp_OrderInfo: Remove Vietnamese accents and special characters
+			var orderInfo = RemoveVietnameseAccents(description ?? $"Thanh toan dat cho {txnRef.Substring(Math.Max(0, txnRef.Length - 20))}");
+			// Limit to 255 characters
+			if (orderInfo.Length > 255) orderInfo = orderInfo.Substring(0, 255);
+
+			// Format vnp_CreateDate: Vietnam timezone (UTC+7)
+			var createDate = now.ToString("yyyyMMddHHmmss");
 
 			var vnpParams = new SortedDictionary<string, string>
 			{
 				{"vnp_Version", "2.1.0"},
 				{"vnp_Command", "pay"},
 				{"vnp_TmnCode", tmnCode},
-				{"vnp_Amount", (amount * 100).ToString()},
+				{"vnp_Amount", (amount * 100).ToString()}, // Must be integer, multiply by 100
 				{"vnp_CurrCode", "VND"},
-				{"vnp_TxnRef", id.ToString()},
-				{"vnp_OrderInfo", description ?? $"Thanh toan dat cho {id}"},
+				{"vnp_TxnRef", txnRef},
+				{"vnp_OrderInfo", orderInfo},
+				{"vnp_OrderType", "other"}, // Required by VNPay
 				{"vnp_ReturnUrl", returnUrl},
-				{"vnp_CreateDate", DateTime.UtcNow.AddHours(7).ToString("yyyyMMddHHmmss")},
+				{"vnp_CreateDate", createDate},
 				{"vnp_IpAddr", HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1"},
 				{"vnp_Locale", "vn"}
 			};
@@ -115,6 +158,29 @@ namespace PresentationLayer.Controllers
 			vnpParams["vnp_SecureHash"] = hashData;
 			string paymentUrl = VnPayHelper.BuildPaymentUrl(baseUrl, vnpParams);
 			return Ok(new { paymentUrl });
+		}
+
+		private static string RemoveVietnameseAccents(string text)
+		{
+			if (string.IsNullOrEmpty(text)) return text;
+			
+			// Remove Vietnamese accents
+			var normalized = text.Normalize(System.Text.NormalizationForm.FormD);
+			var sb = new System.Text.StringBuilder();
+			foreach (var c in normalized)
+			{
+				var unicodeCategory = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+				if (unicodeCategory != System.Globalization.UnicodeCategory.NonSpacingMark)
+				{
+					sb.Append(c);
+				}
+			}
+			
+			// Remove special characters, keep only alphanumeric and spaces
+			var result = System.Text.RegularExpressions.Regex.Replace(sb.ToString().Normalize(System.Text.NormalizationForm.FormC), @"[^a-zA-Z0-9\s]", "");
+			// Replace multiple spaces with single space
+			result = System.Text.RegularExpressions.Regex.Replace(result, @"\s+", " ");
+			return result.Trim();
 		}
 		[HttpGet("sessions/{sessionId}")]
 		public async Task<IActionResult> GetSession(Guid sessionId)

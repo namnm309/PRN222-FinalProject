@@ -25,10 +25,33 @@ namespace PresentationLayer.Helpers
 
 		public static string BuildHash(SortedDictionary<string, string> vnpParams, string hashSecret)
 		{
-			var data = string.Join("&", vnpParams
-				.Where(kv => !string.IsNullOrEmpty(kv.Value))
-				.Select(kv => $"{WebUtility.UrlEncode(kv.Key)}={WebUtility.UrlEncode(kv.Value)}"));
+			// VNPay requires: 
+			// 1. Sort parameters by key alphabetically (already sorted by SortedDictionary) ✅
+			// 2. Build string: key1=value1&key2=value2
+			// 3. URL encode ALL values, replace %20 with + (VNPay requirement)
+			// 4. Exclude vnp_SecureHash and vnp_SecureHashType ✅
+			// 5. Exclude empty/null values ✅
+			// 6. Use UTF-8 encoding ✅
+			// 7. Hash with HMACSHA512 ✅
+			// 8. NO "?" in query string, only "&" and "=" ✅
+			var queryString = new StringBuilder();
+			foreach (var kv in vnpParams)
+			{
+				// Skip secure hash fields and empty values
+				if (kv.Key == "vnp_SecureHash" || kv.Key == "vnp_SecureHashType" || string.IsNullOrEmpty(kv.Value))
+					continue;
+				
+				if (queryString.Length > 0)
+					queryString.Append("&"); // Use "&" not "?"
+				
+				// URL encode value and replace %20 with + (VNPay requirement)
+				var encodedValue = WebUtility.UrlEncode(kv.Value).Replace("%20", "+");
+				queryString.Append($"{kv.Key}={encodedValue}");
+			}
 
+			var data = queryString.ToString();
+			
+			// Hash with HMACSHA512 using UTF-8
 			using var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(hashSecret));
 			var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
 			return string.Concat(hashBytes.Select(b => b.ToString("x2")));
