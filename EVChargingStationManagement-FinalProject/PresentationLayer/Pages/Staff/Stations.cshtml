@@ -1,18 +1,669 @@
-@page 
+@page
+@model PresentationLayer.Pages.Staff.StationsModel
 @{
     Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
-    ViewData["Title"] = "Staff • Trạm sạc";
+    ViewData["Title"] = "Staff • Theo dõi trạm sạc";
 }
 
-<section class="page-header">
-    <h2>@ViewData["Title"]</h2>
-</section>
+<link rel="stylesheet" href="/css/staff-common.css">
 
-<section class="filters">Bộ lọc trạm sạc (placeholder)</section>
+<style>
+    .station-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 20px;
+        margin-bottom: 24px;
+    }
 
-<section class="content-grid">
-    <div class="table-placeholder">Danh sách trạm (placeholder)</div>
-    <div class="chart-placeholder">Công suất hiện tại (placeholder)</div>
-</section>
+    .station-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #E5E7EB;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
 
+    .station-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
 
+    .station-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+    }
+
+    .station-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: #101828;
+        margin: 0 0 4px 0;
+    }
+
+    .station-address {
+        font-size: 13px;
+        color: #6B7280;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .station-status-badge {
+        padding: 6px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .station-status-badge.active {
+        background: #D1FAE5;
+        color: #065F46;
+    }
+
+    .station-status-badge.inactive {
+        background: #F3F4F6;
+        color: #6B7280;
+    }
+
+    .station-status-badge.maintenance {
+        background: #FED7AA;
+        color: #92400E;
+    }
+
+    .spots-summary {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin: 16px 0;
+    }
+
+    .spot-stat {
+        background: #F9FAFB;
+        padding: 12px;
+        border-radius: 8px;
+        text-align: center;
+    }
+
+    .spot-stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #101828;
+        margin-bottom: 4px;
+    }
+
+    .spot-stat-label {
+        font-size: 12px;
+        color: #6B7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .spot-stat.available .spot-stat-value {
+        color: #10B981;
+    }
+
+    .spot-stat.occupied .spot-stat-value {
+        color: #3B82F6;
+    }
+
+    .spot-stat.maintenance .spot-stat-value {
+        color: #F59E0B;
+    }
+
+    .spot-stat.offline .spot-stat-value {
+        color: #EF4444;
+    }
+
+    .station-spots-list {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #E5E7EB;
+    }
+
+    .spots-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 12px;
+    }
+
+    .spots-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 8px;
+    }
+
+    .spot-item {
+        padding: 8px;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .spot-item:hover {
+        transform: scale(1.05);
+    }
+
+    .spot-item.available {
+        background: #D1FAE5;
+        color: #065F46;
+    }
+
+    .spot-item.occupied {
+        background: #DBEAFE;
+        color: #1E40AF;
+    }
+
+    .spot-item.maintenance {
+        background: #FED7AA;
+        color: #92400E;
+    }
+
+    .spot-item.outofservice {
+        background: #FEE2E2;
+        color: #991B1B;
+    }
+
+    .station-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 13px;
+        flex: 1;
+    }
+
+    .view-toggle {
+        display: flex;
+        gap: 8px;
+        background: white;
+        padding: 4px;
+        border-radius: 8px;
+        border: 1px solid #E5E7EB;
+    }
+
+    .toggle-btn {
+        padding: 8px 16px;
+        border: none;
+        background: transparent;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #6B7280;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .toggle-btn.active {
+        background: #00A63E;
+        color: white;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.show {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        padding: 20px;
+        border-bottom: 1px solid #E5E7EB;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #101828;
+    }
+
+    .close-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: none;
+        background: #F3F4F6;
+        cursor: pointer;
+        font-size: 18px;
+        color: #6B7280;
+    }
+
+    .close-btn:hover {
+        background: #E5E7EB;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #F3F4F6;
+    }
+
+    .detail-label {
+        font-size: 14px;
+        color: #6B7280;
+    }
+
+    .detail-value {
+        font-size: 14px;
+        font-weight: 600;
+        color: #101828;
+    }
+
+    @@media (max-width: 768px) {
+        .station-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="page-container">
+    <section class="page-header">
+        <div class="page-title">
+            <h2>Theo dõi trạm sạc</h2>
+            <p class="page-subtitle">Giám sát trạng thái điểm sạc và hoạt động trạm</p>
+        </div>
+        <div class="header-actions">
+            <div class="view-toggle">
+                <button class="toggle-btn active" onclick="setView('grid')" id="gridViewBtn">
+                    📊 Lưới
+                </button>
+                <button class="toggle-btn" onclick="setView('list')" id="listViewBtn">
+                    📋 Danh sách
+                </button>
+            </div>
+            <button class="btn btn-outline" onclick="location.reload()">
+                🔄 Làm mới
+            </button>
+        </div>
+    </section>
+
+    <!-- Stats Row -->
+    <section class="stats-row">
+        <div class="stat-card">
+            <div class="stat-icon green">✅</div>
+            <div class="stat-label">Điểm sạc khả dụng</div>
+            <div class="stat-value" id="statAvailable">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon blue">⚡</div>
+            <div class="stat-label">Đang sử dụng</div>
+            <div class="stat-value" id="statOccupied">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon orange">🔧</div>
+            <div class="stat-label">Bảo trì</div>
+            <div class="stat-value" id="statMaintenance">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon red">❌</div>
+            <div class="stat-label">Không hoạt động</div>
+            <div class="stat-value" id="statOffline">0</div>
+        </div>
+    </section>
+
+    <!-- Filter Section -->
+    <section class="filter-section">
+        <div class="filter-grid">
+            <div class="filter-group">
+                <label>Trạng thái trạm</label>
+                <select id="filterStationStatus" onchange="applyFilters()">
+                    <option value="">Tất cả</option>
+                    <option value="0">Hoạt động</option>
+                    <option value="1">Không hoạt động</option>
+                    <option value="2">Bảo trì</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Tìm kiếm</label>
+                <input type="text" id="searchInput" placeholder="Tìm theo tên trạm..." onkeyup="searchStations()">
+            </div>
+        </div>
+        <div class="filter-actions">
+            <button class="btn btn-outline" onclick="clearFilters()">Xóa bộ lọc</button>
+        </div>
+    </section>
+
+    <!-- Stations Grid/List -->
+    <section id="stationsContainer">
+        <div class="empty-state">
+            <div class="empty-icon">📍</div>
+            <div class="empty-text">Đang tải dữ liệu...</div>
+        </div>
+    </section>
+</div>
+
+<!-- Station Detail Modal -->
+<div id="stationModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modalTitle">Chi tiết trạm sạc</h3>
+            <button class="close-btn" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- Dynamic content -->
+        </div>
+    </div>
+</div>
+
+<script>
+let allStations = [];
+let filteredStations = [];
+let currentView = 'grid';
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadStations();
+    updateStats();
+    
+    setInterval(() => {
+        loadStations();
+        updateStats();
+    }, 30000);
+});
+
+async function loadStations() {
+    try {
+        const response = await fetch('/api/ChargingStation');
+        if (!response.ok) throw new Error('Failed to fetch stations');
+        
+        allStations = await response.json();
+        filteredStations = [...allStations];
+        applyFilters();
+    } catch (error) {
+        console.error('Error loading stations:', error);
+        showError('Không thể tải dữ liệu');
+    }
+}
+
+async function updateStats() {
+    try {
+        let totalAvailable = 0, totalOccupied = 0, totalMaintenance = 0, totalOffline = 0;
+        
+        for (const station of allStations) {
+            const spotsRes = await fetch(`/api/ChargingSpot/station/${station.id}`);
+            if (spotsRes.ok) {
+                const spots = await spotsRes.json();
+                totalAvailable += spots.filter(s => s.status === 0).length;
+                totalOccupied += spots.filter(s => s.status === 1).length;
+                totalMaintenance += spots.filter(s => s.status === 2).length;
+                totalOffline += spots.filter(s => s.status === 3).length;
+            }
+        }
+        
+        document.getElementById('statAvailable').textContent = totalAvailable;
+        document.getElementById('statOccupied').textContent = totalOccupied;
+        document.getElementById('statMaintenance').textContent = totalMaintenance;
+        document.getElementById('statOffline').textContent = totalOffline;
+    } catch (error) {
+        console.error('Error updating stats:', error);
+    }
+}
+
+function applyFilters() {
+    let filtered = [...allStations];
+    
+    const statusFilter = document.getElementById('filterStationStatus').value;
+    if (statusFilter !== '') {
+        filtered = filtered.filter(s => s.status == statusFilter);
+    }
+    
+    filteredStations = filtered;
+    renderStations();
+}
+
+function clearFilters() {
+    document.getElementById('filterStationStatus').value = '';
+    document.getElementById('searchInput').value = '';
+    applyFilters();
+}
+
+function searchStations() {
+    const term = document.getElementById('searchInput').value.toLowerCase();
+    
+    if (!term) {
+        applyFilters();
+        return;
+    }
+    
+    filteredStations = allStations.filter(s =>
+        s.name.toLowerCase().includes(term) ||
+        (s.address && s.address.toLowerCase().includes(term)) ||
+        (s.city && s.city.toLowerCase().includes(term))
+    );
+    
+    renderStations();
+}
+
+async function renderStations() {
+    const container = document.getElementById('stationsContainer');
+    
+    if (filteredStations.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">🔍</div>
+                <div class="empty-text">Không tìm thấy trạm sạc nào</div>
+                <div class="empty-subtext">Thử thay đổi bộ lọc</div>
+            </div>
+        `;
+        return;
+    }
+    
+    if (currentView === 'grid') {
+        await renderGrid(container);
+    } else {
+        await renderList(container);
+    }
+}
+
+async function renderGrid(container) {
+    let html = '<div class="station-grid">';
+    
+    for (const station of filteredStations) {
+        const spotsRes = await fetch(`/api/ChargingSpot/station/${station.id}`);
+        const spots = spotsRes.ok ? await spotsRes.json() : [];
+        
+        const available = spots.filter(s => s.status === 0).length;
+        const occupied = spots.filter(s => s.status === 1).length;
+        const maintenance = spots.filter(s => s.status === 2).length;
+        const offline = spots.filter(s => s.status === 3).length;
+        
+        const statusClass = getStationStatusClass(station.status);
+        const statusText = getStationStatusText(station.status);
+        
+        html += `
+            <div class="station-card" onclick="showStationDetail('${station.id}')">
+                <div class="station-header">
+                    <div>
+                        <h3 class="station-name">${station.name}</h3>
+                        <div class="station-address">
+                            📍 ${station.address || 'N/A'}
+                        </div>
+                    </div>
+                    <span class="station-status-badge ${statusClass}">${statusText}</span>
+                </div>
+                
+                <div class="spots-summary">
+                    <div class="spot-stat available">
+                        <div class="spot-stat-value">${available}</div>
+                        <div class="spot-stat-label">Sẵn sàng</div>
+                    </div>
+                    <div class="spot-stat occupied">
+                        <div class="spot-stat-value">${occupied}</div>
+                        <div class="spot-stat-label">Đang dùng</div>
+                    </div>
+                    <div class="spot-stat maintenance">
+                        <div class="spot-stat-value">${maintenance}</div>
+                        <div class="spot-stat-label">Bảo trì</div>
+                    </div>
+                    <div class="spot-stat offline">
+                        <div class="spot-stat-value">${offline}</div>
+                        <div class="spot-stat-label">Offline</div>
+                    </div>
+                </div>
+                
+                <div class="station-spots-list">
+                    <div class="spots-title">Điểm sạc (${spots.length})</div>
+                    <div class="spots-grid">
+                        ${spots.map(spot => `
+                            <div class="spot-item ${getSpotStatusClass(spot.status)}" title="${spot.spotNumber} - ${getSpotStatusText(spot.status)}">
+                                ${spot.spotNumber}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+async function renderList(container) {
+    // Similar to grid but in table format
+    container.innerHTML = '<div class="empty-state"><div class="empty-text">List view - Coming soon!</div></div>';
+}
+
+function setView(view) {
+    currentView = view;
+    
+    document.getElementById('gridViewBtn').classList.toggle('active', view === 'grid');
+    document.getElementById('listViewBtn').classList.toggle('active', view === 'list');
+    
+    renderStations();
+}
+
+async function showStationDetail(stationId) {
+    const station = allStations.find(s => s.id === stationId);
+    if (!station) return;
+    
+    const spotsRes = await fetch(`/api/ChargingSpot/station/${stationId}`);
+    const spots = spotsRes.ok ? await spotsRes.json() : [];
+    
+    document.getElementById('modalTitle').textContent = station.name;
+    
+    let modalContent = `
+        <div class="detail-row">
+            <div class="detail-label">Địa chỉ</div>
+            <div class="detail-value">${station.address || 'N/A'}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">Thành phố</div>
+            <div class="detail-value">${station.city || 'N/A'}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">Tỉnh</div>
+            <div class="detail-value">${station.province || 'N/A'}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">Số điện thoại</div>
+            <div class="detail-value">${station.phone || 'N/A'}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">Email</div>
+            <div class="detail-value">${station.email || 'N/A'}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">Giờ mở cửa</div>
+            <div class="detail-value">${station.is24Hours ? '24/7' : (station.openingTime || 'N/A') + ' - ' + (station.closingTime || 'N/A')}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">Tổng điểm sạc</div>
+            <div class="detail-value">${spots.length}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">Trạng thái</div>
+            <div class="detail-value">
+                <span class="station-status-badge ${getStationStatusClass(station.status)}">
+                    ${getStationStatusText(station.status)}
+                </span>
+            </div>
+        </div>
+        
+        <h4 style="margin: 20px 0 12px; font-size: 16px; font-weight: 600;">Danh sách điểm sạc</h4>
+        <div class="spots-grid">
+            ${spots.map(spot => `
+                <div class="spot-item ${getSpotStatusClass(spot.status)}" title="${getSpotStatusText(spot.status)}">
+                    ${spot.spotNumber}
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    document.getElementById('modalBody').innerHTML = modalContent;
+    document.getElementById('stationModal').classList.add('show');
+}
+
+function closeModal() {
+    document.getElementById('stationModal').classList.remove('show');
+}
+
+function getStationStatusClass(status) {
+    return ['active', 'inactive', 'maintenance'][status] || 'active';
+}
+
+function getStationStatusText(status) {
+    return ['Hoạt động', 'Không hoạt động', 'Bảo trì'][status] || 'Unknown';
+}
+
+function getSpotStatusClass(status) {
+    return ['available', 'occupied', 'maintenance', 'outofservice'][status] || 'available';
+}
+
+function getSpotStatusText(status) {
+    return ['Sẵn sàng', 'Đang sử dụng', 'Bảo trì', 'Không hoạt động'][status] || 'Unknown';
+}
+
+function showError(message) {
+    document.getElementById('stationsContainer').innerHTML = `
+        <div class="empty-state">
+            <div class="empty-icon">❌</div>
+            <div class="empty-text">Đã xảy ra lỗi</div>
+            <div class="empty-subtext">${message}</div>
+        </div>
+    `;
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('stationModal');
+    if (event.target === modal) {
+        closeModal();
+    }
+});
+</script>

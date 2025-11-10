@@ -1,0 +1,546 @@
+@page
+@model PresentationLayer.Pages.Staff.ErrorsModel
+@{
+    Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
+    ViewData["Title"] = "Staff • Báo cáo lỗi";
+}
+
+<link rel="stylesheet" href="/css/staff-common.css">
+
+<style>
+    .error-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border-left: 4px solid #E5E7EB;
+        transition: all 0.2s;
+    }
+
+    .error-card:hover {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .error-card.severity-critical {
+        border-left-color: #DC2626;
+    }
+
+    .error-card.severity-high {
+        border-left-color: #F59E0B;
+    }
+
+    .error-card.severity-medium {
+        border-left-color: #3B82F6;
+    }
+
+    .error-card.severity-low {
+        border-left-color: #10B981;
+    }
+
+    .error-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .error-title-section {
+        flex: 1;
+    }
+
+    .error-code {
+        display: inline-block;
+        padding: 4px 8px;
+        background: #F3F4F6;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 8px;
+    }
+
+    .error-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #101828;
+        margin: 0 0 8px 0;
+    }
+
+    .error-meta {
+        display: flex;
+        gap: 16px;
+        font-size: 13px;
+        color: #6B7280;
+    }
+
+    .error-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .error-description {
+        margin: 16px 0;
+        padding: 12px;
+        background: #F9FAFB;
+        border-radius: 8px;
+        font-size: 14px;
+        color: #374151;
+        line-height: 1.6;
+    }
+
+    .error-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .severity-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .severity-critical {
+        background: #FEE2E2;
+        color: #991B1B;
+    }
+
+    .severity-high {
+        background: #FEF3C7;
+        color: #92400E;
+    }
+
+    .severity-medium {
+        background: #DBEAFE;
+        color: #1E40AF;
+    }
+
+    .severity-low {
+        background: #D1FAE5;
+        color: #065F46;
+    }
+</style>
+
+<div class="page-container">
+    <section class="page-header">
+        <div class="page-title">
+            <h2>Báo cáo lỗi</h2>
+            <p class="page-subtitle">Xem và xử lý các báo cáo lỗi từ trạm sạc</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline" onclick="location.reload()">
+                🔄 Làm mới
+            </button>
+        </div>
+    </section>
+
+    <!-- Stats Row -->
+    <section class="stats-row">
+        <div class="stat-card">
+            <div class="stat-icon red">🚨</div>
+            <div class="stat-label">Chờ xử lý</div>
+            <div class="stat-value" id="statPending">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon orange">🔧</div>
+            <div class="stat-label">Đang xử lý</div>
+            <div class="stat-value" id="statInProgress">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green">✅</div>
+            <div class="stat-label">Đã giải quyết</div>
+            <div class="stat-value" id="statResolved">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon blue">📊</div>
+            <div class="stat-label">Tổng hôm nay</div>
+            <div class="stat-value" id="statToday">0</div>
+        </div>
+    </section>
+
+    <!-- Filter Section -->
+    <section class="filter-section">
+        <div class="filter-grid">
+            <div class="filter-group">
+                <label>Trạng thái</label>
+                <select id="filterStatus" onchange="applyFilters()">
+                    <option value="">Tất cả</option>
+                    <option value="0">Đã báo cáo</option>
+                    <option value="1">Đang xử lý</option>
+                    <option value="2">Đã giải quyết</option>
+                    <option value="3">Đã đóng</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Mức độ nghiêm trọng</label>
+                <select id="filterSeverity" onchange="applyFilters()">
+                    <option value="">Tất cả</option>
+                    <option value="Critical">Nghiêm trọng</option>
+                    <option value="High">Cao</option>
+                    <option value="Medium">Trung bình</option>
+                    <option value="Low">Thấp</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Trạm sạc</label>
+                <select id="filterStation" onchange="applyFilters()">
+                    <option value="">Tất cả trạm</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Tìm kiếm</label>
+                <input type="text" id="searchInput" placeholder="Tìm theo mã lỗi, tiêu đề..." onkeyup="searchErrors()">
+            </div>
+        </div>
+        <div class="filter-actions">
+            <button class="btn btn-outline" onclick="clearFilters()">Xóa bộ lọc</button>
+        </div>
+    </section>
+
+    <!-- Errors List -->
+    <section id="errorsContainer">
+        <div class="empty-state">
+            <div class="empty-icon">🔧</div>
+            <div class="empty-text">Đang tải dữ liệu...</div>
+        </div>
+    </section>
+</div>
+
+<script>
+let allErrors = [];
+let filteredErrors = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadStations();
+    loadErrors();
+    updateStats();
+    
+    setInterval(() => {
+        loadErrors();
+        updateStats();
+    }, 30000);
+});
+
+async function loadStations() {
+    try {
+        const response = await fetch('/api/ChargingStation');
+        const stations = await response.json();
+        
+        const select = document.getElementById('filterStation');
+        select.innerHTML = '<option value="">Tất cả trạm</option>';
+        stations.forEach(s => {
+            select.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+        });
+    } catch (error) {
+        console.error('Error loading stations:', error);
+    }
+}
+
+async function loadErrors() {
+    try {
+        const response = await fetch('/api/StationError');
+        if (!response.ok) throw new Error('Failed to fetch errors');
+        
+        allErrors = await response.json();
+        filteredErrors = [...allErrors];
+        applyFilters();
+    } catch (error) {
+        console.error('Error loading errors:', error);
+        showError('Không thể tải dữ liệu');
+    }
+}
+
+function applyFilters() {
+    let filtered = [...allErrors];
+    
+    const statusFilter = document.getElementById('filterStatus').value;
+    if (statusFilter !== '') {
+        filtered = filtered.filter(e => e.status == statusFilter);
+    }
+    
+    const severityFilter = document.getElementById('filterSeverity').value;
+    if (severityFilter !== '') {
+        filtered = filtered.filter(e => e.severity === severityFilter);
+    }
+    
+    const stationFilter = document.getElementById('filterStation').value;
+    if (stationFilter !== '') {
+        filtered = filtered.filter(e => e.chargingStationId === stationFilter);
+    }
+    
+    filteredErrors = filtered;
+    renderErrors();
+}
+
+function clearFilters() {
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('filterSeverity').value = '';
+    document.getElementById('filterStation').value = '';
+    document.getElementById('searchInput').value = '';
+    applyFilters();
+}
+
+function searchErrors() {
+    const term = document.getElementById('searchInput').value.toLowerCase();
+    
+    if (!term) {
+        applyFilters();
+        return;
+    }
+    
+    filteredErrors = allErrors.filter(e =>
+        e.errorCode.toLowerCase().includes(term) ||
+        e.title.toLowerCase().includes(term) ||
+        (e.description && e.description.toLowerCase().includes(term))
+    );
+    
+    renderErrors();
+}
+
+function renderErrors() {
+    const container = document.getElementById('errorsContainer');
+    
+    if (filteredErrors.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">✅</div>
+                <div class="empty-text">Không có báo cáo lỗi nào</div>
+                <div class="empty-subtext">Tất cả đều hoạt động tốt!</div>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    
+    filteredErrors.forEach(error => {
+        const reportedTime = new Date(error.reportedAt);
+        const timeAgo = getTimeAgo(reportedTime);
+        const severityClass = (error.severity || 'Medium').toLowerCase();
+        
+        html += `
+            <div class="error-card severity-${severityClass}">
+                <div class="error-header">
+                    <div class="error-title-section">
+                        <div class="error-code">${error.errorCode}</div>
+                        <h3 class="error-title">${error.title}</h3>
+                        <div class="error-meta">
+                            <div class="error-meta-item">
+                                📍 ${error.chargingStationName || 'N/A'}
+                                ${error.chargingSpotNumber ? ' - Điểm ' + error.chargingSpotNumber : ''}
+                            </div>
+                            <div class="error-meta-item">
+                                👤 ${error.reportedByUserName || 'Unknown'}
+                            </div>
+                            <div class="error-meta-item">
+                                🕒 ${timeAgo}
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="severity-badge severity-${severityClass}">
+                            ${error.severity || 'Medium'}
+                        </span>
+                        <span class="status-badge status-${getStatusClass(error.status)}">
+                            ${getStatusText(error.status)}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="error-description">
+                    ${error.description || 'Không có mô tả'}
+                </div>
+                
+                ${error.resolutionNotes ? `
+                    <div style="padding: 12px; background: #D1FAE5; border-radius: 8px; margin-bottom: 12px;">
+                        <strong style="color: #065F46;">✅ Giải pháp:</strong>
+                        <div style="color: #065F46; margin-top: 4px;">${error.resolutionNotes}</div>
+                        ${error.resolvedByUserName ? `<div style="font-size: 12px; color: #6B7280; margin-top: 4px;">Xử lý bởi: ${error.resolvedByUserName}</div>` : ''}
+                    </div>
+                ` : ''}
+                
+                <div class="error-actions">
+                    ${error.status === 0 ? `
+                        <button class="btn btn-primary" onclick="markInProgress('${error.id}')">
+                            🔧 Bắt đầu xử lý
+                        </button>
+                    ` : ''}
+                    ${error.status === 1 ? `
+                        <button class="btn btn-primary" onclick="resolveError('${error.id}')">
+                            ✅ Đánh dấu đã giải quyết
+                        </button>
+                    ` : ''}
+                    ${error.status === 2 ? `
+                        <button class="btn btn-outline" onclick="closeError('${error.id}')">
+                            ✓ Đóng báo cáo
+                        </button>
+                    ` : ''}
+                    <button class="btn btn-outline" onclick="viewErrorDetails('${error.id}')">
+                        👁️ Chi tiết
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+async function updateStats() {
+    try {
+        const pendingRes = await fetch('/api/StationError/status/0');
+        const pending = await pendingRes.json();
+        document.getElementById('statPending').textContent = pending.length;
+        
+        const inProgressRes = await fetch('/api/StationError/status/1');
+        const inProgress = await inProgressRes.json();
+        document.getElementById('statInProgress').textContent = inProgress.length;
+        
+        const resolvedRes = await fetch('/api/StationError/status/2');
+        const resolved = await resolvedRes.json();
+        document.getElementById('statResolved').textContent = resolved.length;
+        
+        const allRes = await fetch('/api/StationError');
+        const all = await allRes.json();
+        const today = new Date().toDateString();
+        const todayErrors = all.filter(e => new Date(e.reportedAt).toDateString() === today);
+        document.getElementById('statToday').textContent = todayErrors.length;
+    } catch (error) {
+        console.error('Error updating stats:', error);
+    }
+}
+
+async function markInProgress(errorId) {
+    try {
+        const response = await fetch(`/api/StationError/${errorId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status: 1, // InProgress
+                severity: null
+            })
+        });
+        
+        if (response.ok) {
+            alert('Đã cập nhật trạng thái!');
+            loadErrors();
+            updateStats();
+        } else {
+            alert('Không thể cập nhật.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Đã xảy ra lỗi: ' + error.message);
+    }
+}
+
+async function resolveError(errorId) {
+    const notes = prompt('Nhập giải pháp đã thực hiện:');
+    if (notes === null) return;
+    
+    try {
+        const response = await fetch(`/api/StationError/${errorId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status: 2, // Resolved
+                resolutionNotes: notes,
+                severity: null
+            })
+        });
+        
+        if (response.ok) {
+            alert('Đã đánh dấu đã giải quyết!');
+            loadErrors();
+            updateStats();
+        } else {
+            alert('Không thể cập nhật.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Đã xảy ra lỗi: ' + error.message);
+    }
+}
+
+async function closeError(errorId) {
+    if (!confirm('Xác nhận đóng báo cáo lỗi này?')) return;
+    
+    try {
+        const response = await fetch(`/api/StationError/${errorId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status: 3, // Closed
+                severity: null
+            })
+        });
+        
+        if (response.ok) {
+            alert('Đã đóng báo cáo!');
+            loadErrors();
+            updateStats();
+        } else {
+            alert('Không thể cập nhật.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Đã xảy ra lỗi: ' + error.message);
+    }
+}
+
+function viewErrorDetails(errorId) {
+    const error = allErrors.find(e => e.id === errorId);
+    if (!error) return;
+    
+    const details = `
+Chi tiết báo cáo lỗi:
+
+Mã lỗi: ${error.errorCode}
+Tiêu đề: ${error.title}
+Trạm: ${error.chargingStationName || 'N/A'}
+Điểm sạc: ${error.chargingSpotNumber || 'N/A'}
+Mức độ: ${error.severity || 'Medium'}
+Trạng thái: ${getStatusText(error.status)}
+
+Mô tả:
+${error.description || 'Không có mô tả'}
+
+Người báo cáo: ${error.reportedByUserName || 'Unknown'}
+Thời gian: ${new Date(error.reportedAt).toLocaleString('vi-VN')}
+
+${error.resolutionNotes ? `Giải pháp:\n${error.resolutionNotes}\n\nNgười xử lý: ${error.resolvedByUserName || 'Unknown'}\nHoàn thành: ${new Date(error.resolvedAt).toLocaleString('vi-VN')}` : ''}
+    `;
+    
+    alert(details);
+}
+
+function getStatusClass(status) {
+    return ['reported', 'inprogress', 'resolved', 'closed'][status] || 'reported';
+}
+
+function getStatusText(status) {
+    return ['Đã báo cáo', 'Đang xử lý', 'Đã giải quyết', 'Đã đóng'][status] || 'Unknown';
+}
+
+function getTimeAgo(date) {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    
+    if (seconds < 60) return 'Vừa xong';
+    if (seconds < 3600) return Math.floor(seconds / 60) + ' phút trước';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + ' giờ trước';
+    return Math.floor(seconds / 86400) + ' ngày trước';
+}
+
+function showError(message) {
+    document.getElementById('errorsContainer').innerHTML = `
+        <div class="empty-state">
+            <div class="empty-icon">❌</div>
+            <div class="empty-text">Đã xảy ra lỗi</div>
+            <div class="empty-subtext">${message}</div>
+        </div>
+    `;
+}
+</script>
+

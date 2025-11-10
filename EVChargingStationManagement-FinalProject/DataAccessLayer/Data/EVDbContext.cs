@@ -19,6 +19,7 @@ namespace DataAccessLayer.Data
         public DbSet<ChargingSpot> ChargingSpots { get; set; }
         public DbSet<StationMaintenance> StationMaintenances { get; set; }
         public DbSet<StationError> StationErrors { get; set; }
+        public DbSet<ChargingSession> ChargingSessions { get; set; }
 
 
         //Cấu hình chi tiết entities thì tại đây
@@ -118,6 +119,31 @@ namespace DataAccessLayer.Data
                 entity.HasOne(e => e.ResolvedByUser)
                     .WithMany()
                     .HasForeignKey(e => e.ResolvedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure ChargingSession entity
+            modelBuilder.Entity<ChargingSession>(entity =>
+            {
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => e.ChargingStationId);
+                entity.HasIndex(e => e.ChargingSpotId);
+                entity.HasIndex(e => e.Status);
+                entity.HasIndex(e => e.StartTime);
+                
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                entity.HasOne(e => e.ChargingStation)
+                    .WithMany()
+                    .HasForeignKey(e => e.ChargingStationId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                entity.HasOne(e => e.ChargingSpot)
+                    .WithMany()
+                    .HasForeignKey(e => e.ChargingSpotId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
         }
