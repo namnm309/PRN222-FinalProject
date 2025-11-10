@@ -2,7 +2,7 @@ using BusinessLayer.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using PresentationLayer.DTOs;
+using BusinessLayer.DTOs;
 using PresentationLayer.Helpers;
 using System.Security.Claims;
 

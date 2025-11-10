@@ -1,4 +1,4 @@
-namespace PresentationLayer.DTOs
+namespace BusinessLayer.DTOs
 {
     public class UserProfileDTO
     {

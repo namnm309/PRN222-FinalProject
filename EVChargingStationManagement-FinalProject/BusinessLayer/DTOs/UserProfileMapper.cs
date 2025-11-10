@@ -1,7 +1,7 @@
 using DataAccessLayer.Entities;
-using PresentationLayer.DTOs;
+using BusinessLayer.DTOs;
 
-namespace PresentationLayer.DTOs
+namespace BusinessLayer.DTOs
 {
     public static class UserProfileMapper
     {

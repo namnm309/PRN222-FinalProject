@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace PresentationLayer.DTOs
+namespace BusinessLayer.DTOs
 {
     public class LoginRequest
     {
@@ -11,8 +11,4 @@ namespace PresentationLayer.DTOs
         public string Password { get; set; } = string.Empty;
     }
 }
-
-
-
-
 

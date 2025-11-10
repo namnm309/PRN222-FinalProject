@@ -4,7 +4,7 @@ using DataAccessLayer.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using PresentationLayer.DTOs;
+using BusinessLayer.DTOs;
 
 namespace PresentationLayer.Controllers
 {
