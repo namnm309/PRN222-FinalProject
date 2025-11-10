@@ -1,0 +1,154 @@
+@page
+@model PresentationLayer.Pages.Admin.StaffAssignmentsModel
+@{
+    Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
+    ViewData["Title"] = "Admin • Phân quyền nhân viên";
+}
+
+<section class="page-header d-flex justify-content-between align-items-center">
+    <h2>@ViewData["Title"]</h2>
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#assignModal">
+        <span>➕</span> Gán nhân viên
+    </button>
+</section>
+
+<form method="get" class="filters mb-3">
+    <div class="row g-2">
+        <div class="col-md-4">
+            <input type="text" name="q" value="@Model.Query" class="form-control" placeholder="🔍 Tìm theo tên trạm, nhân viên..." />
+        </div>
+        <div class="col-md-4">
+            <select class="form-select" name="role">
+                <option value="">Tất cả vai trò</option>
+                @foreach (var item in Model.RoleOptions)
+                {
+                    <option value="@item.Value" selected="@(Model.RoleFilter == item.Value)">@item.Text</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2 d-grid">
+            <button type="submit" class="btn btn-primary">Lọc</button>
+        </div>
+        <div class="col-md-2 d-grid">
+            <a href="/Admin/StaffAssignments" class="btn btn-outline-secondary">Xóa bộ lọc</a>
+        </div>
+    </div>
+</form>
+
+<section class="kpis mb-3">
+    <div class="row g-3">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Tổng phân công</div>
+                <div class="h4 mb-0">@Model.Assignments.Count</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Quản lý (Manager)</div>
+                <div class="h4 mb-0">@Model.Assignments.Count(a => a.Role == "Manager")</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Vận hành (Operator)</div>
+                <div class="h4 mb-0">@Model.Assignments.Count(a => a.Role == "Operator")</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Kỹ thuật (Technician)</div>
+                <div class="h4 mb-0">@Model.Assignments.Count(a => a.Role == "Technician")</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="content-grid">
+    <div class="table-responsive card">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Trạm sạc</th>
+                    <th>Nhân viên</th>
+                    <th>Vai trò</th>
+                    <th>Ngày gán</th>
+                    <th class="text-end">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!Model.Assignments.Any())
+            {
+                <tr><td colspan="5" class="text-center text-muted py-4">Chưa có nhân viên nào được gán.</td></tr>
+            }
+            else
+            {
+                foreach (var ass in Model.Assignments)
+                {
+                    <tr>
+                        <td><strong>@ass.StationName</strong></td>
+                        <td>@ass.StaffName</td>
+                        <td>
+                            <span class="badge @(ass.Role == "Manager" ? "bg-dark" : ass.Role == "Technician" ? "bg-warning" : "bg-info")">@ass.Role</span>
+                        </td>
+                        <td>@ass.CreatedAt.ToString("dd/MM/yyyy")</td>
+                        <td class="text-end">
+                            <form method="post" asp-page-handler="Remove" asp-route-id="@ass.Id" class="d-inline" onsubmit="return confirm('Gỡ nhân viên khỏi trạm này?')">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Gỡ nhân viên">🗑️ Gỡ</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Assign Modal -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" asp-page-handler="Assign">
+        <div class="modal-header">
+          <h5 class="modal-title">Gán nhân viên vào trạm</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Trạm sạc</label>
+            <select name="ChargingStationId" class="form-select" required>
+              @foreach (var station in Model.AllStations)
+              {
+                  <option value="@station.Id">@station.Name</option>
+              }
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Nhân viên</label>
+            <select name="UserId" class="form-select" required>
+              @foreach (var staff in Model.AllStaff)
+              {
+                  <option value="@staff.Id">@staff.Name (@staff.Email)</option>
+              }
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Vai trò</label>
+            <select name="Role" class="form-select" required>
+              @foreach (var role in Model.RoleOptions)
+              {
+                  <option value="@role.Value">@role.Text</option>
+              }
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+          <button type="submit" class="btn btn-success">Gán</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+

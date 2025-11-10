@@ -1,0 +1,184 @@
+@page
+@model PresentationLayer.Pages.Admin.UserSubscriptionsModel
+@{
+    Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
+    ViewData["Title"] = "Admin • Gán gói thuê bao";
+}
+
+<section class="page-header d-flex justify-content-between align-items-center">
+    <h2>@ViewData["Title"]</h2>
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#assignModal">
+        <span>➕</span> Gán gói mới
+    </button>
+</section>
+
+<form method="get" class="filters mb-3">
+    <div class="row g-2">
+        <div class="col-md-4">
+            <input type="text" name="q" value="@Model.Query" class="form-control" placeholder="🔍 Tìm theo tên, email..." />
+        </div>
+        <div class="col-md-4">
+            <select class="form-select" name="status">
+                <option value="">Tất cả trạng thái</option>
+                @foreach (var item in Model.StatusOptions)
+                {
+                    <option value="@item.Value" selected="@(Model.StatusFilter == item.Value)">@item.Text</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2 d-grid">
+            <button type="submit" class="btn btn-primary">Lọc</button>
+        </div>
+        <div class="col-md-2 d-grid">
+            <a href="/Admin/UserSubscriptions" class="btn btn-outline-secondary">Xóa bộ lọc</a>
+        </div>
+    </div>
+</form>
+
+<section class="kpis mb-3">
+    <div class="row g-3">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Tổng gói đã gán</div>
+                <div class="h4 mb-0">@Model.Subscriptions.Count</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Gói đang hoạt động</div>
+                <div class="h4 mb-0">@Model.Subscriptions.Count(s => s.Status == "Active")</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Gói đã hủy</div>
+                <div class="h4 mb-0">@Model.Subscriptions.Count(s => s.Status == "Cancelled")</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Gói tạm dừng</div>
+                <div class="h4 mb-0">@Model.Subscriptions.Count(s => s.Status == "Paused")</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="content-grid">
+    <div class="table-responsive card">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Người dùng/Khách hàng</th>
+                    <th>Gói thuê bao</th>
+                    <th>Loại</th>
+                    <th>Ngày bắt đầu</th>
+                    <th>Ngày kết thúc</th>
+                    <th>Trạng thái</th>
+                    <th class="text-end">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!Model.Subscriptions.Any())
+            {
+                <tr><td colspan="7" class="text-center text-muted py-4">Không có gói thuê bao nào được gán.</td></tr>
+            }
+            else
+            {
+                foreach (var sub in Model.Subscriptions)
+                {
+                    <tr>
+                        <td>@sub.UserOrCustomerName</td>
+                        <td><strong>@sub.PlanName</strong></td>
+                        <td>
+                            <span class="badge @(sub.BillingType == "VIP" ? "bg-warning" : sub.BillingType == "Prepaid" ? "bg-primary" : "bg-info")">@sub.BillingType</span>
+                        </td>
+                        <td>@sub.StartDate.ToString("dd/MM/yyyy")</td>
+                        <td>@(sub.EndDate?.ToString("dd/MM/yyyy") ?? "Không giới hạn")</td>
+                        <td>
+                            <span class="badge @(sub.Status == "Active" ? "bg-success" : sub.Status == "Paused" ? "bg-warning" : "bg-secondary")">@sub.Status</span>
+                        </td>
+                        <td class="text-end">
+                            <form method="post" asp-page-handler="Cancel" asp-route-id="@sub.Id" class="d-inline" onsubmit="return confirm('Hủy gói thuê bao này?')">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Hủy gói">❌ Hủy</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Assign Modal -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" asp-page-handler="Assign">
+        <div class="modal-header">
+          <h5 class="modal-title">Gán gói thuê bao</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Người dùng/Khách hàng</label>
+            <select name="UserId" class="form-select" id="userSelect">
+              <option value="">-- Chọn User --</option>
+              @foreach (var u in Model.AllUsers)
+              {
+                  <option value="@u.Id">@u.Name (@u.Email)</option>
+              }
+            </select>
+            <select name="CustomerId" class="form-select mt-2" id="customerSelect">
+              <option value="">-- Hoặc chọn Customer --</option>
+              @foreach (var c in Model.AllCustomers)
+              {
+                  <option value="@c.Id">@c.Name (@c.Email)</option>
+              }
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Gói thuê bao</label>
+            <select name="SubscriptionPlanId" class="form-select" required>
+              @foreach (var plan in Model.AvailablePlans)
+              {
+                  <option value="@plan.Id">@plan.Name (@plan.BillingType)</option>
+              }
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Ngày bắt đầu</label>
+            <input type="date" name="StartDate" class="form-control" required value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Ngày kết thúc (tùy chọn)</label>
+            <input type="date" name="EndDate" class="form-control" />
+          </div>
+          <div class="mb-3">
+            <div class="form-check">
+              <input type="checkbox" name="AutoRenew" class="form-check-input" checked />
+              <label class="form-check-label">Tự động gia hạn</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+          <button type="submit" class="btn btn-success">Gán gói</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+<script>
+document.getElementById('userSelect').addEventListener('change', function() {
+    if (this.value) document.getElementById('customerSelect').value = '';
+});
+document.getElementById('customerSelect').addEventListener('change', function() {
+    if (this.value) document.getElementById('userSelect').value = '';
+});
+</script>
+}
+

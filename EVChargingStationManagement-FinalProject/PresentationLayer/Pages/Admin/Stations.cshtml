@@ -1,4 +1,5 @@
 @page 
+@model PresentationLayer.Pages.Admin.StationsModel
 @{
     Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
     ViewData["Title"] = "Admin • Trạm sạc";
@@ -8,11 +9,125 @@
     <h2>@ViewData["Title"]</h2>
 </section>
 
-<section class="filters">Bộ lọc trạm sạc (placeholder)</section>
+<form method="get" class="filters mb-3">
+    <div class="row g-2">
+        <div class="col-md-4">
+            <input type="text" class="form-control" name="q" value="@Model.Query" placeholder="Tìm theo tên hoặc địa chỉ" />
+        </div>
+        <div class="col-md-4">
+            <select class="form-select" name="status">
+                <option value="">Tất cả trạng thái trạm</option>
+                @foreach (var s in Enum.GetValues(typeof(DataAccessLayer.Enums.StationStatus)).Cast<DataAccessLayer.Enums.StationStatus>())
+                {
+                    <option value="@s" selected="@(Model.Status == s)">@StationsModel.GetStationStatusText(s)</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select class="form-select" name="spotStatusFilter">
+                <option value="">Tất cả điểm sạc</option>
+                @foreach (var s in Enum.GetValues(typeof(DataAccessLayer.Enums.SpotStatus)).Cast<DataAccessLayer.Enums.SpotStatus>())
+                {
+                    <option value="@s" selected="@(Model.SpotStatusFilter == s)">@StationsModel.GetSpotStatusText(s)</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-1 d-grid">
+            <button type="submit" class="btn btn-primary">Lọc</button>
+        </div>
+        <div class="col-md-1 d-grid">
+            <a href="/Admin/Stations" class="btn btn-outline-secondary">Xóa</a>
+        </div>
+    </div>
+</form>
 
 <section class="content-grid">
-    <div class="table-placeholder">Danh sách trạm sạc (placeholder)</div>
-    <div class="chart-placeholder">Tổng quan công suất (placeholder)</div>
-    </section>
+    @if (!Model.Stations.Any())
+    {
+        <div class="alert alert-info">Không có trạm nào phù hợp.</div>
+    }
+    else
+    {
+        foreach (var st in Model.Stations)
+        {
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>@st.Name</strong>
+                        <span class="text-muted">• @st.Address</span>
+                        <span class="badge ms-2 @(st.Status == DataAccessLayer.Enums.StationStatus.Active ? "bg-success" : "bg-secondary")">@StationsModel.GetStationStatusText(st.Status)</span>
+                    </div>
+                    <div class="small text-muted">@st.ChargingSpots.Count điểm sạc</div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Điểm sạc</th>
+                                    <th>Bộ kết nối</th>
+                                    <th>Công suất</th>
+                                    <th>Giá/kWh</th>
+                                    <th>Trạng thái</th>
+                                    <th class="text-end">Điều khiển</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var sp in st.ChargingSpots.OrderBy(s => s.SpotNumber))
+                                {
+                                    <tr>
+                                        <td></td>
+                                        <td>@sp.SpotNumber</td>
+                                        <td>@sp.ConnectorType</td>
+                                        <td>@(sp.PowerOutput?.ToString("0.##") ?? "-") kW</td>
+                                        <td>@(sp.PricePerKwh?.ToString("0.##") ?? "-")</td>
+                                        <td>
+                                            <span class="badge @(sp.Status == DataAccessLayer.Enums.SpotStatus.Available ? "bg-success" : sp.Status == DataAccessLayer.Enums.SpotStatus.Occupied ? "bg-warning" : "bg-secondary")">@StationsModel.GetSpotStatusText(sp.Status)</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <form method="post" asp-page-handler="ToggleSpot" class="d-inline">
+                                                <input type="hidden" name="spotId" value="@sp.Id" />
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">@(sp.Status == DataAccessLayer.Enums.SpotStatus.OutOfOrder ? "Kích hoạt" : "Tạm dừng")</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* Pagination *@
+        @if (Model.TotalPages > 1)
+        {
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
+                        <a class="page-link" href="?q=@Model.Query&status=@Model.Status&spotStatusFilter=@Model.SpotStatusFilter&pageIndex=@(Model.PageIndex - 1)" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    @for (int i = Math.Max(1, Model.PageIndex - 2); i <= Math.Min(Model.TotalPages, Model.PageIndex + 2); i++)
+                    {
+                        <li class="page-item @(i == Model.PageIndex ? "active" : "")">
+                            <a class="page-link" href="?q=@Model.Query&status=@Model.Status&spotStatusFilter=@Model.SpotStatusFilter&pageIndex=@i">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
+                        <a class="page-link" href="?q=@Model.Query&status=@Model.Status&spotStatusFilter=@Model.SpotStatusFilter&pageIndex=@(Model.PageIndex + 1)" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            <div class="text-center text-muted mt-2">
+                Hiển thị @((Model.PageIndex - 1) * Model.PageSize + 1) - @(Math.Min(Model.PageIndex * Model.PageSize, Model.TotalCount)) trong tổng số @Model.TotalCount trạm sạc
+            </div>
+        }
+    }
+</section>
 
 

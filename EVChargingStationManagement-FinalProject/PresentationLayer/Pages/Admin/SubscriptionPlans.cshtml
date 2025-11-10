@@ -1,0 +1,208 @@
+@page
+@model PresentationLayer.Pages.Admin.SubscriptionPlansModel
+@{
+    Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
+    ViewData["Title"] = "Admin • Gói thuê bao";
+}
+
+<section class="page-header d-flex justify-content-between align-items-center">
+    <h2>@ViewData["Title"]</h2>
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addModal">
+        <span>➕</span> Thêm gói mới
+    </button>
+</section>
+
+<form method="get" class="filters mb-3">
+    <div class="row g-2">
+        <div class="col-md-4">
+            <input type="text" name="q" value="@Model.Query" class="form-control" placeholder="🔍 Tìm theo tên..." />
+        </div>
+        <div class="col-md-4">
+            <select class="form-select" name="billingType">
+                <option value="">Tất cả loại</option>
+                @foreach (var item in Model.BillingTypeOptions)
+                {
+                    <option value="@item.Value" selected="@(Model.BillingTypeFilter == item.Value)">@item.Text</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2 d-grid">
+            <button type="submit" class="btn btn-primary">Lọc</button>
+        </div>
+        <div class="col-md-2 d-grid">
+            <a href="/Admin/SubscriptionPlans" class="btn btn-outline-secondary">Xóa bộ lọc</a>
+        </div>
+    </div>
+</form>
+
+<section class="kpis mb-3">
+    <div class="row g-3">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Tổng gói thuê bao</div>
+                <div class="h4 mb-0">@Model.Plans.Count</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Gói đang hoạt động</div>
+                <div class="h4 mb-0">@Model.Plans.Count(p => p.IsActive)</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Gói Prepaid</div>
+                <div class="h4 mb-0">@Model.Plans.Count(p => p.BillingType == DataAccessLayer.Enums.BillingType.Prepaid)</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Gói VIP</div>
+                <div class="h4 mb-0">@Model.Plans.Count(p => p.BillingType == DataAccessLayer.Enums.BillingType.VIP)</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="content-grid">
+    <div class="table-responsive card">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Tên gói</th>
+                    <th>Loại</th>
+                    <th>Giá/tháng</th>
+                    <th>Giá/kWh</th>
+                    <th>KWh bao gồm</th>
+                    <th>Trạng thái</th>
+                    <th class="text-end">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!Model.Plans.Any())
+            {
+                <tr><td colspan="7" class="text-center text-muted py-4">Không có gói thuê bao.</td></tr>
+            }
+            else
+            {
+                foreach (var plan in Model.Plans)
+                {
+                    <tr>
+                        <td><strong>@plan.Name</strong></td>
+                        <td>
+                            <span class="badge @(plan.BillingType == DataAccessLayer.Enums.BillingType.VIP ? "bg-warning" : plan.BillingType == DataAccessLayer.Enums.BillingType.Prepaid ? "bg-primary" : "bg-info")">@plan.BillingType</span>
+                        </td>
+                        <td>@(plan.PricePerMonth?.ToString("N0") ?? "-") đ</td>
+                        <td>@(plan.PricePerKwh?.ToString("N0") ?? "-") đ</td>
+                        <td>@(plan.IncludedKwh?.ToString("N0") ?? "-") kWh</td>
+                        <td>
+                            <span class="badge @(plan.IsActive ? "bg-success" : "bg-secondary")">@(plan.IsActive ? "Hoạt động" : "Tạm dừng")</span>
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal" onclick="loadEditData('@plan.Id', '@plan.Name', '@(plan.Description ?? "")', '@plan.BillingType', '@plan.PricePerMonth', '@plan.PricePerKwh', '@plan.IncludedKwh', '@plan.IsActive')" title="Sửa">
+                                ✏️ Sửa
+                            </button>
+                            <form method="post" asp-page-handler="Delete" asp-route-id="@plan.Id" class="d-inline ms-1" onsubmit="return confirm('Xóa gói này?')">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa">🗑️ Xoá</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Add Modal -->
+<div class="modal fade" id="addModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" asp-page-handler="Create">
+        <div class="modal-header">
+          <h5 class="modal-title">Thêm gói thuê bao</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3"><label class="form-label">Tên gói</label><input type="text" name="Name" class="form-control" required /></div>
+          <div class="mb-3"><label class="form-label">Mô tả</label><textarea name="Description" class="form-control"></textarea></div>
+          <div class="mb-3">
+            <label class="form-label">Loại</label>
+            <select name="BillingType" class="form-select">
+              @foreach (var type in Model.BillingTypeOptions)
+              { <option value="@type.Value">@type.Text</option> }
+            </select>
+          </div>
+          <div class="mb-3"><label class="form-label">Giá/tháng (đ)</label><input type="number" step="0.01" name="PricePerMonth" class="form-control" /></div>
+          <div class="mb-3"><label class="form-label">Giá/kWh (đ)</label><input type="number" step="0.01" name="PricePerKwh" class="form-control" /></div>
+          <div class="mb-3"><label class="form-label">KWh bao gồm</label><input type="number" step="0.01" name="IncludedKwh" class="form-control" /></div>
+          <div class="mb-3">
+            <div class="form-check">
+              <input type="checkbox" name="IsActive" class="form-check-input" checked />
+              <label class="form-check-label">Hoạt động</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+          <button type="submit" class="btn btn-success">Thêm mới</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" asp-page-handler="Update">
+        <input type="hidden" name="Id" id="editId" />
+        <div class="modal-header">
+          <h5 class="modal-title">Sửa gói thuê bao</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3"><label class="form-label">Tên gói</label><input type="text" name="Name" id="editName" class="form-control" required /></div>
+          <div class="mb-3"><label class="form-label">Mô tả</label><textarea name="Description" id="editDescription" class="form-control"></textarea></div>
+          <div class="mb-3">
+            <label class="form-label">Loại</label>
+            <select name="BillingType" id="editBillingType" class="form-select">
+              @foreach (var type in Model.BillingTypeOptions)
+              { <option value="@type.Value">@type.Text</option> }
+            </select>
+          </div>
+          <div class="mb-3"><label class="form-label">Giá/tháng (đ)</label><input type="number" step="0.01" name="PricePerMonth" id="editPricePerMonth" class="form-control" /></div>
+          <div class="mb-3"><label class="form-label">Giá/kWh (đ)</label><input type="number" step="0.01" name="PricePerKwh" id="editPricePerKwh" class="form-control" /></div>
+          <div class="mb-3"><label class="form-label">KWh bao gồm</label><input type="number" step="0.01" name="IncludedKwh" id="editIncludedKwh" class="form-control" /></div>
+          <div class="mb-3">
+            <div class="form-check">
+              <input type="checkbox" name="IsActive" id="editIsActive" class="form-check-input" />
+              <label class="form-check-label">Hoạt động</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+          <button type="submit" class="btn btn-primary">Cập nhật</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+<script>
+function loadEditData(id, name, desc, billingType, priceMonth, priceKwh, includedKwh, isActive) {
+    document.getElementById('editId').value = id;
+    document.getElementById('editName').value = name || '';
+    document.getElementById('editDescription').value = desc || '';
+    document.getElementById('editBillingType').value = billingType;
+    document.getElementById('editPricePerMonth').value = priceMonth || '';
+    document.getElementById('editPricePerKwh').value = priceKwh || '';
+    document.getElementById('editIncludedKwh').value = includedKwh || '';
+    document.getElementById('editIsActive').checked = isActive === 'True';
+}
+</script>
+}
+

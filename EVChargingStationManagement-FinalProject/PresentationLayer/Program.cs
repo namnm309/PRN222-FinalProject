@@ -23,6 +23,9 @@ namespace PresentationLayer
             builder.Services.AddDbContext<EVDbContext>(options =>
                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+            // HttpClient for external APIs (SerpApi etc.)
+            builder.Services.AddHttpClient();
+
             // Configure JWT Settings
             var jwtSettings = builder.Configuration.GetSection("JwtSettings");
             var secretKey = jwtSettings["SecretKey"];
@@ -85,8 +88,6 @@ namespace PresentationLayer
 
             // Add Controllers
             builder.Services.AddControllers();
-            // HttpClient for external APIs (SerpApi)
-            builder.Services.AddHttpClient();
 
             // Add Swagger for API testing
             builder.Services.AddEndpointsApiExplorer();

@@ -1,56 +1,45 @@
 @{
     // Xác định ngữ cảnh hiện tại (Admin hay Staff) theo path
-    var path = Context?.Request?.Path.Value?.ToLower() ?? string.Empty;
+    var path = Context.Request.Path.ToString().ToLower();
+    Func<string, string> Active = (p) => path.StartsWith(p) ? "active" : string.Empty;
     var isAdmin = path.StartsWith("/admin");
     var isStaff = path.StartsWith("/staff");
-
-    string Active(string href)
-    {
-        return path == href.ToLower() || path.StartsWith(href.ToLower()) ? "active" : string.Empty;
-    }
 }
+<div class="sidebar">
+    <div class="sidebar-brand">EV Charging</div>
+    <div class="sidebar-sep"></div>
 
-<div class="sidebar-brand">
-    <a asp-page="/Index" class="brand-link">
-        <div class="brand-logo">⚡</div>
-        <div class="brand-text">
-            <div class="brand-title">EV Charging</div>
-            <div class="brand-sub">Management System</div>
-        </div>
-    </a>
-    <button class="btn-sidebar-toggle" id="SidebarToggle" title="Thu gọn">
-        <span class="icon">⟨⟩</span>
-    </button>
+    <nav class="sidebar-nav">
+        @if (isAdmin)
+        {
+            <ul class="nav-list">
+                <li><a class="nav-item @Active("/admin")" asp-page="/Admin/Index"><span class="nav-ico">▦</span><span class="nav-text">Dashboard</span></a></li>
+                <li><a class="nav-item @Active("/admin/stations")" asp-page="/Admin/Stations"><span class="nav-ico">⚡</span><span class="nav-text">Quản lý Trạm sạc</span></a></li>
+                <li><a class="nav-item @Active("/admin/users")" asp-page="/Admin/Users"><span class="nav-ico">👥</span><span class="nav-text">Quản lý Người dùng</span></a></li>
+                <li><a class="nav-item @Active("/admin/subscriptionplans")" asp-page="/Admin/SubscriptionPlans"><span class="nav-ico">📦</span><span class="nav-text">Gói thuê bao</span></a></li>
+                <li><a class="nav-item @Active("/admin/usersubscriptions")" asp-page="/Admin/UserSubscriptions"><span class="nav-ico">🎫</span><span class="nav-text">Gán gói thuê bao</span></a></li>
+                <li><a class="nav-item @Active("/admin/staffassignments")" asp-page="/Admin/StaffAssignments"><span class="nav-ico">👔</span><span class="nav-text">Phân quyền nhân viên</span></a></li>
+                <li><a class="nav-item @Active("/admin/spotsmap")" asp-page="/Admin/SpotsMap"><span class="nav-ico">🗺️</span><span class="nav-text">Bản đồ Điểm sạc</span></a></li>
+                <li><a class="nav-item @Active("/admin/sessions")" asp-page="/Admin/Sessions"><span class="nav-ico">⏱</span><span class="nav-text">Giám sát Sạc</span></a></li>
+                <li><a class="nav-item @Active("/admin/reports")" asp-page="/Admin/Reports"><span class="nav-ico">📊</span><span class="nav-text">Báo cáo & Thống kê</span></a></li>
+                <li><a class="nav-item @Active("/admin/settings")" asp-page="/Admin/Settings"><span class="nav-ico">⚙</span><span class="nav-text">Cài đặt</span></a></li>
+            </ul>
+        }
+        else if (isStaff)
+        {
+            <ul class="nav-list">
+                <li><a class="nav-item @Active("/staff")" asp-page="/Staff/Index"><span class="nav-ico">▦</span><span class="nav-text">Dashboard</span></a></li>
+                <li><a class="nav-item @Active("/staff/stations")" asp-page="/Staff/Stations"><span class="nav-ico">⚡</span><span class="nav-text">Trạm sạc của tôi</span></a></li>
+                <li><a class="nav-item @Active("/staff/sessions")" asp-page="/Staff/Sessions"><span class="nav-ico">⏱</span><span class="nav-text">Giám sát Sạc</span></a></li>
+                <li><a class="nav-item @Active("/staff/settings")" asp-page="/Staff/Settings"><span class="nav-ico">⚙</span><span class="nav-text">Cài đặt</span></a></li>
+            </ul>
+        }
+        else
+        {
+            <div class="sidebar-note">Chọn khu vực Admin/Staff để hiển thị menu.</div>
+        }
+    </nav>
 </div>
-
-<div class="sidebar-sep"></div>
-
-<nav class="sidebar-nav">
-    @if (isAdmin)
-    {
-        <ul class="nav-list">
-            <li><a class="nav-item @Active("/admin")" asp-page="/Admin/Index"><span class="nav-ico">▦</span><span class="nav-text">Dashboard</span></a></li>
-            <li><a class="nav-item @Active("/admin/stations")" asp-page="/Admin/Stations"><span class="nav-ico">⚡</span><span class="nav-text">Quản lý Trạm sạc</span></a></li>
-            <li><a class="nav-item @Active("/admin/users")" asp-page="/Admin/Users"><span class="nav-ico">👥</span><span class="nav-text">Quản lý Người dùng</span></a></li>
-            <li><a class="nav-item @Active("/admin/sessions")" asp-page="/Admin/Sessions"><span class="nav-ico">⏱</span><span class="nav-text">Giám sát Sạc</span></a></li>
-            <li><a class="nav-item @Active("/admin/reports")" asp-page="/Admin/Reports"><span class="nav-ico">📊</span><span class="nav-text">Báo cáo & Thống kê</span></a></li>
-            <li><a class="nav-item @Active("/admin/settings")" asp-page="/Admin/Settings"><span class="nav-ico">⚙</span><span class="nav-text">Cài đặt</span></a></li>
-        </ul>
-    }
-    else if (isStaff)
-    {
-        <ul class="nav-list">
-            <li><a class="nav-item @Active("/staff")" asp-page="/Staff/Index"><span class="nav-ico">▦</span><span class="nav-text">Dashboard</span></a></li>
-            <li><a class="nav-item @Active("/staff/stations")" asp-page="/Staff/Stations"><span class="nav-ico">⚡</span><span class="nav-text">Trạm sạc của tôi</span></a></li>
-            <li><a class="nav-item @Active("/staff/sessions")" asp-page="/Staff/Sessions"><span class="nav-ico">⏱</span><span class="nav-text">Giám sát Sạc</span></a></li>
-            <li><a class="nav-item @Active("/staff/settings")" asp-page="/Staff/Settings"><span class="nav-ico">⚙</span><span class="nav-text">Cài đặt</span></a></li>
-        </ul>
-    }
-    else
-    {
-        <div class="sidebar-note">Chọn khu vực Admin/Staff để hiển thị menu.</div>
-    }
-</nav>
 
 <div class="sidebar-footer">
     <div class="user-chip">

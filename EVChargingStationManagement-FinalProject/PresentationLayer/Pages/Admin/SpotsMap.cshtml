@@ -1,0 +1,176 @@
+@page "{handler?}"
+@model PresentationLayer.Pages.Admin.SpotsMapModel
+@{
+    Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
+    ViewData["Title"] = "Admin • Bản đồ điểm sạc";
+}
+
+<section class="page-header d-flex justify-content-between align-items-center">
+    <h2>@ViewData["Title"]</h2>
+    <div class="d-flex gap-2">
+        <select id="statusFilter" class="form-select">
+            <option value="">Tất cả trạng thái</option>
+            @foreach (var s in Enum.GetValues(typeof(DataAccessLayer.Enums.SpotStatus)).Cast<DataAccessLayer.Enums.SpotStatus>())
+            {
+                <option value="@s">@PresentationLayer.Pages.Admin.StationsModel.GetSpotStatusText(s)</option>
+            }
+        </select>
+        <button id="importBtn" class="btn btn-outline-secondary">Nhập dữ liệu từ bản đồ</button>
+        <button id="reloadBtn" class="btn btn-primary">Tải lại</button>
+    </div>
+</section>
+
+<div id="map" style="height: 70vh; border-radius: 8px; overflow: hidden;" class="card"></div>
+
+<form method="post" asp-page-handler="Toggle" id="toggleForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="spotId" id="spotId" />
+</form>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script>
+        const map = L.map('map').setView([21.028511, 105.804817], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+
+        const colors = {
+            Available: 'green',
+            Occupied: 'orange',
+            Maintenance: 'blue',
+            OutOfOrder: 'red',
+            Reserved: 'purple'
+        };
+
+        let markers = [];
+        function clearMarkers(){ markers.forEach(m => map.removeLayer(m)); markers = []; }
+
+        async function loadData(){
+            try {
+                const status = document.getElementById('statusFilter').value;
+                // Use direct URL with handler parameter
+                const url = `/Admin/SpotsMap?handler=Data&status=${encodeURIComponent(status)}`;
+                console.log('Loading data from:', url);
+                
+                const res = await fetch(url, {
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (!res.ok) {
+                    const text = await res.text();
+                    console.error('Failed to load data:', res.status, res.statusText, text);
+                    alert('Không thể tải dữ liệu: ' + res.statusText);
+                    return;
+                }
+                
+                const contentType = res.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await res.text();
+                    console.error('Response is not JSON:', text.substring(0, 200));
+                    alert('Lỗi: Server trả về dữ liệu không phải JSON. Vui lòng kiểm tra lại.');
+                    return;
+                }
+                
+                const data = await res.json();
+                console.log('Loaded spots:', data.length);
+                
+                clearMarkers();
+                
+                if (data.length === 0) {
+                    console.warn('No spots found. Make sure stations have valid coordinates (Latitude/Longitude).');
+                    alert('Không tìm thấy điểm sạc nào. Vui lòng kiểm tra xem các trạm sạc có tọa độ (Latitude/Longitude) hợp lệ chưa.');
+                    return;
+                }
+                
+                data.forEach(item => {
+                    // Skip invalid coordinates
+                    if (!item.lat || !item.lng || item.lat === 0 || item.lng === 0) {
+                        console.warn('Skipping spot with invalid coordinates:', item);
+                        return;
+                    }
+                    
+                    const color = colors[item.status] || 'gray';
+                    const marker = L.circleMarker([item.lat, item.lng], { 
+                        radius: 10, 
+                        color: color, 
+                        fillColor: color, 
+                        fillOpacity: 0.8,
+                        weight: 2
+                    });
+                    
+                    const btnLabel = item.status === 'OutOfOrder' ? 'Kích hoạt' : 'Tạm dừng';
+                    const html = `
+                        <div style="min-width: 200px;">
+                            <strong>${item.stationName || 'N/A'}</strong><br/>
+                            Điểm sạc: <b>${item.spotNumber || 'N/A'}</b><br/>
+                            Trạng thái: <b>${item.status || 'N/A'}</b><br/>
+                            <button class="btn btn-sm btn-outline-primary mt-2" data-spot="${item.id}">${btnLabel}</button>
+                        </div>`;
+                    marker.bindPopup(html);
+                    marker.addTo(map);
+                    markers.push(marker);
+                });
+                
+                // Fit map to show all markers
+                if (markers.length > 0) {
+                    const group = new L.featureGroup(markers);
+                    map.fitBounds(group.getBounds().pad(0.1));
+                }
+                
+                console.log('Markers added:', markers.length);
+            } catch (err) {
+                console.error('Error loading data:', err);
+                alert('Lỗi khi tải dữ liệu: ' + (err?.message || err));
+            }
+        }
+
+        document.getElementById('reloadBtn').addEventListener('click', loadData);
+        document.getElementById('statusFilter').addEventListener('change', loadData);
+
+        document.getElementById('importBtn').addEventListener('click', async () => {
+            const center = map.getCenter();
+            const zoom = map.getZoom() || 14;
+            const qs = new URLSearchParams({ query: 'EV charging station', lat: center.lat, lng: center.lng, zoom });
+            try {
+                const res = await fetch(`/api/admin/data/import-serp?${qs.toString()}`, { method: 'POST', credentials: 'same-origin' });
+                if (!res.ok) {
+                    const msg = await res.text();
+                    alert('Import thất bại: ' + msg);
+                    return;
+                }
+                const payload = await res.json().catch(() => null);
+                if (payload && typeof payload.createdStations === 'number') {
+                    alert(`Đã nhập ${payload.createdStations} trạm mới, cập nhật ${payload.updatedStations}, tạo ${payload.createdSpots} điểm sạc.`);
+                }
+                await loadData();
+            } catch (err) {
+                alert('Không thể nhập dữ liệu: ' + (err?.message || err));
+            }
+        });
+
+        // delegate click on popup buttons
+        map.on('popupopen', (e) => {
+            const btn = e.popup.getElement().querySelector('button[data-spot]');
+            if (!btn) return;
+            btn.addEventListener('click', async (ev) => {
+                ev.preventDefault();
+                const spotId = btn.getAttribute('data-spot');
+                const form = document.getElementById('toggleForm');
+                document.getElementById('spotId').value = spotId;
+                const formData = new FormData(form);
+                const token = form.querySelector('input[name="__RequestVerificationToken"]').value;
+                await fetch('/Admin/SpotsMap?handler=Toggle', { method: 'POST', headers: { 'RequestVerificationToken': token }, body: formData });
+                await loadData();
+            }, { once: true });
+        });
+
+        loadData();
+    </script>
+}

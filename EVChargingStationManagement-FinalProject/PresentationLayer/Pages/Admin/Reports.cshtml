@@ -1,18 +1,205 @@
 @page 
+@model PresentationLayer.Pages.Admin.ReportsModel
 @{
     Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
-    ViewData["Title"] = "Admin • Báo cáo";
+    ViewData["Title"] = "Admin • Báo cáo & Thống kê";
 }
 
-<section class="page-header">
+<section class="page-header d-flex justify-content-between align-items-center">
     <h2>@ViewData["Title"]</h2>
 </section>
 
-<section class="filters">Bộ lọc báo cáo (placeholder)</section>
+<form method="get" class="filters mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label">Từ ngày</label>
+            <input type="date" name="fromDate" value="@Model.FromDate?.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Đến ngày</label>
+            <input type="date" name="toDate" value="@Model.ToDate?.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Trạm sạc</label>
+            <select name="stationId" class="form-select">
+                <option value="">Tất cả trạm</option>
+                @foreach (var s in Model.AllStations)
+                {
+                    <option value="@s.Id" selected="@(Model.StationId == s.Id)">@s.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2 d-grid">
+            <button type="submit" class="btn btn-primary">🔍 Lọc</button>
+        </div>
+        <div class="col-md-1 d-grid">
+            <a href="/Admin/Reports" class="btn btn-outline-secondary">Xóa</a>
+        </div>
+    </div>
+</form>
+
+<section class="kpis mb-3">
+    <div class="row g-3">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Tổng trạm sạc</div>
+                <div class="h4 mb-0">@Model.TotalStations</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Tổng điểm sạc</div>
+                <div class="h4 mb-0">@Model.TotalSpots</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Tổng doanh thu</div>
+                <div class="h4 mb-0">@Model.TotalRevenue.ToString("N0") đ</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Tổng phiên sạc</div>
+                <div class="h4 mb-0">@Model.TotalSessions</div>
+            </div>
+        </div>
+    </div>
+</section>
 
 <section class="content-grid">
-    <div class="table-placeholder">Bảng số liệu (placeholder)</div>
-    <div class="chart-placeholder">Biểu đồ tổng hợp (placeholder)</div>
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">Trạng thái trạm sạc</div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <tbody>
+                        @foreach (var kv in Model.StationByStatus)
+                        {
+                            <tr><td>@kv.Key</td><td class="text-end">@kv.Value</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">Trạng thái điểm sạc</div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <tbody>
+                        @foreach (var kv in Model.SpotByStatus)
+                        {
+                            <tr><td>@kv.Key</td><td class="text-end">@kv.Value</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">Bảo trì theo trạng thái</div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <tbody>
+                        @foreach (var kv in Model.MaintenancesByStatus)
+                        {
+                            <tr><td>@kv.Key</td><td class="text-end">@kv.Value</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">Sự cố theo trạng thái</div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <tbody>
+                        @foreach (var kv in Model.ErrorsByStatus)
+                        {
+                            <tr><td>@kv.Key</td><td class="text-end">@kv.Value</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header">Doanh thu theo trạm</div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Trạm sạc</th>
+                                <th>Số phiên</th>
+                                <th>Tổng kWh</th>
+                                <th class="text-end">Doanh thu</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @if (!Model.RevenueByStation.Any())
+                        {
+                            <tr><td colspan="4" class="text-center text-muted py-3">Chưa có dữ liệu.</td></tr>
+                        }
+                        else
+                        {
+                            foreach (var r in Model.RevenueByStation)
+                            {
+                                <tr>
+                                    <td>@r.StationName</td>
+                                    <td>@r.SessionCount</td>
+                                    <td>@r.TotalKwh.ToString("N2") kWh</td>
+                                    <td class="text-end"><strong>@r.Revenue.ToString("N0") đ</strong></td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header">Giờ cao điểm (Top 10 giờ có nhiều phiên sạc nhất)</div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Giờ</th>
+                                <th>Số phiên sạc</th>
+                                <th>Tổng kWh</th>
+                                <th class="text-end">Doanh thu</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @if (!Model.PeakHours.Any())
+                        {
+                            <tr><td colspan="4" class="text-center text-muted py-3">Chưa có dữ liệu.</td></tr>
+                        }
+                        else
+                        {
+                            foreach (var p in Model.PeakHours)
+                            {
+                                <tr>
+                                    <td><strong>@p.Hour:00</strong></td>
+                                    <td>@p.SessionCount</td>
+                                    <td>@p.TotalKwh.ToString("N2") kWh</td>
+                                    <td class="text-end">@p.Revenue.ToString("N0") đ</td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </section>
 
 

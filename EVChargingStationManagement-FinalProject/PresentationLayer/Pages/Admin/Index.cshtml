@@ -1,4 +1,5 @@
 @page 
+@model PresentationLayer.Pages.Admin.IndexModel
 @{
     Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
     ViewData["Title"] = "Admin • Tổng quan";
@@ -8,18 +9,266 @@
     <h2>@ViewData["Title"]</h2>
 </section>
 
-<section class="kpis">
-    <div class="kpi-card"></div>
-    <div class="kpi-card"></div>
-    <div class="kpi-card"></div>
-    <div class="kpi-card"></div>
+<section class="kpis mb-3">
+    <div class="row g-3">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Tổng trạm sạc</div>
+                <div class="h4 mb-0">@Model.TotalStations</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Tổng điểm sạc</div>
+                <div class="h4 mb-0">@Model.TotalSpots</div>
+                <div class="small text-success mt-1">@Model.ActiveSpots sẵn sàng</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Tổng doanh thu</div>
+                <div class="h4 mb-0">@Model.TotalRevenue.ToString("N0") đ</div>
+                <div class="small text-muted mt-1">@Model.TotalSessions phiên sạc</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Người dùng & Khách hàng</div>
+                <div class="h4 mb-0">@(Model.TotalUsers + Model.TotalCustomers)</div>
+                <div class="small text-muted mt-1">@Model.TotalUsers users, @Model.TotalCustomers customers</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Nhân viên</div>
+                <div class="h4 mb-0">@Model.TotalStaff</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Gói thuê bao</div>
+                <div class="h4 mb-0">@Model.TotalSubscriptions</div>
+                <div class="small text-success mt-1">@Model.ActiveSubscriptions đang hoạt động</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Bảo trì đang mở</div>
+                <div class="h4 mb-0">@Model.OpenMaintenances</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Sự cố đã xử lý</div>
+                <div class="h4 mb-0">@Model.ResolvedErrors</div>
+            </div>
+        </div>
+    </div>
 </section>
 
-<section class="filters">Bộ lọc (placeholder)</section>
-
 <section class="content-grid">
-    <div class="table-placeholder">Bảng dữ liệu (placeholder)</div>
-    <div class="chart-placeholder">Biểu đồ (placeholder)</div>
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">Trạm sạc mới nhất</div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Tên trạm</th>
+                                    <th>Địa chỉ</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!Model.RecentStations.Any())
+                                {
+                                    <tr><td colspan="3" class="text-center text-muted py-3">Chưa có trạm sạc.</td></tr>
+                                }
+                                else
+                                {
+                                    foreach (var st in Model.RecentStations)
+                                    {
+                                        <tr>
+                                            <td><strong>@st.Name</strong></td>
+                                            <td class="text-muted small">@(st.Address.Length > 40 ? st.Address.Substring(0, 40) + "..." : st.Address)</td>
+                                            <td>
+                                                <span class="badge @(st.Status == DataAccessLayer.Enums.StationStatus.Active ? "bg-success" : "bg-secondary")">
+                                                    @IndexModel.GetStationStatusText(st.Status)
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">Phiên sạc gần đây</div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Người dùng</th>
+                                    <th>Trạm sạc</th>
+                                    <th>kWh</th>
+                                    <th>Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!Model.RecentSessions.Any())
+                                {
+                                    <tr><td colspan="4" class="text-center text-muted py-3">Chưa có phiên sạc.</td></tr>
+                                }
+                                else
+                                {
+                                    foreach (var s in Model.RecentSessions)
+                                    {
+                                        <tr>
+                                            <td>@(s.User?.FullName ?? "N/A")</td>
+                                            <td class="small">@(s.ChargingStation?.Name ?? "N/A")</td>
+                                            <td>@(s.EnergyKwh?.ToString("0.##") ?? "-")</td>
+                                            <td><strong>@(s.TotalAmount?.ToString("N0") ?? "-") đ</strong></td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">Gói thuê bao đang hoạt động</div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Người dùng</th>
+                                    <th>Gói thuê bao</th>
+                                    <th>Ngày bắt đầu</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!Model.RecentSubscriptions.Any())
+                                {
+                                    <tr><td colspan="3" class="text-center text-muted py-3">Chưa có gói thuê bao.</td></tr>
+                                }
+                                else
+                                {
+                                    foreach (var sub in Model.RecentSubscriptions)
+                                    {
+                                        <tr>
+                                            <td>@(sub.User?.FullName ?? "N/A")</td>
+                                            <td><strong>@(sub.SubscriptionPlan?.Name ?? "N/A")</strong></td>
+                                            <td class="small">@sub.StartDate.ToString("dd/MM/yyyy")</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">Bảo trì gần đây</div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Trạm sạc</th>
+                                    <th>Tiêu đề</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!Model.RecentMaintenances.Any())
+                                {
+                                    <tr><td colspan="3" class="text-center text-muted py-3">Chưa có bảo trì.</td></tr>
+                                }
+                                else
+                                {
+                                    foreach (var m in Model.RecentMaintenances)
+                                    {
+                                        <tr>
+                                            <td>@(m.ChargingStation?.Name ?? "N/A")</td>
+                                            <td class="small">@m.Title</td>
+                                            <td>
+                                                <span class="badge @(m.Status == DataAccessLayer.Enums.MaintenanceStatus.Completed ? "bg-success" : m.Status == DataAccessLayer.Enums.MaintenanceStatus.InProgress ? "bg-warning" : "bg-info")">
+                                                    @m.Status
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">Trạng thái trạm sạc</div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <tbody>
+                            @if (!Model.StationStatusBreakdown.Any())
+                            {
+                                <tr><td class="text-center text-muted py-3">Chưa có dữ liệu.</td></tr>
+                            }
+                            else
+                            {
+                                foreach (var kv in Model.StationStatusBreakdown)
+                                {
+                                    <tr>
+                                        <td>@kv.Key</td>
+                                        <td class="text-end"><strong>@kv.Value</strong></td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">Trạng thái điểm sạc</div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <tbody>
+                            @if (!Model.SpotStatusBreakdown.Any())
+                            {
+                                <tr><td class="text-center text-muted py-3">Chưa có dữ liệu.</td></tr>
+                            }
+                            else
+                            {
+                                foreach (var kv in Model.SpotStatusBreakdown)
+                                {
+                                    <tr>
+                                        <td>@IndexModel.GetSpotStatusText(Enum.Parse<DataAccessLayer.Enums.SpotStatus>(kv.Key))</td>
+                                        <td class="text-end"><strong>@kv.Value</strong></td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </section>
 
 

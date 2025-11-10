@@ -1,4 +1,5 @@
 @page 
+@model PresentationLayer.Pages.Admin.UsersModel
 @{
     Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
     ViewData["Title"] = "Admin • Người dùng";
@@ -8,11 +9,143 @@
     <h2>@ViewData["Title"]</h2>
 </section>
 
-<section class="filters">Bộ lọc người dùng (placeholder)</section>
+<form method="get" class="filters mb-3">
+    <div class="row g-2">
+        <div class="col-md-3">
+            <input type="text" name="q" value="@Model.Query" class="form-control" placeholder="Tìm theo tên, email, username" />
+        </div>
+        <div class="col-md-3">
+            <select name="role" class="form-select">
+                <option value="">Tất cả vai trò</option>
+                @foreach (var item in Model.RoleOptions)
+                {
+                    <option value="@item.Value" selected="@(Model.RoleFilter == item.Value)">@item.Text</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select name="status" class="form-select">
+                <option value="">Tất cả trạng thái</option>
+                <option value="active" selected="@(Model.StatusFilter == "active")">Đang hoạt động</option>
+                <option value="inactive" selected="@(Model.StatusFilter == "inactive")">Bị khóa</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-grid">
+            <button type="submit" class="btn btn-primary">Lọc</button>
+        </div>
+    </div>
+</form>
+
+<section class="kpis mb-3">
+    <div class="row g-3">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Tổng nhân viên</div>
+                <div class="h4 mb-0">@Model.TotalStaff</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Đang hoạt động</div>
+                <div class="h4 mb-0">@Model.ActiveStaff</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Nhiệm vụ bảo trì đang mở</div>
+                <div class="h4 mb-0">@Model.OpenMaintenances</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card p-3">
+                <div class="small text-muted">Sự cố đã xử lý</div>
+                <div class="h4 mb-0">@Model.ErrorsResolved</div>
+            </div>
+        </div>
+    </div>
+</section>
 
 <section class="content-grid">
-    <div class="table-placeholder">Danh sách người dùng (placeholder)</div>
-    <div class="chart-placeholder">Phân bố vai trò (placeholder)</div>
+    <div class="table-responsive card">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Vai trò</th>
+                    <th>Tên</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Trạng thái</th>
+                    <th>Hiệu suất</th>
+                    <th class="text-end">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.AllAccounts.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">Không có người dùng phù hợp.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model.AllAccounts)
+                    {
+                        <tr>
+                            <td>
+                                <span class="badge @item.RoleCss">@item.Role</span>
+                            </td>
+                            <td>@item.Name</td>
+                            <td>@(item.Username ?? "-")</td>
+                            <td>@item.Email</td>
+                            <td>
+                                @if (item.IsActive.HasValue)
+                                {
+                                    <span class="badge @(item.IsActive.Value ? "bg-success" : "bg-secondary")">@(item.IsActive.Value ? "Active" : "Inactive")</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td>
+                                @if (item.Kind == "User")
+                                {
+                                    <small class="text-muted">MNT: @Model.MetricsByUser.GetValueOrDefault(item.UserId ?? Guid.Empty).OpenMaintenances | ERR: @Model.MetricsByUser.GetValueOrDefault(item.UserId ?? Guid.Empty).ResolvedErrors</small>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (item.Kind == "User")
+                                {
+                                    <form method="post" asp-page-handler="ToggleActive" class="d-inline">
+                                        <input type="hidden" name="userId" value="@item.UserId" />
+                                        <button type="submit" class="btn btn-sm @(item.IsActive == true ? "btn-outline-secondary" : "btn-outline-success")">@(item.IsActive == true ? "Khóa" : "Kích hoạt")</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="Promote" class="d-inline ms-1">
+                                        <input type="hidden" name="userId" value="@item.UserId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Thăng quyền</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="Demote" class="d-inline ms-1">
+                                        <input type="hidden" name="userId" value="@item.UserId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-warning">Giáng quyền</button>
+                                    </form>
+                                }
+                                else if (item.Kind == "Customer")
+                                {
+                                    <form method="post" asp-page-handler="DeleteCustomer" asp-route-id="@item.CustomerId" class="d-inline" onsubmit="return confirm('Xóa khách hàng này?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Xoá</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
 </section>
 
 
