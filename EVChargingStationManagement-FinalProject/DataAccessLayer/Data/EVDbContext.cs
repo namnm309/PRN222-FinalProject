@@ -225,7 +225,7 @@ namespace DataAccessLayer.Data
 					.WithMany()
 					.HasForeignKey(e => e.BookingId)
 					.OnDelete(DeleteBehavior.Cascade);
-			});
+            });
         }
     }
 }

@@ -86,6 +86,8 @@ namespace PresentationLayer
 
             // Add Controllers
             builder.Services.AddControllers();
+            // HttpClient for external APIs (SerpApi)
+            builder.Services.AddHttpClient();
 
             // Add Swagger for API testing
             builder.Services.AddEndpointsApiExplorer();
