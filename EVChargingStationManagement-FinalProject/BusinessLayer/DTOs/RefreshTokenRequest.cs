@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace PresentationLayer.DTOs
+namespace BusinessLayer.DTOs
 {
     public class RefreshTokenRequest
     {
@@ -8,8 +8,4 @@ namespace PresentationLayer.DTOs
         public string RefreshToken { get; set; } = string.Empty;
     }
 }
-
-
-
-
 

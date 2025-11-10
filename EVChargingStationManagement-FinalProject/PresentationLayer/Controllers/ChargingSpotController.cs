@@ -3,7 +3,7 @@ using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PresentationLayer.DTOs;
+using BusinessLayer.DTOs;
 
 namespace PresentationLayer.Controllers
 {
