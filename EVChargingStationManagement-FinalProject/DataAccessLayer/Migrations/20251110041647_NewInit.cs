@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DataAccessLayer.Migrations
 {
     /// <inheritdoc />
-    public partial class AddChargingStationEntities : Migration
+    public partial class NewInit : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -39,6 +39,29 @@ namespace DataAccessLayer.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "tbl_user",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    FullName = table.Column<string>(type: "text", nullable: false),
+                    Username = table.Column<string>(type: "text", nullable: false),
+                    Password = table.Column<string>(type: "text", nullable: false),
+                    Phone = table.Column<string>(type: "text", nullable: false),
+                    Email = table.Column<string>(type: "text", nullable: false),
+                    DateOfBirth = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Gender = table.Column<string>(type: "text", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    Role = table.Column<int>(type: "integer", nullable: false),
+                    GoogleId = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_tbl_user", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "tbl_charging_spot",
                 columns: table => new
                 {
@@ -60,6 +83,30 @@ namespace DataAccessLayer.Migrations
                         name: "FK_tbl_charging_spot_tbl_charging_station_ChargingStationId",
                         column: x => x.ChargingStationId,
                         principalTable: "tbl_charging_station",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "tbl_refresh_token",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Token = table.Column<string>(type: "text", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsRevoked = table.Column<bool>(type: "boolean", nullable: false),
+                    RevokedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_tbl_refresh_token", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_tbl_refresh_token_tbl_user_UserId",
+                        column: x => x.UserId,
+                        principalTable: "tbl_user",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -187,6 +234,17 @@ namespace DataAccessLayer.Migrations
                 column: "Status");
 
             migrationBuilder.CreateIndex(
+                name: "IX_tbl_refresh_token_Token",
+                table: "tbl_refresh_token",
+                column: "Token",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_tbl_refresh_token_UserId",
+                table: "tbl_refresh_token",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_tbl_station_error_ChargingSpotId",
                 table: "tbl_station_error",
                 column: "ChargingSpotId");
@@ -256,6 +314,9 @@ namespace DataAccessLayer.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "tbl_refresh_token");
+
+            migrationBuilder.DropTable(
                 name: "tbl_station_error");
 
             migrationBuilder.DropTable(
@@ -263,6 +324,9 @@ namespace DataAccessLayer.Migrations
 
             migrationBuilder.DropTable(
                 name: "tbl_charging_spot");
+
+            migrationBuilder.DropTable(
+                name: "tbl_user");
 
             migrationBuilder.DropTable(
                 name: "tbl_charging_station");
