@@ -19,16 +19,16 @@
             <!-- Stats Cards -->
             <div class="stats-cards">
                 <div class="stat-card stat-card-green">
-                    <div class="stat-value">6</div>
+                    <div class="stat-value" id="stat-total" data-default="6">6</div>
                     <div class="stat-label">Trạm sạc</div>
                 </div>
                 <div class="stat-card stat-card-blue">
-                    <div class="stat-value">16</div>
-                    <div class="stat-label">Còn trống</div>
+                    <div class="stat-value" id="stat-rated" data-default="6">6</div>
+                    <div class="stat-label">Có đánh giá</div>
                 </div>
                 <div class="stat-card stat-card-purple">
-                    <div class="stat-value">4.7</div>
-                    <div class="stat-label">Đánh giá</div>
+                    <div class="stat-value" id="stat-average" data-default="4.7">4.7</div>
+                    <div class="stat-label">Điểm TB</div>
                 </div>
             </div>
 
@@ -45,10 +45,10 @@
 
             <!-- Station List -->
             <div class="station-list-header">
-                <p class="station-count">6 trạm sạc được tìm thấy</p>
+                <p class="station-count" id="station-count-text" data-default="6 trạm sạc được tìm thấy">6 trạm sạc được tìm thấy</p>
             </div>
 
-            <div class="station-list">
+            <div class="station-list" id="station-list">
                 <!-- Station Card 1 -->
                 <div class="station-card">
                     <div class="station-card-header">
@@ -313,13 +313,6 @@
     <!-- Right Map Section -->
     <div class="map-section">
         <div id="map" class="map-container">
-            <!-- Location Button on Map -->
-            <button id="btn-current-location" class="btn-current-location-map" title="Vị trí của tôi">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M10 2C6.48 2 3.5 4.98 3.5 8.5C3.5 13.25 10 18 10 18C10 18 16.5 13.25 16.5 8.5C16.5 4.98 13.52 2 10 2Z" stroke="currentColor" stroke-width="1.5"/>
-                    <circle cx="10" cy="8.5" r="3" stroke="currentColor" stroke-width="1.5"/>
-                </svg>
-            </button>
             <!-- Map Placeholder -->
             <div class="map-placeholder">
                 <div class="map-placeholder-icon">
@@ -402,27 +395,40 @@
             </div>
         </div>
 
-        <!-- Legend -->
-        <div class="map-legend">
-            <div class="legend-title">Chú thích</div>
-            <div class="legend-items">
-                <div class="legend-item">
-                    <div class="legend-color legend-green"></div>
-                    <span>Còn trống</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color legend-yellow"></div>
-                    <span>Đang bận</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color legend-red"></div>
-                    <span>Đầy</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color legend-blue"></div>
-                    <span>Vị trí của bạn</span>
+        <!-- Legend & Controls -->
+        <div class="map-overlay-bar">
+            <div class="map-legend">
+                <div class="legend-title">Chú thích</div>
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <div class="legend-color legend-green"></div>
+                        <span>Còn trống</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-yellow"></div>
+                        <span>Đang bận</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-red"></div>
+                        <span>Đầy</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-blue"></div>
+                        <span>Vị trí của bạn</span>
+                    </div>
                 </div>
             </div>
+            <button id="btn-current-location" class="btn-current-location-map" title="Vị trí của tôi" aria-label="Lấy vị trí hiện tại">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10 2C6.48 2 3.5 4.98 3.5 8.5C3.5 13.25 10 18 10 18C10 18 16.5 13.25 16.5 8.5C16.5 4.98 13.52 2 10 2Z" stroke="currentColor" stroke-width="1.5"/>
+                    <circle cx="10" cy="8.5" r="3" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+            </button>
+            <button id="btn-search-nearby" class="btn-current-location-map" title="Tìm trạm sạc gần đây" aria-label="Tìm trạm sạc gần đây">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8.5 2.5C5.46243 2.5 3 4.96243 3 8C3 11.0376 5.46243 13.5 8.5 13.5C9.93373 13.5 11.2392 12.9728 12.2513 12.0864L16.0821 15.9171C16.4727 16.3077 17.1058 16.3077 17.4964 15.9171C17.887 15.5266 17.887 14.8934 17.4964 14.5029L13.6657 10.6721C14.552 9.66096 15.0792 8.35549 15.0792 6.92176C15.0792 3.88419 12.6168 1.42176 9.57924 1.42176C8.14551 1.42176 6.84004 1.94894 5.82891 2.83529C4.81778 3.72165 4.2906 5.02712 4.2906 6.46085" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
         </div>
     </div>
 </div>
@@ -433,6 +439,182 @@
     <script>
         var currentUserMarker = null;
         var mapInstance = null;
+        var DEFAULT_COORDS = { lat: 21.0285, lng: 105.8542 };
+        var serpMarkers = [];
+        var stationListEl = document.getElementById('station-list');
+        var stationCountTextEl = document.getElementById('station-count-text');
+        var statTotalEl = document.getElementById('stat-total');
+        var statRatedEl = document.getElementById('stat-rated');
+        var statAverageEl = document.getElementById('stat-average');
+
+        function captureSidebarState() {
+            return {
+                listHtml: stationListEl ? stationListEl.innerHTML : '',
+                countText: stationCountTextEl ? stationCountTextEl.textContent : '',
+                total: statTotalEl ? statTotalEl.textContent : '',
+                rated: statRatedEl ? statRatedEl.textContent : '',
+                average: statAverageEl ? statAverageEl.textContent : ''
+            };
+        }
+
+        function applySidebarState(state) {
+            if (!state) return;
+            if (stationListEl) stationListEl.innerHTML = state.listHtml || '';
+            if (stationCountTextEl) stationCountTextEl.textContent = state.countText || '';
+            if (statTotalEl) statTotalEl.textContent = state.total || '0';
+            if (statRatedEl) statRatedEl.textContent = state.rated || '0';
+            if (statAverageEl) statAverageEl.textContent = state.average || '--';
+        }
+
+        var defaultSidebarState = captureSidebarState();
+        var lastSidebarState = defaultSidebarState;
+
+        function setSidebarLoading() {
+            if (stationCountTextEl) stationCountTextEl.textContent = 'Đang tìm kiếm trạm sạc...';
+            if (stationListEl) {
+                stationListEl.innerHTML = '<div class="station-empty">Đang tìm trạm sạc gần bạn...</div>';
+            }
+        }
+
+        function escapeHtml(str) {
+            if (typeof str !== 'string') {
+                if (str === null || str === undefined) return '';
+                str = String(str);
+            }
+            return str.replace(/[&<>"']/g, function (m) {
+                switch (m) {
+                    case '&': return '&amp;';
+                    case '<': return '&lt;';
+                    case '>': return '&gt;';
+                    case '"': return '&quot;';
+                    case '\'': return '&#39;';
+                    default: return m;
+                }
+            });
+        }
+
+        function calculateDistanceKm(lat1, lng1, lat2, lng2) {
+            if ([lat1, lng1, lat2, lng2].some(function(v) { return typeof v !== 'number' || isNaN(v); })) {
+                return null;
+            }
+            var R = 6371; // km
+            var dLat = (lat2 - lat1) * Math.PI / 180;
+            var dLng = (lng2 - lng1) * Math.PI / 180;
+            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            var distance = R * c;
+            return Math.round(distance * 10) / 10;
+        }
+
+        function updateSidebarWithSerpResults(list, center) {
+            if (!stationListEl) {
+                return;
+            }
+
+            var total = Array.isArray(list) ? list.length : 0;
+            var ratedCount = 0;
+            var ratingSum = 0;
+
+            if (!Array.isArray(list) || list.length === 0) {
+                stationListEl.innerHTML = '<div class="station-empty">Không tìm thấy trạm sạc trong khu vực này.</div>';
+                if (stationCountTextEl) stationCountTextEl.textContent = '0 trạm sạc được tìm thấy';
+                if (statTotalEl) statTotalEl.textContent = '0';
+                if (statRatedEl) statRatedEl.textContent = '0';
+                if (statAverageEl) statAverageEl.textContent = '--';
+                lastSidebarState = captureSidebarState();
+                return;
+            }
+
+            var cardsHtml = '';
+            for (var i = 0; i < list.length; i++) {
+                var item = list[i] || {};
+                var title = item.title || item.Title || 'Trạm sạc';
+                var address = item.address || item.Address || 'Địa chỉ chưa cập nhật';
+                var rating = item.rating != null ? item.rating : item.Rating;
+                var reviews = item.reviews != null ? item.reviews : item.Reviews;
+                var lat = item.latitude != null ? item.latitude : item.Latitude;
+                var lng = item.longitude != null ? item.longitude : item.Longitude;
+                if (typeof rating === 'string') rating = parseFloat(rating);
+                if (typeof reviews === 'string') reviews = parseInt(reviews, 10);
+                if (typeof lat === 'string') lat = parseFloat(lat);
+                if (typeof lng === 'string') lng = parseFloat(lng);
+
+                if (typeof rating === 'number' && !isNaN(rating)) {
+                    ratedCount++;
+                    ratingSum += rating;
+                } else {
+                    rating = null;
+                }
+
+                var distanceKm = null;
+                if (center && typeof center.lat === 'number' && typeof center.lng === 'number') {
+                    distanceKm = calculateDistanceKm(center.lat, center.lng, lat, lng);
+                }
+
+                var ratingText = rating ? rating.toFixed(1) + (reviews ? ' (' + reviews + ')' : '') : 'Chưa có đánh giá';
+                var distanceText = distanceKm != null ? distanceKm + ' km' : '--';
+
+                cardsHtml +=
+                    '<div class="station-card station-serp-card" data-marker-index="' + i + '">' +
+                        '<div class="station-card-header">' +
+                            '<div class="station-info">' +
+                                '<h3 class="station-name">' + escapeHtml(title) + '</h3>' +
+                                '<div class="station-address">' +
+                                    '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+                                        '<path d="M8 2C5.24 2 3 4.24 3 7C3 10.5 8 14 8 14C8 14 13 10.5 13 7C13 4.24 10.76 2 8 2Z" stroke="#4A5565" stroke-width="1.5"/>' +
+                                        '<circle cx="8" cy="7" r="2" stroke="#4A5565" stroke-width="1.5"/>' +
+                                    '</svg>' +
+                                    '<span>' + escapeHtml(address) + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="station-details">' +
+                            '<div class="detail-left">' +
+                                '<div class="detail-item">' +
+                                    '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+                                        '<path d="M8 2L10 6L14 7L11 10L11.5 14L8 12L4.5 14L5 10L2 7L6 6L8 2Z" stroke="#364153" stroke-width="1.5" stroke-linejoin="round"/>' +
+                                    '</svg>' +
+                                    '<span>' + escapeHtml(ratingText) + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="detail-right">' +
+                                '<span class="distance">' + escapeHtml(distanceText) + '</span>' +
+                                '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+                                    '<path d="M8 2V14M8 2L5 5M8 2L11 5M8 14L5 11M8 14L11 11" stroke="#6A7282" stroke-width="1.5" stroke-linecap="round"/>' +
+                                '</svg>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+            }
+
+            stationListEl.innerHTML = cardsHtml;
+
+            if (stationCountTextEl) stationCountTextEl.textContent = total + ' trạm sạc được tìm thấy';
+            if (statTotalEl) statTotalEl.textContent = total.toString();
+            if (statRatedEl) statRatedEl.textContent = ratedCount.toString();
+            if (statAverageEl) statAverageEl.textContent = ratedCount > 0 ? (ratingSum / ratedCount).toFixed(1) : '--';
+
+            var cards = stationListEl.querySelectorAll('.station-serp-card');
+            Array.prototype.forEach.call(cards, function(card) {
+                card.addEventListener('click', function() {
+                    var idx = parseInt(card.getAttribute('data-marker-index'), 10);
+                    if (!isNaN(idx) && serpMarkers[idx]) {
+                        var marker = serpMarkers[idx];
+                        var latLng = marker.getLatLng();
+                        if (latLng) {
+                            var targetZoom = mapInstance.getZoom();
+                            if (!targetZoom || targetZoom < 15) targetZoom = 15;
+                            mapInstance.setView(latLng, targetZoom);
+                        }
+                        marker.openPopup();
+                    }
+                });
+            });
+
+            lastSidebarState = captureSidebarState();
+        }
         
         setTimeout(function() {
             if (typeof L !== 'undefined') {
@@ -441,7 +623,7 @@
                 
                 var mapEl = document.getElementById('map');
                 if (mapEl) {
-                    mapInstance = L.map('map').setView([21.0285, 105.8542], 12);
+                    mapInstance = L.map('map').setView([DEFAULT_COORDS.lat, DEFAULT_COORDS.lng], 12);
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         maxZoom: 19
                     }).addTo(mapInstance);
@@ -497,64 +679,211 @@
                         // Center map on user location
                         mapInstance.setView([lat, lng], 15);
                     }
-                    
-                    // Try to get real location on page load
-                    if (navigator.geolocation) {
+
+                    function fetchApproximateLocation() {
+                        return fetch('https://ipapi.co/json/')
+                            .then(function(response) {
+                                if (!response.ok) {
+                                    throw new Error('IP location service failed');
+                                }
+                                return response.json();
+                            })
+                            .then(function(data) {
+                                var lat = parseFloat(data.latitude);
+                                var lng = parseFloat(data.longitude);
+                                if (isNaN(lat) || isNaN(lng)) {
+                                    throw new Error('Invalid IP location response');
+                                }
+                                return { lat: lat, lng: lng };
+                            });
+                    }
+
+                    function useApproximateLocation(options) {
+                        options = options || {};
+                        var showPopup = !!options.showPopup;
+                        var notify = !!options.notify;
+                        var messagePrefix = options.messagePrefix || '';
+                        var onFinally = typeof options.onFinally === 'function' ? options.onFinally : function () {};
+
+                        fetchApproximateLocation()
+                            .then(function(coords) {
+                                updateUserLocation(coords.lat, coords.lng, showPopup);
+                                if (notify) {
+                                    var text = messagePrefix ? messagePrefix + ' ' : '';
+                                    alert(text + 'Đang sử dụng vị trí ước lượng gần đúng dựa trên IP của bạn.');
+                                }
+                            })
+                            .catch(function() {
+                                if (notify) {
+                                    var errorText = messagePrefix ? messagePrefix + ' ' : '';
+                                    alert(errorText + 'Không thể xác định vị trí của bạn. Vui lòng thử lại sau.');
+                                }
+                            })
+                            .finally(onFinally);
+                    }
+
+                    function requestUserLocation(options) {
+                        options = options || {};
+                        var showPopup = !!options.showPopup;
+                        var notify = !!options.notify;
+                        var onFinally = typeof options.onFinally === 'function' ? options.onFinally : function () {};
+
+                        if (!navigator.geolocation) {
+                            useApproximateLocation({
+                                showPopup: showPopup,
+                                notify: notify,
+                                messagePrefix: 'Trình duyệt của bạn không hỗ trợ định vị trực tiếp.',
+                                onFinally: onFinally
+                            });
+                            return;
+                        }
+
                         navigator.geolocation.getCurrentPosition(
                             function(position) {
-                                var lat = position.coords.latitude;
-                                var lng = position.coords.longitude;
-                                updateUserLocation(lat, lng, false);
+                                updateUserLocation(position.coords.latitude, position.coords.longitude, showPopup);
+                                onFinally();
                             },
                             function(error) {
-                                // If location access denied, use default (Hanoi)
-                                updateUserLocation(21.0285, 105.8542, false);
+                                var errorMessage = 'Không thể lấy vị trí của bạn.';
+                                if (error && error.code === 1) {
+                                    errorMessage = 'Bạn đã từ chối quyền truy cập vị trí.';
+                                } else if (error && error.code === 2) {
+                                    errorMessage = 'Vị trí hiện không khả dụng.';
+                                } else if (error && error.code === 3) {
+                                    errorMessage = 'Yêu cầu lấy vị trí bị hết thời gian.';
+                                }
+
+                                useApproximateLocation({
+                                    showPopup: showPopup,
+                                    notify: notify,
+                                    messagePrefix: errorMessage,
+                                    onFinally: onFinally
+                                });
+                            },
+                            {
+                                enableHighAccuracy: true,
+                                timeout: 10000,
+                                maximumAge: 0
                             }
                         );
-                    } else {
-                        // Browser doesn't support geolocation, use default
-                        updateUserLocation(21.0285, 105.8542, false);
                     }
+                    
+                    // Try to get real location on page load
+                    requestUserLocation({ showPopup: false, notify: false });
                     
                     // Add click handler for location button
                     var btnLocation = document.getElementById('btn-current-location');
+                    var btnSearchNearby = document.getElementById('btn-search-nearby');
                     if (btnLocation) {
                         btnLocation.addEventListener('click', function() {
-                            if (navigator.geolocation) {
-                                btnLocation.style.opacity = '0.6';
-                                btnLocation.disabled = true;
-                                
-                                navigator.geolocation.getCurrentPosition(
-                                    function(position) {
-                                        var lat = position.coords.latitude;
-                                        var lng = position.coords.longitude;
-                                        updateUserLocation(lat, lng, true);
-                                        
-                                        btnLocation.style.opacity = '1';
-                                        btnLocation.disabled = false;
-                                    },
-                                    function(error) {
-                                        var errorMsg = 'Không thể lấy vị trí của bạn. ';
-                                        if (error.code === 1) {
-                                            errorMsg += 'Vui lòng cho phép truy cập vị trí trong cài đặt trình duyệt.';
-                                        } else if (error.code === 2) {
-                                            errorMsg += 'Vị trí không khả dụng.';
-                                        } else {
-                                            errorMsg += 'Đã xảy ra lỗi khi lấy vị trí.';
-                                        }
-                                        alert(errorMsg);
-                                        btnLocation.style.opacity = '1';
-                                        btnLocation.disabled = false;
-                                    },
-                                    {
-                                        enableHighAccuracy: true,
-                                        timeout: 10000,
-                                        maximumAge: 0
+                            btnLocation.style.opacity = '0.6';
+                            btnLocation.disabled = true;
+
+                            requestUserLocation({
+                                showPopup: true,
+                                notify: true,
+                                onFinally: function() {
+                                    btnLocation.style.opacity = '1';
+                                    btnLocation.disabled = false;
+                                }
+                            });
+                        });
+                    }
+
+                    function clearSerpMarkers() {
+                        for (var i = 0; i < serpMarkers.length; i++) {
+                            try { mapInstance.removeLayer(serpMarkers[i]); } catch (e) {}
+                        }
+                        serpMarkers = [];
+                    }
+
+                    function addSerpMarker(lat, lng, title, address, rating, reviews) {
+                        if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
+                            return null;
+                        }
+                        var color = '#030213';
+                        var icon = L.divIcon({
+                            className: 'custom-marker',
+                            html: '<div style="background:' + color + ';width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>',
+                            iconSize: [14, 14],
+                            iconAnchor: [7, 7]
+                        });
+                        var m = L.marker([lat, lng], { icon: icon }).addTo(mapInstance);
+                        var popup = '<b>' + escapeHtml(title || 'Địa điểm') + '</b>';
+                        if (address) popup += '<br/>' + escapeHtml(address);
+                        if (rating) popup += '<br/>Đánh giá: ' + escapeHtml(typeof rating === 'number' ? rating.toFixed(1) : rating) + (reviews ? ' (' + escapeHtml(reviews) + ')' : '');
+                        // Cho phép mở nhiều popup đồng thời và mở ngay sau khi thêm marker
+                        m.bindPopup(popup, { autoClose: false, closeOnClick: false });
+                        m.openPopup();
+                        serpMarkers.push(m);
+                        return m;
+                    }
+
+                    function searchNearbyStations(previousState) {
+                        if (!mapInstance) return Promise.resolve([]);
+                        var center = mapInstance.getCenter();
+                        var url = '/api/maps/search?query=' + encodeURIComponent('EV charging station') + '&lat=' + encodeURIComponent(center.lat) + '&lng=' + encodeURIComponent(center.lng) + '&zoom=' + encodeURIComponent(mapInstance.getZoom() || 14);
+                        return fetch(url).then(function(r){ 
+                            if (!r.ok) throw new Error('Request failed'); 
+                            return r.json(); 
+                        }).then(function(list){
+                            var normalized = [];
+                            if (Array.isArray(list)) {
+                                clearSerpMarkers();
+                                for (var i = 0; i < list.length; i++) {
+                                    var raw = list[i] || {};
+                                    var lat = raw.latitude != null ? raw.latitude : raw.Latitude;
+                                    var lng = raw.longitude != null ? raw.longitude : raw.Longitude;
+                                    if (typeof lat === 'string') lat = parseFloat(lat);
+                                    if (typeof lng === 'string') lng = parseFloat(lng);
+                                    if (typeof lat !== 'number' || isNaN(lat) || typeof lng !== 'number' || isNaN(lng)) {
+                                        continue;
                                     }
-                                );
+                                    var rating = raw.rating != null ? raw.rating : raw.Rating;
+                                    if (typeof rating === 'string') rating = parseFloat(rating);
+                                    if (typeof rating !== 'number' || isNaN(rating)) rating = null;
+                                    var reviews = raw.reviews != null ? raw.reviews : raw.Reviews;
+                                    if (typeof reviews === 'string') reviews = parseInt(reviews, 10);
+                                    if (typeof reviews !== 'number' || isNaN(reviews)) reviews = null;
+                                    var item = {
+                                        title: raw.title || raw.Title || 'Trạm sạc',
+                                        address: raw.address || raw.Address || '',
+                                        rating: rating,
+                                        reviews: reviews,
+                                        latitude: lat,
+                                        longitude: lng
+                                    };
+                                    normalized.push(item);
+                                    addSerpMarker(item.latitude, item.longitude, item.title, item.address, item.rating, item.reviews);
+                                }
                             } else {
-                                alert('Trình duyệt của bạn không hỗ trợ định vị.');
+                                normalized = [];
+                                clearSerpMarkers();
                             }
+                            updateSidebarWithSerpResults(normalized, center);
+                            return normalized;
+                        }).catch(function(err){
+                            if (previousState) {
+                                applySidebarState(previousState);
+                                lastSidebarState = previousState;
+                            }
+                            throw err;
+                        });
+                    }
+
+                    if (btnSearchNearby) {
+                        btnSearchNearby.addEventListener('click', function() {
+                            if (!mapInstance) return;
+                            var previousState = captureSidebarState();
+                            setSidebarLoading();
+                            btnSearchNearby.style.opacity = '0.6';
+                            btnSearchNearby.disabled = true;
+                            searchNearbyStations(previousState).catch(function(){
+                                alert('Không thể tải dữ liệu trạm sạc. Vui lòng thử lại sau.');
+                            }).finally(function(){
+                                btnSearchNearby.style.opacity = '1';
+                                btnSearchNearby.disabled = false;
+                            });
                         });
                     }
                 }
@@ -565,11 +894,23 @@
         .custom-marker { background: transparent !important; border: none !important; }
         .leaflet-container { background: #F3F4F6 !important; }
         
-        .btn-current-location-map {
+        .map-overlay-bar {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
+            bottom: 24px;
+            left: 24px;
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+            flex-wrap: wrap;
+            z-index: 10;
+        }
+
+        .map-overlay-bar .map-legend {
+            position: static;
+            margin: 0;
+        }
+
+        .btn-current-location-map {
             background: white;
             border: 1px solid rgba(0, 0, 0, 0.1);
             border-radius: 8px;
@@ -596,6 +937,27 @@
         .btn-current-location-map:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+        }
+
+        .station-serp-card {
+            cursor: pointer;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .station-serp-card:hover {
+            border-color: #d1d5db;
+            box-shadow: 0px 6px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        .station-empty {
+            background: #ffffff;
+            border: 1px dashed #d1d5db;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            color: #4A5565;
+            font-size: 13px;
+            line-height: 20px;
         }
     </style>
 }
