@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DataAccessLayer.Migrations
 {
     [DbContext(typeof(EVDbContext))]
-    [Migration("20251109140959_AddChargingStationEntities")]
-    partial class AddChargingStationEntities
+    [Migration("20251110041647_NewInit")]
+    partial class NewInit
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
