@@ -1,6 +1,9 @@
 using BusinessLayer.Services;
+using DataAccessLayer.Data;
+using DataAccessLayer.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using BusinessLayer.DTOs;
 
 namespace PresentationLayer.Controllers
@@ -10,10 +13,14 @@ namespace PresentationLayer.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly EVDbContext _context;
 
-        public AuthController(IAuthService authService)
+        public AuthController(
+            IAuthService authService,
+            EVDbContext context)
         {
             _authService = authService;
+            _context = context;
         }
 
         [HttpPost("login")]
@@ -61,13 +68,15 @@ namespace PresentationLayer.Controllers
             }
 
             // Kiểm tra username đã tồn tại chưa
-            if (await _authService.UsernameExistsAsync(request.Username))
+            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
+            if (existingUser != null)
             {
                 return BadRequest(new { message = "Username already exists" });
             }
 
             // Kiểm tra email đã tồn tại chưa
-            if (await _authService.EmailExistsAsync(request.Email))
+            var existingEmail = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            if (existingEmail != null)
             {
                 return BadRequest(new { message = "Email already exists" });
             }
@@ -118,12 +127,17 @@ namespace PresentationLayer.Controllers
                 return Unauthorized(new { message = "Invalid or expired refresh token" });
             }
 
-            // Lấy user từ refresh token
-            var user = await _authService.GetUserByRefreshTokenAsync(request.RefreshToken);
-            if (user == null)
+            // Lấy refresh token từ database để lấy UserId
+            var refreshTokenEntity = await _context.RefreshTokens
+                .Include(rt => rt.User)
+                .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken);
+
+            if (refreshTokenEntity == null || refreshTokenEntity.User == null)
             {
                 return Unauthorized(new { message = "Invalid refresh token" });
             }
+
+            var user = refreshTokenEntity.User;
 
             // Revoke old refresh token
             await _authService.RevokeRefreshTokenAsync(request.RefreshToken);

@@ -9,6 +9,7 @@ namespace PresentationLayer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class ChargingStationController : ControllerBase
     {
         private readonly IChargingStationService _stationService;
@@ -23,7 +24,6 @@ namespace PresentationLayer.Controllers
         }
 
         [HttpGet]
-        [AllowAnonymous] // Cho phép xem danh sách trạm sạc mà không cần đăng nhập
         public async Task<IActionResult> GetAllStations()
         {
             var stations = await _stationService.GetAllStationsAsync();
@@ -48,48 +48,6 @@ namespace PresentationLayer.Controllers
             var stationDTOs = stations.Select(s => MapToDTO(s)).ToList();
             return Ok(stationDTOs);
         }
-
-		[HttpGet("nearby")]
-		public async Task<IActionResult> GetNearbyStations([FromQuery] decimal latitude, [FromQuery] decimal longitude, [FromQuery] double radiusKm = 5, [FromQuery] Guid? vehicleId = null)
-		{
-			var stations = await _stationService.GetAllStationsAsync();
-
-			// Haversine distance calc
-			double ToRad(double deg) => deg * Math.PI / 180.0;
-			double DistanceKm(decimal lat1, decimal lon1, decimal lat2, decimal lon2)
-			{
-				const double R = 6371.0;
-				var dLat = ToRad((double)(lat2 - lat1));
-				var dLon = ToRad((double)(lon2 - lon1));
-				var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-				        Math.Cos(ToRad((double)lat1)) * Math.Cos(ToRad((double)lat2)) *
-				        Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-				var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-				return R * c;
-			}
-
-			var results = stations
-				.Where(s => s.Latitude.HasValue && s.Longitude.HasValue)
-				.Select(s => new
-				{
-					Station = s,
-					Distance = DistanceKm(latitude, longitude, s.Latitude!.Value, s.Longitude!.Value)
-				})
-				.Where(x => x.Distance <= radiusKm)
-				.OrderBy(x => x.Distance)
-				.Select(x =>
-				{
-					var dto = MapToDTO(x.Station);
-					return new
-					{
-						station = dto,
-						distanceKm = Math.Round(x.Distance, 2)
-					};
-				})
-				.ToList();
-
-			return Ok(results);
-		}
 
         [HttpPost]
         [Authorize(Roles = "Admin,CSStaff")]

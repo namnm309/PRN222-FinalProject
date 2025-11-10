@@ -82,8 +82,6 @@ namespace PresentationLayer
             builder.Services.AddScoped<IChargingSpotService, ChargingSpotService>();
             builder.Services.AddScoped<IStationMaintenanceService, StationMaintenanceService>();
             builder.Services.AddScoped<IStationErrorService, StationErrorService>();
-			builder.Services.AddScoped<IBookingService, BookingService>();
-			builder.Services.AddScoped<IVehicleService, VehicleService>();
 
             // Add Controllers
             builder.Services.AddControllers();
