@@ -522,13 +522,14 @@ function displayMarkersOnMap() {
             
             const marker = L.marker([station.latitude, station.longitude], {icon: icon}).addTo(mapInstance);
             
-            // Popup content
+            // Popup content with link to detail page
             let popupContent = `
-                <div style="min-width: 200px;">
+                <div style="min-width: 220px;">
                     <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">${station.name}</h4>
                     <p style="margin: 0 0 4px 0; font-size: 12px; color: #6B7280;">${station.address || ''}</p>
                     ${station.rating ? `<p style="margin: 4px 0; font-size: 12px;">⭐ ${station.rating} ${station.reviews ? `(${station.reviews})` : ''}</p>` : ''}
                     <p style="margin: 4px 0; font-size: 12px; font-weight: 600;">Điểm sạc: ${availableCount}/${totalCount} sẵn sàng</p>
+                    <a href="/Staff/StationDetail/${station.id}" style="display: inline-block; margin-top: 8px; padding: 6px 12px; background: #00A63E; color: white; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 600;">Xem chi tiết →</a>
                 </div>
             `;
             
