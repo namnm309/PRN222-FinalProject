@@ -1,0 +1,76 @@
+@page
+@model PresentationLayer.Pages.Payment.ResultModel
+@{
+    ViewData["Title"] = "Payment Result";
+    var isSuccess = Model.IsSuccess;
+    var message = Model.Message;
+}
+
+<div id="paymentResultModal" class="modal-backdrop" style="display:flex;">
+    <div class="modal-card">
+        <button class="modal-close" onclick="closePaymentModal()">×</button>
+        <div class="modal-icon @(isSuccess ? "success" : "failed")">
+            @(isSuccess ? "✔" : "✖")
+        </div>
+        <h2>@(isSuccess ? "Success" : "Failed")</h2>
+        <p>@message</p>
+    </div>
+</div>
+
+<style>
+    .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.45);
+        align-items: center;
+        justify-content: center;
+        z-index: 1050;
+    }
+    .modal-card {
+        position: relative;
+        width: 100%;
+        max-width: 420px;
+        background: #fff;
+        border-radius: 10px;
+        padding: 24px 24px 28px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        text-align: center;
+    }
+    .modal-close {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: transparent;
+        font-size: 20px;
+        cursor: pointer;
+        line-height: 1;
+    }
+    .modal-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
+        font-size: 36px;
+        color: #fff;
+    }
+    .modal-icon.success { background: #16a34a; }
+    .modal-icon.failed { background: #dc2626; }
+    h2 {
+        margin: 6px 0 8px;
+    }
+</style>
+
+<script>
+    function closePaymentModal() {
+        const el = document.getElementById('paymentResultModal');
+        if (el) el.style.display = 'none';
+    }
+</script>
+
+
