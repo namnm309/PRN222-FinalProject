@@ -45,12 +45,267 @@
 
             <!-- Station List -->
             <div class="station-list-header">
-                <p class="station-count" id="station-count">Đang tải...</p>
+                <p class="station-count" id="station-count-text" data-default="6 trạm sạc được tìm thấy">6 trạm sạc được tìm thấy</p>
             </div>
 
             <div class="station-list" id="station-list">
-                <!-- Stations will be loaded dynamically -->
-                <div style="text-align: center; padding: 20px; color: #6A7282;">Đang tải danh sách trạm sạc...</div>
+                <!-- Station Card 1 -->
+                <div class="station-card">
+                    <div class="station-card-header">
+                        <div class="station-info">
+                            <h3 class="station-name">Trạm sạc VinFast Times City</h3>
+                            <div class="station-address">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M8 2C5.24 2 3 4.24 3 7C3 10.5 8 14 8 14C8 14 13 10.5 13 7C13 4.24 10.76 2 8 2Z" stroke="#4A5565" stroke-width="1.5"/>
+                                    <circle cx="8" cy="7" r="2" stroke="#4A5565" stroke-width="1.5"/>
+                                </svg>
+                                <span>458 Minh Khai, Hai Bà Trưng, Hà Nội</span>
+                            </div>
+                        </div>
+                        <span class="status-badge status-available">Còn trống</span>
+                    </div>
+                    <div class="station-details">
+                        <div class="detail-left">
+                            <div class="detail-item">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M2 8H14M8 2V14" stroke="#364153" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                                <span>4/8</span>
+                            </div>
+                            <div class="detail-item">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M8 2L10 6L14 7L11 10L11.5 14L8 12L4.5 14L5 10L2 7L6 6L8 2Z" stroke="#364153" stroke-width="1.5" stroke-linejoin="round"/>
+                                </svg>
+                                <span>4.8</span>
+                            </div>
+                        </div>
+                        <div class="detail-right">
+                            <span class="distance">1.2 km</span>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M8 2V14M8 2L5 5M8 2L11 5M8 14L5 11M8 14L11 11" stroke="#6A7282" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="station-footer">
+                        <span class="charge-type">DC Fast</span>
+                        <span class="price">3,500đ/kWh</span>
+                    </div>
+                </div>
+
+                <!-- Station Card 2 -->
+                <div class="station-card">
+                    <div class="station-card-header">
+                        <div class="station-info">
+                            <h3 class="station-name">Trạm sạc Vincom Mega Mall</h3>
+                            <div class="station-address">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M8 2C5.24 2 3 4.24 3 7C3 10.5 8 14 8 14C8 14 13 10.5 13 7C13 4.24 10.76 2 8 2Z" stroke="#4A5565" stroke-width="1.5"/>
+                                    <circle cx="8" cy="7" r="2" stroke="#4A5565" stroke-width="1.5"/>
+                                </svg>
+                                <span>Royal City, Thanh Xuân, Hà Nội</span>
+                            </div>
+                        </div>
+                        <span class="status-badge status-available">Còn trống</span>
+                    </div>
+                    <div class="station-details">
+                        <div class="detail-left">
+                            <div class="detail-item">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M2 8H14M8 2V14" stroke="#364153" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                                <span>2/6</span>
+                            </div>
+                            <div class="detail-item">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M8 2L10 6L14 7L11 10L11.5 14L8 12L4.5 14L5 10L2 7L6 6L8 2Z" stroke="#364153" stroke-width="1.5" stroke-linejoin="round"/>
+                                </svg>
+                                <span>4.6</span>
+                            </div>
+                        </div>
+                        <div class="detail-right">
+                            <span class="distance">2.5 km</span>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M8 2V14M8 2L5 5M8 2L11 5M8 14L5 11M8 14L11 11" stroke="#6A7282" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="station-footer">
+                        <span class="charge-type">DC Fast</span>
+                        <span class="price">3,800đ/kWh</span>
+                    </div>
+                </div>
+
+                <!-- Station Card 3 -->
+                <div class="station-card">
+                    <div class="station-card-header">
+                        <div class="station-info">
+                            <h3 class="station-name">Trạm sạc Aeon Mall Long Biên</h3>
+                            <div class="station-address">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M8 2C5.24 2 3 4.24 3 7C3 10.5 8 14 8 14C8 14 13 10.5 13 7C13 4.24 10.76 2 8 2Z" stroke="#4A5565" stroke-width="1.5"/>
+                                    <circle cx="8" cy="7" r="2" stroke="#4A5565" stroke-width="1.5"/>
+                                </svg>
+                                <span>27 Cổ Linh, Long Biên, Hà Nội</span>
+                            </div>
+                        </div>
+                        <span class="status-badge status-full">Đầy</span>
+                    </div>
+                    <div class="station-details">
+                        <div class="detail-left">
+                            <div class="detail-item">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M2 8H14M8 2V14" stroke="#364153" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                                <span>0/4</span>
+                            </div>
+                            <div class="detail-item">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M8 2L10 6L14 7L11 10L11.5 14L8 12L4.5 14L5 10L2 7L6 6L8 2Z" stroke="#364153" stroke-width="1.5" stroke-linejoin="round"/>
+                                </svg>
+                                <span>4.5</span>
+                            </div>
+                        </div>
+                        <div class="detail-right">
+                            <span class="distance">3.8 km</span>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M8 2V14M8 2L5 5M8 2L11 5M8 14L5 11M8 14L11 11" stroke="#6A7282" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="station-footer">
+                        <span class="charge-type">AC</span>
+                        <span class="price">3,200đ/kWh</span>
+                    </div>
+                </div>
+
+                <!-- Station Card 4 -->
+                <div class="station-card">
+                    <div class="station-card-header">
+                        <div class="station-info">
+                            <h3 class="station-name">Trạm sạc Lotte Mall</h3>
+                            <div class="station-address">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M8 2C5.24 2 3 4.24 3 7C3 10.5 8 14 8 14C8 14 13 10.5 13 7C13 4.24 10.76 2 8 2Z" stroke="#4A5565" stroke-width="1.5"/>
+                                    <circle cx="8" cy="7" r="2" stroke="#4A5565" stroke-width="1.5"/>
+                                </svg>
+                                <span>Lieu Giai, Ba Đình, Hà Nội</span>
+                            </div>
+                        </div>
+                        <span class="status-badge status-available">Còn trống</span>
+                    </div>
+                    <div class="station-details">
+                        <div class="detail-left">
+                            <div class="detail-item">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M2 8H14M8 2V14" stroke="#364153" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                                <span>6/10</span>
+                            </div>
+                            <div class="detail-item">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M8 2L10 6L14 7L11 10L11.5 14L8 12L4.5 14L5 10L2 7L6 6L8 2Z" stroke="#364153" stroke-width="1.5" stroke-linejoin="round"/>
+                                </svg>
+                                <span>4.9</span>
+                            </div>
+                        </div>
+                        <div class="detail-right">
+                            <span class="distance">4.5 km</span>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M8 2V14M8 2L5 5M8 2L11 5M8 14L5 11M8 14L11 11" stroke="#6A7282" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="station-footer">
+                        <span class="charge-type">DC Fast</span>
+                        <span class="price">3,600đ/kWh</span>
+                    </div>
+                </div>
+
+                <!-- Station Card 5 -->
+                <div class="station-card">
+                    <div class="station-card-header">
+                        <div class="station-info">
+                            <h3 class="station-name">Trạm sạc Vincom Center</h3>
+                            <div class="station-address">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M8 2C5.24 2 3 4.24 3 7C3 10.5 8 14 8 14C8 14 13 10.5 13 7C13 4.24 10.76 2 8 2Z" stroke="#4A5565" stroke-width="1.5"/>
+                                    <circle cx="8" cy="7" r="2" stroke="#4A5565" stroke-width="1.5"/>
+                                </svg>
+                                <span>Bà Triệu, Hoàn Kiếm, Hà Nội</span>
+                            </div>
+                        </div>
+                        <span class="status-badge status-busy">Đang bận</span>
+                    </div>
+                    <div class="station-details">
+                        <div class="detail-left">
+                            <div class="detail-item">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M2 8H14M8 2V14" stroke="#364153" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                                <span>1/4</span>
+                            </div>
+                            <div class="detail-item">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M8 2L10 6L14 7L11 10L11.5 14L8 12L4.5 14L5 10L2 7L6 6L8 2Z" stroke="#364153" stroke-width="1.5" stroke-linejoin="round"/>
+                                </svg>
+                                <span>4.7</span>
+                            </div>
+                        </div>
+                        <div class="detail-right">
+                            <span class="distance">0.8 km</span>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M8 2V14M8 2L5 5M8 2L11 5M8 14L5 11M8 14L11 11" stroke="#6A7282" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="station-footer">
+                        <span class="charge-type">DC Fast</span>
+                        <span class="price">4,000đ/kWh</span>
+                    </div>
+                </div>
+
+                <!-- Station Card 6 -->
+                <div class="station-card station-card-highlight">
+                    <div class="station-card-header">
+                        <div class="station-info">
+                            <h3 class="station-name">Trạm sạc Big C Thăng Long</h3>
+                            <div class="station-address">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M8 2C5.24 2 3 4.24 3 7C3 10.5 8 14 8 14C8 14 13 10.5 13 7C13 4.24 10.76 2 8 2Z" stroke="#4A5565" stroke-width="1.5"/>
+                                    <circle cx="8" cy="7" r="2" stroke="#4A5565" stroke-width="1.5"/>
+                                </svg>
+                                <span>Đường Thăng Long, Nam Từ Liêm, Hà Nội</span>
+                            </div>
+                        </div>
+                        <span class="status-badge status-available">Còn trống</span>
+                    </div>
+                    <div class="station-details">
+                        <div class="detail-left">
+                            <div class="detail-item">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M2 8H14M8 2V14" stroke="#364153" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                                <span>3/6</span>
+                            </div>
+                            <div class="detail-item">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M8 2L10 6L14 7L11 10L11.5 14L8 12L4.5 14L5 10L2 7L6 6L8 2Z" stroke="#364153" stroke-width="1.5" stroke-linejoin="round"/>
+                                </svg>
+                                <span>4.4</span>
+                            </div>
+                        </div>
+                        <div class="detail-right">
+                            <span class="distance">5.2 km</span>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M8 2V14M8 2L5 5M8 2L11 5M8 14L5 11M8 14L11 11" stroke="#6A7282" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="station-footer">
+                        <span class="charge-type">AC</span>
+                        <span class="price">3,400đ/kWh</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -58,13 +313,6 @@
     <!-- Right Map Section -->
     <div class="map-section">
         <div id="map" class="map-container">
-            <!-- Location Button on Map -->
-            <button id="btn-current-location" class="btn-current-location-map" title="Vị trí của tôi">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M10 2C6.48 2 3.5 4.98 3.5 8.5C3.5 13.25 10 18 10 18C10 18 16.5 13.25 16.5 8.5C16.5 4.98 13.52 2 10 2Z" stroke="currentColor" stroke-width="1.5"/>
-                    <circle cx="10" cy="8.5" r="3" stroke="currentColor" stroke-width="1.5"/>
-                </svg>
-            </button>
             <!-- Map Placeholder -->
             <div class="map-placeholder">
                 <div class="map-placeholder-icon">
@@ -144,7 +392,6 @@
                         <path d="M6 12L10 8L6 4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </button>
-                <button class="btn-book btn-book-map" onclick="openBookingModal()">Đặt chỗ</button>
             </div>
         </div>
 
@@ -186,631 +433,194 @@
     </div>
 </div>
 
-<!-- Booking Modal -->
-<div id="booking-modal" class="booking-modal" style="display:none;">
-    <div class="booking-modal-content">
-        <div class="booking-modal-header">
-            <h3>Đặt chỗ trạm sạc</h3>
-            <button class="booking-modal-close" onclick="closeBookingModal()">×</button>
-        </div>
-        <div class="booking-modal-body">
-            <div class="form-row">
-                <label>Chọn trạm sạc</label>
-                <select id="bm-station" onchange="loadAvailableSpots()"></select>
-            </div>
-            <div class="form-row">
-                <label>Chọn cổng sạc</label>
-                <select id="bm-spot"></select>
-            </div>
-            <div class="form-row">
-                <label>Chọn xe của bạn</label>
-                <div style="display: flex; gap: 8px;">
-                    <select id="bm-vehicle" style="flex: 1;"></select>
-                    <button type="button" class="btn-add-vehicle" onclick="openAddVehicleModal()" title="Thêm xe mới">+</button>
-                </div>
-            </div>
-            <div class="form-row">
-                <label>Thời gian bắt đầu</label>
-                <input id="bm-start" type="datetime-local" min="" />
-            </div>
-            <div class="form-row">
-                <label>Thời gian kết thúc</label>
-                <input id="bm-end" type="datetime-local" min="" />
-            </div>
-            <div class="form-row">
-                <label>Ghi chú</label>
-                <textarea id="bm-notes" rows="2" placeholder="Ví dụ: cần sạc nhanh"></textarea>
-            </div>
-            <div class="form-row">
-                <label>Phương thức thanh toán</label>
-                <div class="bm-pay-methods">
-                    <label><input type="radio" name="bm-pay" value="later" checked /> Thanh toán sau</label>
-                    <label><input type="radio" name="bm-pay" value="vnpay" /> VNPay</label>
-                </div>
-            </div>
-        </div>
-        <div class="booking-modal-footer">
-            <button class="btn-secondary" onclick="closeBookingModal()">Hủy</button>
-            <button class="btn-primary" onclick="submitBooking()">Xác nhận đặt chỗ</button>
-        </div>
-    </div>
-    <div class="booking-modal-backdrop" onclick="closeBookingModal()"></div>
-</div>
-
-<!-- Add Vehicle Modal -->
-<div id="add-vehicle-modal" class="booking-modal" style="display:none;">
-    <div class="booking-modal-content">
-        <div class="booking-modal-header">
-            <h3>Thêm xe mới</h3>
-            <button class="booking-modal-close" onclick="closeAddVehicleModal()">×</button>
-        </div>
-        <div class="booking-modal-body">
-            <div class="form-row">
-                <label>Biển số xe <span style="color: red;">*</span></label>
-                <input id="av-licensePlate" type="text" placeholder="VD: 30A-12345" required />
-            </div>
-            <div class="form-row">
-                <label>Hãng xe</label>
-                <input id="av-make" type="text" placeholder="VD: VinFast, Tesla, BYD" />
-            </div>
-            <div class="form-row">
-                <label>Mẫu xe</label>
-                <input id="av-model" type="text" placeholder="VD: VF8, Model 3" />
-            </div>
-            <div class="form-row">
-                <label>Năm sản xuất</label>
-                <input id="av-year" type="number" placeholder="VD: 2024" min="1900" max="2100" />
-            </div>
-            <div class="form-row">
-                <label>Số khung (VIN)</label>
-                <input id="av-vin" type="text" placeholder="Số khung xe (tùy chọn)" />
-            </div>
-            <div class="form-row">
-                <label>Loại cổng sạc <span style="color: red;">*</span></label>
-                <select id="av-connectorType" required>
-                    <option value="">Chọn loại cổng</option>
-                    <option value="CCS">CCS (Combo)</option>
-                    <option value="CHAdeMO">CHAdeMO</option>
-                    <option value="Type 2">Type 2 (AC)</option>
-                    <option value="GB/T">GB/T</option>
-                    <option value="Tesla">Tesla Supercharger</option>
-                </select>
-            </div>
-        </div>
-        <div class="booking-modal-footer">
-            <button class="btn-secondary" onclick="closeAddVehicleModal()">Hủy</button>
-            <button class="btn-primary" onclick="submitAddVehicle()">Thêm xe</button>
-        </div>
-    </div>
-    <div class="booking-modal-backdrop" onclick="closeAddVehicleModal()"></div>
-</div>
-
 @section Scripts {
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         var currentUserMarker = null;
         var mapInstance = null;
-        // --- Booking helpers ---
-        async function openBookingModal(stationId) {
-            const modal = document.getElementById('booking-modal');
-            modal.style.display = 'block';
-            
-            // Set min date to now để không cho chọn quá khứ
-            const now = new Date();
-            const minDate = toLocalInputValue(now);
-            document.getElementById('bm-start').min = minDate;
-            document.getElementById('bm-end').min = minDate;
-            
-            await Promise.all([loadStations(), loadVehicles()]);
-            if (stationId) {
-                const sel = document.getElementById('bm-station');
-                if (sel) {
-                    // Wait a bit for options to be populated
-                    setTimeout(() => {
-                        const opt = Array.from(sel.options).find(o => String(o.value) === String(stationId));
-                        if (opt) { 
-                            sel.value = stationId;
-                            loadAvailableSpots();
+        var DEFAULT_COORDS = { lat: 21.0285, lng: 105.8542 };
+        var serpMarkers = [];
+        var stationListEl = document.getElementById('station-list');
+        var stationCountTextEl = document.getElementById('station-count-text');
+        var statTotalEl = document.getElementById('stat-total');
+        var statRatedEl = document.getElementById('stat-rated');
+        var statAverageEl = document.getElementById('stat-average');
+
+        function captureSidebarState() {
+            return {
+                listHtml: stationListEl ? stationListEl.innerHTML : '',
+                countText: stationCountTextEl ? stationCountTextEl.textContent : '',
+                total: statTotalEl ? statTotalEl.textContent : '',
+                rated: statRatedEl ? statRatedEl.textContent : '',
+                average: statAverageEl ? statAverageEl.textContent : ''
+            };
+        }
+
+        function applySidebarState(state) {
+            if (!state) return;
+            if (stationListEl) stationListEl.innerHTML = state.listHtml || '';
+            if (stationCountTextEl) stationCountTextEl.textContent = state.countText || '';
+            if (statTotalEl) statTotalEl.textContent = state.total || '0';
+            if (statRatedEl) statRatedEl.textContent = state.rated || '0';
+            if (statAverageEl) statAverageEl.textContent = state.average || '--';
+        }
+
+        var defaultSidebarState = captureSidebarState();
+        var lastSidebarState = defaultSidebarState;
+
+        function setSidebarLoading() {
+            if (stationCountTextEl) stationCountTextEl.textContent = '🔍 Đang tìm kiếm trạm sạc...';
+            if (stationListEl) {
+                stationListEl.innerHTML = `
+                    <div class="station-empty" style="padding: 40px 20px;">
+                        <div style="font-size: 48px; margin-bottom: 12px; animation: pulse 1.5s ease-in-out infinite;">⚡</div>
+                        <div style="font-weight: 600; margin-bottom: 8px; color: #1F2937;">Đang tìm trạm sạc gần bạn</div>
+                        <div style="font-size: 12px; color: #6B7280;">Vui lòng đợi trong giây lát...</div>
+                    </div>
+                `;
+            }
+        }
+
+        function escapeHtml(str) {
+            if (typeof str !== 'string') {
+                if (str === null || str === undefined) return '';
+                str = String(str);
+            }
+            return str.replace(/[&<>"']/g, function (m) {
+                switch (m) {
+                    case '&': return '&amp;';
+                    case '<': return '&lt;';
+                    case '>': return '&gt;';
+                    case '"': return '&quot;';
+                    case '\'': return '&#39;';
+                    default: return m;
+                }
+            });
+        }
+
+        function calculateDistanceKm(lat1, lng1, lat2, lng2) {
+            if ([lat1, lng1, lat2, lng2].some(function(v) { return typeof v !== 'number' || isNaN(v); })) {
+                return null;
+            }
+            var R = 6371; // km
+            var dLat = (lat2 - lat1) * Math.PI / 180;
+            var dLng = (lng2 - lng1) * Math.PI / 180;
+            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            var distance = R * c;
+            return Math.round(distance * 10) / 10;
+        }
+
+        function updateSidebarWithSerpResults(list, center) {
+            if (!stationListEl) {
+                return;
+            }
+
+            var total = Array.isArray(list) ? list.length : 0;
+            var ratedCount = 0;
+            var ratingSum = 0;
+
+            if (!Array.isArray(list) || list.length === 0) {
+                stationListEl.innerHTML = '<div class="station-empty">Không tìm thấy trạm sạc trong khu vực này.</div>';
+                if (stationCountTextEl) stationCountTextEl.textContent = '0 trạm sạc được tìm thấy';
+                if (statTotalEl) statTotalEl.textContent = '0';
+                if (statRatedEl) statRatedEl.textContent = '0';
+                if (statAverageEl) statAverageEl.textContent = '--';
+                lastSidebarState = captureSidebarState();
+                return;
+            }
+
+            var cardsHtml = '';
+            for (var i = 0; i < list.length; i++) {
+                var item = list[i] || {};
+                var title = item.title || item.Title || 'Trạm sạc';
+                var address = item.address || item.Address || 'Địa chỉ chưa cập nhật';
+                var rating = item.rating != null ? item.rating : item.Rating;
+                var reviews = item.reviews != null ? item.reviews : item.Reviews;
+                var lat = item.latitude != null ? item.latitude : item.Latitude;
+                var lng = item.longitude != null ? item.longitude : item.Longitude;
+                if (typeof rating === 'string') rating = parseFloat(rating);
+                if (typeof reviews === 'string') reviews = parseInt(reviews, 10);
+                if (typeof lat === 'string') lat = parseFloat(lat);
+                if (typeof lng === 'string') lng = parseFloat(lng);
+
+                if (typeof rating === 'number' && !isNaN(rating)) {
+                    ratedCount++;
+                    ratingSum += rating;
+                } else {
+                    rating = null;
+                }
+
+                var distanceKm = null;
+                if (center && typeof center.lat === 'number' && typeof center.lng === 'number') {
+                    distanceKm = calculateDistanceKm(center.lat, center.lng, lat, lng);
+                }
+
+                var ratingText = rating ? rating.toFixed(1) + (reviews ? ' (' + reviews + ')' : '') : 'Chưa có đánh giá';
+                var distanceText = distanceKm != null ? distanceKm + ' km' : '--';
+
+                cardsHtml +=
+                    '<div class="station-card station-serp-card" data-marker-index="' + i + '">' +
+                        '<div class="station-card-header">' +
+                            '<div class="station-info">' +
+                                '<h3 class="station-name">' + escapeHtml(title) + '</h3>' +
+                                '<div class="station-address">' +
+                                    '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+                                        '<path d="M8 2C5.24 2 3 4.24 3 7C3 10.5 8 14 8 14C8 14 13 10.5 13 7C13 4.24 10.76 2 8 2Z" stroke="#4A5565" stroke-width="1.5"/>' +
+                                        '<circle cx="8" cy="7" r="2" stroke="#4A5565" stroke-width="1.5"/>' +
+                                    '</svg>' +
+                                    '<span>' + escapeHtml(address) + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="station-details">' +
+                            '<div class="detail-left">' +
+                                '<div class="detail-item">' +
+                                    '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+                                        '<path d="M8 2L10 6L14 7L11 10L11.5 14L8 12L4.5 14L5 10L2 7L6 6L8 2Z" stroke="#364153" stroke-width="1.5" stroke-linejoin="round"/>' +
+                                    '</svg>' +
+                                    '<span>' + escapeHtml(ratingText) + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="detail-right">' +
+                                '<span class="distance">' + escapeHtml(distanceText) + '</span>' +
+                                '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+                                    '<path d="M8 2V14M8 2L5 5M8 2L11 5M8 14L5 11M8 14L11 11" stroke="#6A7282" stroke-width="1.5" stroke-linecap="round"/>' +
+                                '</svg>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+            }
+
+            stationListEl.innerHTML = cardsHtml;
+
+            if (stationCountTextEl) stationCountTextEl.textContent = total + ' trạm sạc được tìm thấy';
+            if (statTotalEl) statTotalEl.textContent = total.toString();
+            if (statRatedEl) statRatedEl.textContent = ratedCount.toString();
+            if (statAverageEl) statAverageEl.textContent = ratedCount > 0 ? (ratingSum / ratedCount).toFixed(1) : '--';
+
+            var cards = stationListEl.querySelectorAll('.station-serp-card');
+            Array.prototype.forEach.call(cards, function(card) {
+                card.addEventListener('click', function() {
+                    var idx = parseInt(card.getAttribute('data-marker-index'), 10);
+                    if (!isNaN(idx) && serpMarkers[idx]) {
+                        var marker = serpMarkers[idx];
+                        var latLng = marker.getLatLng();
+                        if (latLng) {
+                            var targetZoom = mapInstance.getZoom();
+                            if (!targetZoom || targetZoom < 15) targetZoom = 15;
+                            mapInstance.setView(latLng, targetZoom);
                         }
-                    }, 100);
-                }
-            } else {
-                await loadAvailableSpots();
-            }
-            const start = new Date(now.getTime() + 10 * 60000);
-            const end = new Date(start.getTime() + 40 * 60000);
-            document.getElementById('bm-start').value = toLocalInputValue(start);
-            document.getElementById('bm-end').value = toLocalInputValue(end);
-        }
-
-        function closeBookingModal() {
-            const modal = document.getElementById('booking-modal');
-            modal.style.display = 'none';
-        }
-
-        function toLocalInputValue(d) {
-            const pad = n => String(n).padStart(2, '0');
-            return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        }
-
-        async function loadStations() {
-            const sel = document.getElementById('bm-station');
-            if (!sel) return;
-            sel.innerHTML = '<option value="">Đang tải...</option>';
-            try {
-                const res = await fetch('/api/ChargingStation', { headers: authHeaders() });
-                
-                // Kiểm tra Content-Type trước khi parse JSON
-                const contentType = res.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    const text = await res.text();
-                    console.error('API returned non-JSON:', text.substring(0, 200));
-                    if (res.status === 401 || res.status === 403) {
-                        sel.innerHTML = '<option value="">Vui lòng đăng nhập</option>';
-                        return;
+                        marker.openPopup();
                     }
-                    throw new Error(`Server returned HTML instead of JSON (HTTP ${res.status})`);
-                }
-                
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}`);
-                }
-                
-                const data = await res.json();
-                sel.innerHTML = '';
-                if (!Array.isArray(data) || data.length === 0) {
-                    const opt = document.createElement('option');
-                    opt.value = '';
-                    opt.textContent = 'Không có trạm sạc';
-                    sel.appendChild(opt);
-                } else {
-                    data.forEach(s => {
-                        const opt = document.createElement('option');
-                        opt.value = s.id;
-                        opt.textContent = `${s.name || 'N/A'} — ${s.address || 'N/A'}`;
-                        sel.appendChild(opt);
-                    });
-                }
-            } catch (e) {
-                console.error('Error loading stations:', e);
-                sel.innerHTML = '<option value="">Lỗi tải trạm</option>';
-            }
-        }
-
-        async function loadVehicles() {
-            const sel = document.getElementById('bm-vehicle');
-            if (!sel) return;
-            sel.innerHTML = '<option value="">Đang tải...</option>';
-            try {
-                const res = await fetch('/api/Vehicle/me', { headers: authHeaders() });
-                
-                // Kiểm tra Content-Type trước khi parse JSON
-                const contentType = res.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    const text = await res.text();
-                    console.error('API returned non-JSON:', text.substring(0, 200));
-                    if (res.status === 401 || res.status === 403) {
-                        sel.innerHTML = '<option value="">Vui lòng đăng nhập</option>';
-                        return;
-                    }
-                    throw new Error(`Server returned HTML instead of JSON (HTTP ${res.status})`);
-                }
-                
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}`);
-                }
-                
-                const data = await res.json();
-                sel.innerHTML = '';
-                if (!Array.isArray(data) || data.length === 0) {
-                    const opt = document.createElement('option');
-                    opt.value = '';
-                    opt.textContent = 'Bạn chưa có xe. Vui lòng thêm xe';
-                    opt.disabled = true;
-                    sel.appendChild(opt);
-                    // Hiển thị thông báo và hướng dẫn
-                    setTimeout(() => {
-                        if (confirm('Bạn chưa có xe trong hệ thống. Vui lòng thêm thông tin xe trước khi đặt chỗ.\n\nBạn có muốn thêm xe ngay bây giờ không?')) {
-                            openAddVehicleModal();
-                        }
-                    }, 100);
-                } else {
-                    data.forEach(v => {
-                        const opt = document.createElement('option');
-                        opt.value = v.id;
-                        opt.textContent = `${v.licensePlate || 'N/A'} ${v.make || ''} ${v.model || ''}`.trim();
-                        sel.appendChild(opt);
-                    });
-                }
-            } catch (e) {
-                console.error('Error loading vehicles:', e);
-                sel.innerHTML = '<option value="">Lỗi tải danh sách xe</option>';
-            }
-        }
-
-        async function loadAvailableSpots() {
-            const stationSel = document.getElementById('bm-station');
-            const sel = document.getElementById('bm-spot');
-            if (!stationSel || !sel) return;
-            const stationId = stationSel.value;
-            if (!stationId) { 
-                sel.innerHTML = '<option value="">Chọn trạm trước</option>'; 
-                return; 
-            }
-            sel.innerHTML = '<option value="">Đang tải...</option>';
-            try {
-                const res = await fetch(`/api/ChargingSpot/station/${stationId}/available`, { headers: authHeaders() });
-                
-                // Kiểm tra Content-Type trước khi parse JSON
-                const contentType = res.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    const text = await res.text();
-                    console.error('API returned non-JSON:', text.substring(0, 200));
-                    if (res.status === 401 || res.status === 403) {
-                        sel.innerHTML = '<option value="">Vui lòng đăng nhập</option>';
-                        return;
-                    }
-                    throw new Error(`Server returned HTML instead of JSON (HTTP ${res.status})`);
-                }
-                
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}`);
-                }
-                
-                const data = await res.json();
-                sel.innerHTML = '';
-                if (!Array.isArray(data) || data.length === 0) {
-                    const opt = document.createElement('option');
-                    opt.value = '';
-                    opt.textContent = 'Không có cổng trống';
-                    sel.appendChild(opt);
-                } else {
-                    data.forEach(sp => {
-                        const opt = document.createElement('option');
-                        opt.value = sp.id;
-                        opt.textContent = `Cổng #${sp.spotNumber || 'N/A'} — ${sp.connectorType || 'N/A'}`;
-                        sel.appendChild(opt);
-                    });
-                }
-            } catch (e) {
-                console.error('Error loading spots:', e);
-                sel.innerHTML = '<option value="">Lỗi tải cổng sạc</option>';
-            }
-        }
-
-        async function submitBooking() {
-            const vehicleId = document.getElementById('bm-vehicle').value;
-            const stationId = document.getElementById('bm-station').value;
-            const spotId = document.getElementById('bm-spot').value;
-            const startVal = document.getElementById('bm-start').value;
-            const endVal = document.getElementById('bm-end').value;
-            const notes = document.getElementById('bm-notes').value || null;
-            const pay = document.querySelector('input[name="bm-pay"]:checked').value;
-
-            if (!vehicleId || !stationId || !spotId || !startVal || !endVal) {
-                alert('Vui lòng điền đầy đủ thông tin');
-                return;
-            }
-
-            // Validate dates - không cho chọn quá khứ
-            const now = new Date();
-            const startDate = new Date(startVal);
-            const endDate = new Date(endVal);
-            
-            if (startDate < now) {
-                alert('Thời gian bắt đầu không được chọn trong quá khứ');
-                document.getElementById('bm-start').focus();
-                return;
-            }
-            
-            if (endDate < now) {
-                alert('Thời gian kết thúc không được chọn trong quá khứ');
-                document.getElementById('bm-end').focus();
-                return;
-            }
-            
-            if (endDate <= startDate) {
-                alert('Thời gian kết thúc phải sau thời gian bắt đầu');
-                document.getElementById('bm-end').focus();
-                return;
-            }
-
-            const startIso = startDate.toISOString();
-            const endIso = endDate.toISOString();
-
-            try {
-                const res = await fetch('/api/Booking', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-                    body: JSON.stringify({
-                        vehicleId: vehicleId,
-                        chargingStationId: stationId,
-                        chargingSpotId: spotId,
-                        startTime: startIso,
-                        endTime: endIso,
-                        notes: notes
-                    })
                 });
+            });
 
-                // Kiểm tra Content-Type trước khi parse JSON
-                const contentType = res.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    const text = await res.text();
-                    console.error('API returned non-JSON:', text.substring(0, 200));
-                    if (res.status === 401 || res.status === 403) {
-                        alert('Vui lòng đăng nhập để đặt chỗ');
-                        return;
-                    }
-                    throw new Error(`Lỗi server (HTTP ${res.status}). Vui lòng thử lại.`);
-                }
-
-                if (!res.ok) {
-                    const err = await safeJson(res);
-                    const errorMessage = err?.message || `Không thể tạo booking (HTTP ${res.status})`;
-                    // Hiển thị message lỗi từ server
-                    alert(errorMessage);
-                    throw new Error(errorMessage);
-                }
-
-                const created = await res.json();
-                if (pay === 'vnpay') {
-                    const amount = 50000; // đặt cọc mẫu 50k
-                    const payRes = await fetch(`/api/Booking/${created.id}/pay/vnpay?amount=${amount}&description=${encodeURIComponent('Dat coc VNPay')}`, {
-                        method: 'POST',
-                        headers: authHeaders()
-                    });
-                    
-                    // Kiểm tra Content-Type cho VNPay response
-                    const payContentType = payRes.headers.get('content-type');
-                    if (!payContentType || !payContentType.includes('application/json')) {
-                        const payText = await payRes.text();
-                        console.error('VNPay API returned non-JSON:', payText.substring(0, 200));
-                        if (payRes.status === 401 || payRes.status === 403) {
-                            alert('Vui lòng đăng nhập để thanh toán');
-                            return;
-                        }
-                        alert('Lỗi khi tạo link thanh toán VNPay');
-                        return;
-                    }
-                    
-                    const payData = await payRes.json();
-                    if (payRes.ok && payData?.paymentUrl) {
-                        window.location.href = payData.paymentUrl;
-                        return;
-                    } else {
-                        alert(payData?.message || 'Không tạo được link VNPay');
-                    }
-                } else {
-                    alert('Đặt chỗ thành công! Bạn có thể thanh toán sau.');
-                }
-                closeBookingModal();
-            } catch (e) {
-                console.error('Booking error:', e);
-                alert(e.message || 'Có lỗi xảy ra khi đặt chỗ. Vui lòng thử lại.');
-            }
+            lastSidebarState = captureSidebarState();
         }
-
-        // --- Add Vehicle Modal Functions ---
-        function openAddVehicleModal() {
-            const modal = document.getElementById('add-vehicle-modal');
-            modal.style.display = 'block';
-            // Clear form
-            document.getElementById('av-licensePlate').value = '';
-            document.getElementById('av-make').value = '';
-            document.getElementById('av-model').value = '';
-            document.getElementById('av-year').value = '';
-            document.getElementById('av-vin').value = '';
-            document.getElementById('av-connectorType').value = '';
-        }
-
-        function closeAddVehicleModal() {
-            const modal = document.getElementById('add-vehicle-modal');
-            modal.style.display = 'none';
-        }
-
-        async function submitAddVehicle() {
-            const licensePlate = document.getElementById('av-licensePlate').value.trim();
-            const make = document.getElementById('av-make').value.trim();
-            const model = document.getElementById('av-model').value.trim();
-            const year = document.getElementById('av-year').value ? parseInt(document.getElementById('av-year').value) : null;
-            const vin = document.getElementById('av-vin').value.trim();
-            const connectorType = document.getElementById('av-connectorType').value;
-
-            // Validation
-            if (!licensePlate) {
-                alert('Vui lòng nhập biển số xe');
-                document.getElementById('av-licensePlate').focus();
-                return;
-            }
-
-            if (!connectorType) {
-                alert('Vui lòng chọn loại cổng sạc');
-                document.getElementById('av-connectorType').focus();
-                return;
-            }
-
-            try {
-                const res = await fetch('/api/Vehicle', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-                    body: JSON.stringify({
-                        licensePlate: licensePlate,
-                        make: make || null,
-                        model: model || null,
-                        year: year,
-                        vin: vin || null,
-                        connectorType: connectorType
-                    })
-                });
-
-                // Kiểm tra Content-Type trước khi parse JSON
-                const contentType = res.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    const text = await res.text();
-                    console.error('API returned non-JSON:', text.substring(0, 200));
-                    if (res.status === 401 || res.status === 403) {
-                        alert('Vui lòng đăng nhập để thêm xe');
-                        return;
-                    }
-                    throw new Error(`Lỗi server (HTTP ${res.status}). Vui lòng thử lại.`);
-                }
-
-                if (!res.ok) {
-                    const err = await safeJson(res);
-                    throw new Error(err?.message || `Không thể thêm xe (HTTP ${res.status})`);
-                }
-
-                const created = await res.json();
-                alert('Thêm xe thành công!');
-                closeAddVehicleModal();
-                
-                // Reload danh sách xe trong booking modal
-                await loadVehicles();
-                
-                // Tự động chọn xe vừa thêm
-                const vehicleSel = document.getElementById('bm-vehicle');
-                if (vehicleSel && created.id) {
-                    vehicleSel.value = created.id;
-                }
-            } catch (e) {
-                console.error('Add vehicle error:', e);
-                alert(e.message || 'Có lỗi xảy ra khi thêm xe. Vui lòng thử lại.');
-            }
-        }
-
-        function authHeaders() {
-            // Lấy JWT token từ localStorage hoặc cookie nếu có
-            const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
-            if (token) {
-                return { 'Authorization': `Bearer ${token}` };
-            }
-            // Nếu dùng cookie auth, header có thể không cần thiết
-            return { };
-        }
-
-        async function safeJson(res) {
-            try { return await res.json(); } catch { return null; }
-        }
-        
-        // Load stations list on page load
-        async function loadStationsList() {
-            const listEl = document.getElementById('station-list');
-            const countEl = document.getElementById('station-count');
-            if (!listEl || !countEl) return;
-            
-            listEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #6A7282;">Đang tải danh sách trạm sạc...</div>';
-            
-            try {
-                const res = await fetch('/api/ChargingStation', { headers: authHeaders() });
-                
-                const contentType = res.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    const text = await res.text();
-                    console.error('API returned non-JSON:', text.substring(0, 200));
-                    listEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #dc2626;">Lỗi tải danh sách trạm sạc</div>';
-                    countEl.textContent = '0 trạm sạc được tìm thấy';
-                    return;
-                }
-                
-                if (!res.ok) {
-                    console.error('API error:', res.status, res.statusText);
-                    if (res.status === 401 || res.status === 403) {
-                        listEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #dc2626;">Vui lòng đăng nhập để xem trạm sạc</div>';
-                    } else {
-                        listEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #dc2626;">Lỗi tải danh sách trạm sạc (HTTP ' + res.status + ')</div>';
-                    }
-                    countEl.textContent = '0 trạm sạc được tìm thấy';
-                    return;
-                }
-                
-                const stations = await res.json();
-                if (!Array.isArray(stations) || stations.length === 0) {
-                    listEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #6A7282;">Không có trạm sạc nào</div>';
-                    countEl.textContent = '0 trạm sạc được tìm thấy';
-                    return;
-                }
-                
-                countEl.textContent = `${stations.length} trạm sạc được tìm thấy`;
-                listEl.innerHTML = '';
-                
-                stations.forEach(station => {
-                    const card = document.createElement('div');
-                    card.className = 'station-card';
-                    
-                    // Determine status badge
-                    const availableSpots = station.availableSpots || 0;
-                    const totalSpots = station.totalSpots || 0;
-                    let statusClass = 'status-available';
-                    let statusText = 'Còn trống';
-                    if (availableSpots === 0) {
-                        statusClass = 'status-full';
-                        statusText = 'Đầy';
-                    } else if (availableSpots / totalSpots < 0.3) {
-                        statusClass = 'status-busy';
-                        statusText = 'Đang bận';
-                    }
-                    
-                    // Format price
-                    const price = station.pricePerKwh ? station.pricePerKwh.toLocaleString('vi-VN') : 'N/A';
-                    const connectorType = station.connectorTypes?.[0] || 'N/A';
-                    const rating = station.averageRating || 0;
-                    const distance = station.distance ? `${station.distance.toFixed(1)} km` : 'N/A';
-                    
-                    card.innerHTML = `
-                        <div class="station-card-header">
-                            <div class="station-info">
-                                <h3 class="station-name">${station.name || 'N/A'}</h3>
-                                <div class="station-address">
-                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M8 2C5.24 2 3 4.24 3 7C3 10.5 8 14 8 14C8 14 13 10.5 13 7C13 4.24 10.76 2 8 2Z" stroke="#4A5565" stroke-width="1.5"/>
-                                        <circle cx="8" cy="7" r="2" stroke="#4A5565" stroke-width="1.5"/>
-                                    </svg>
-                                    <span>${station.address || 'N/A'}</span>
-                                </div>
-                            </div>
-                            <span class="status-badge ${statusClass}">${statusText}</span>
-                        </div>
-                        <div class="station-details">
-                            <div class="detail-left">
-                                <div class="detail-item">
-                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M2 8H14M8 2V14" stroke="#364153" stroke-width="1.5" stroke-linecap="round"/>
-                                    </svg>
-                                    <span>${availableSpots}/${totalSpots}</span>
-                                </div>
-                                <div class="detail-item">
-                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M8 2L10 6L14 7L11 10L11.5 14L8 12L4.5 14L5 10L2 7L6 6L8 2Z" stroke="#364153" stroke-width="1.5" stroke-linejoin="round"/>
-                                    </svg>
-                                    <span>${rating.toFixed(1)}</span>
-                                </div>
-                            </div>
-                            <div class="detail-right">
-                                <span class="distance">${distance}</span>
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M8 2V14M8 2L5 5M8 2L11 5M8 14L5 11M8 14L11 11" stroke="#6A7282" stroke-width="1.5" stroke-linecap="round"/>
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="station-footer">
-                            <span class="charge-type">${connectorType}</span>
-                            <span class="price">${price}đ/kWh</span>
-                            <button class="btn-book" onclick="openBookingModal('${station.id}')">Đặt chỗ</button>
-                        </div>
-                    `;
-                    
-                    listEl.appendChild(card);
-                });
-            } catch (e) {
-                console.error('Error loading stations list:', e);
-                listEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #dc2626;">Lỗi tải danh sách trạm sạc</div>';
-                countEl.textContent = 'Lỗi tải danh sách';
-            }
-        }
-        
-        // Load stations on page load
-        loadStationsList();
         
         setTimeout(function() {
             if (typeof L !== 'undefined') {
@@ -828,26 +638,7 @@
                         if (mapInstance.invalidateSize) mapInstance.invalidateSize();
                     }, 300);
                     
-                    var stations = [
-                        { lat: 21.0285, lng: 105.8542, status: "available" },
-                        { lat: 21.0055, lng: 105.8435, status: "available" },
-                        { lat: 21.0175, lng: 105.9185, status: "full" },
-                        { lat: 21.0375, lng: 105.8145, status: "available" },
-                        { lat: 21.0245, lng: 105.8525, status: "busy" },
-                        { lat: 21.0505, lng: 105.7545, status: "available" }
-                    ];
-                    
-                    for (var i = 0; i < stations.length; i++) {
-                        var s = stations[i];
-                        var c = s.status === 'available' ? '#00A63E' : s.status === 'busy' ? '#F0B100' : '#E7000B';
-                        var icon = L.divIcon({
-                            className: 'custom-marker',
-                            html: '<div style="background:' + c + ';width:16px;height:16px;border-radius:50%;border:2px solid white;"></div>',
-                            iconSize: [16, 16],
-                            iconAnchor: [8, 8]
-                        });
-                        L.marker([s.lat, s.lng], {icon: icon}).addTo(mapInstance);
-                    }
+                    // Don't show hardcoded stations anymore - will load real data from user location
                     
                     // Function to update user location
                     function updateUserLocation(lat, lng, showPopup) {
@@ -877,6 +668,7 @@
                     }
 
                     function fetchApproximateLocation() {
+                        console.log('🌐 Đang lấy vị trí từ IP address...');
                         return fetch('https://ipapi.co/json/')
                             .then(function(response) {
                                 if (!response.ok) {
@@ -890,7 +682,12 @@
                                 if (isNaN(lat) || isNaN(lng)) {
                                     throw new Error('Invalid IP location response');
                                 }
-                                return { lat: lat, lng: lng };
+                                console.log('✅ IP Location:', lat, lng, '(' + (data.city || '') + ', ' + (data.country_name || '') + ')');
+                                return { lat: lat, lng: lng, city: data.city, country: data.country_name };
+                            })
+                            .catch(function(err) {
+                                console.error('❌ IP location failed:', err);
+                                throw err;
                             });
                     }
 
@@ -936,19 +733,28 @@
 
                         navigator.geolocation.getCurrentPosition(
                             function(position) {
-                                updateUserLocation(position.coords.latitude, position.coords.longitude, showPopup);
+                                var lat = position.coords.latitude;
+                                var lng = position.coords.longitude;
+                                updateUserLocation(lat, lng, showPopup);
+                                
+                                console.log('✅ Vị trí chính xác:', lat, lng);
+                                
                                 onFinally();
                             },
                             function(error) {
-                                var errorMessage = 'Không thể lấy vị trí của bạn.';
+                                console.log('❌ Lỗi lấy vị trí GPS:', error);
+                                
+                                var errorMessage = 'Không thể lấy vị trí GPS chính xác.';
                                 if (error && error.code === 1) {
-                                    errorMessage = 'Bạn đã từ chối quyền truy cập vị trí.';
+                                    errorMessage = 'Bạn đã từ chối quyền truy cập vị trí. Sẽ dùng vị trí ước lượng.';
                                 } else if (error && error.code === 2) {
-                                    errorMessage = 'Vị trí hiện không khả dụng.';
+                                    errorMessage = 'Vị trí GPS không khả dụng. Sẽ dùng vị trí ước lượng.';
                                 } else if (error && error.code === 3) {
-                                    errorMessage = 'Yêu cầu lấy vị trí bị hết thời gian.';
+                                    errorMessage = 'Yêu cầu GPS hết thời gian. Sẽ dùng vị trí ước lượng.';
                                 }
 
+                                console.log('🔄 Chuyển sang IP location...');
+                                
                                 useApproximateLocation({
                                     showPopup: showPopup,
                                     notify: notify,
@@ -958,24 +764,46 @@
                             },
                             {
                                 enableHighAccuracy: true,
-                                timeout: 10000,
-                                maximumAge: 0
+                                timeout: 15000,
+                                maximumAge: 300000
                             }
                         );
-                    } else {
-                        // Browser doesn't support geolocation, use default
-                        updateUserLocation(21.0285, 105.8542, false);
                     }
                     
-                    // Try to get real location on page load
-                    requestUserLocation({ showPopup: false, notify: false });
+                    // Show initial loading state
+                    console.log('🚀 Bắt đầu tải trang Home...');
+                    setSidebarLoading();
+                    if (stationCountTextEl) stationCountTextEl.textContent = '📍 Đang xác định vị trí của bạn...';
+                    
+                    // Try to get real location on page load and automatically search nearby stations
+                    requestUserLocation({ 
+                        showPopup: true, 
+                        notify: false,
+                        onFinally: function() {
+                            console.log('✅ Đã lấy vị trí, bắt đầu tìm trạm sạc...');
+                            // After getting user location, automatically search for nearby stations
+                            setTimeout(function() {
+                                if (mapInstance) {
+                                    // Trigger automatic search for nearby stations
+                                    setSidebarLoading();
+                                    if (stationCountTextEl) stationCountTextEl.textContent = '🔍 Đang tìm trạm sạc gần bạn...';
+                                    
+                                    searchNearbyStations(defaultSidebarState).catch(function(err){
+                                        console.error('❌ Lỗi tìm trạm sạc:', err);
+                                        // On error, restore default state
+                                        applySidebarState(defaultSidebarState);
+                                        if (stationCountTextEl) stationCountTextEl.textContent = '❌ Không thể tải trạm sạc. Vui lòng thử lại.';
+                                    });
+                                }
+                            }, 500);
+                        }
+                    });
                     
                     // Add click handler for location button
                     var btnLocation = document.getElementById('btn-current-location');
                     var btnSearchNearby = document.getElementById('btn-search-nearby');
                     if (btnLocation) {
                         btnLocation.addEventListener('click', function() {
-                            if (navigator.geolocation) {
                             btnLocation.style.opacity = '0.6';
                             btnLocation.disabled = true;
 
@@ -1056,7 +884,6 @@
                                     normalized.push(item);
                                     addSerpMarker(item.latitude, item.longitude, item.title, item.address, item.rating, item.reviews);
                                 }
-                                );
                             } else {
                                 normalized = [];
                                 clearSerpMarkers();
@@ -1092,40 +919,6 @@
         }, 1000);
     </script>
     <style>
-        /* Booking button */
-        .btn-book { margin-left: 12px; background:#155DFC; color:white; border:none; border-radius:8px; padding:8px 12px; cursor:pointer; }
-        .btn-book:hover { background:#0d4bd1; }
-        .btn-book-map { margin-left: 12px; }
-
-        /* Booking Modal */
-        .booking-modal { position: fixed; inset: 0; z-index: 2000; }
-        .booking-modal-backdrop { position:absolute; inset:0; background: rgba(0,0,0,0.35); }
-        .booking-modal-content { position:relative; z-index:1; width: 560px; max-width: 95vw; margin: 8vh auto; background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); overflow: hidden; }
-        .booking-modal-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #eee; }
-        .booking-modal-header h3 { margin:0; font-size:18px; }
-        .booking-modal-close { background: transparent; border: none; font-size: 22px; cursor: pointer; }
-        .booking-modal-body { padding: 16px 20px; }
-        .booking-modal-footer { display:flex; justify-content:flex-end; gap:10px; padding: 12px 20px; border-top:1px solid #eee; }
-        .form-row { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
-        .form-row label { font-size: 13px; color:#4A5565; }
-        .form-row select, .form-row input, .form-row textarea { padding:10px 12px; border:1px solid #d9d9e3; border-radius:8px; }
-        .bm-pay-methods { display:flex; gap:16px; }
-        .btn-primary { background:#155DFC; color:white; border:none; border-radius:8px; padding:10px 14px; cursor:pointer; }
-        .btn-secondary { background:#f1f3f5; color:#111; border:none; border-radius:8px; padding:10px 14px; cursor:pointer; }
-        .btn-add-vehicle { 
-            background: #16a34a; 
-            color: white; 
-            border: none; 
-            border-radius: 8px; 
-            padding: 10px 16px; 
-            cursor: pointer; 
-            font-size: 18px; 
-            font-weight: bold;
-            min-width: 40px;
-            transition: background 0.2s;
-        }
-        .btn-add-vehicle:hover { background: #15803d; }
-        .btn-add-vehicle:active { background: #166534; }
         .custom-marker { background: transparent !important; border: none !important; }
         .leaflet-container { background: #F3F4F6 !important; }
         
@@ -1146,10 +939,6 @@
         }
 
         .btn-current-location-map {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
             background: white;
             border: 1px solid rgba(0, 0, 0, 0.1);
             border-radius: 8px;
@@ -1197,6 +986,11 @@
             color: #4A5565;
             font-size: 13px;
             line-height: 20px;
+        }
+        
+        @@keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
         }
     </style>
 }

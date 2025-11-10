@@ -26,11 +26,6 @@ namespace BusinessLayer.Services
         // User Profile methods
         Task<Users?> GetUserByIdAsync(Guid userId);
         Task<Users?> UpdateUserProfileAsync(Guid userId, string fullName, string email, string phone, DateTime dateOfBirth, string gender);
-        
-        // User validation methods
-        Task<bool> UsernameExistsAsync(string username);
-        Task<bool> EmailExistsAsync(string email);
-        Task<Users?> GetUserByRefreshTokenAsync(string refreshToken);
     }
 }
 

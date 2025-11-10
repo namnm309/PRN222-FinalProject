@@ -8,10 +8,12 @@ namespace BusinessLayer.Services
     public class ChargingSpotService : IChargingSpotService
     {
         private readonly EVDbContext _context;
+        private readonly IStationMonitoringService _monitoringService;
 
-        public ChargingSpotService(EVDbContext context)
+        public ChargingSpotService(EVDbContext context, IStationMonitoringService monitoringService)
         {
             _context = context;
+            _monitoringService = monitoringService;
         }
 
         public async Task<IEnumerable<ChargingSpot>> GetAllSpotsAsync()
@@ -100,6 +102,10 @@ namespace BusinessLayer.Services
                     throw new InvalidOperationException($"Spot number {spot.SpotNumber} already exists in this station");
             }
 
+            // Track status change for broadcasting
+            var oldStatus = existingSpot.Status;
+            var statusChanged = oldStatus != spot.Status;
+
             existingSpot.SpotNumber = spot.SpotNumber;
             existingSpot.Status = spot.Status;
             existingSpot.ConnectorType = spot.ConnectorType;
@@ -109,6 +115,24 @@ namespace BusinessLayer.Services
             existingSpot.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            // Broadcast status change if changed
+            if (statusChanged)
+            {
+                try
+                {
+                    await _monitoringService.BroadcastSpotStatusChange(
+                        existingSpot.Id,
+                        existingSpot.ChargingStationId,
+                        (int)existingSpot.Status,
+                        existingSpot.SpotNumber
+                    );
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ChargingSpotService] Failed to broadcast status change: {ex.Message}");
+                }
+            }
 
             return existingSpot;
         }

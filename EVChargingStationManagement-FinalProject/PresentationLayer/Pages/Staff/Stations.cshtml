@@ -1,18 +1,588 @@
-@page 
+@page
+@model PresentationLayer.Pages.Staff.StationsModel
 @{
     Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
-    ViewData["Title"] = "Staff • Trạm sạc";
+    ViewData["Title"] = "Staff • Theo dõi trạm sạc";
 }
 
-<section class="page-header">
-    <h2>@ViewData["Title"]</h2>
-</section>
+<link rel="stylesheet" href="/css/staff-common.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<section class="filters">Bộ lọc trạm sạc (placeholder)</section>
+<style>
+    .page-container {
+        padding: 24px;
+        max-width: 1600px;
+        margin: 0 auto;
+    }
 
-<section class="content-grid">
-    <div class="table-placeholder">Danh sách trạm (placeholder)</div>
-    <div class="chart-placeholder">Công suất hiện tại (placeholder)</div>
-</section>
+    .page-header {
+        margin-bottom: 24px;
+    }
 
+    .page-title h2 {
+        font-size: 28px;
+        font-weight: 700;
+        color: #101828;
+        margin: 0 0 4px 0;
+    }
+
+    .page-subtitle {
+        font-size: 14px;
+        color: #6B7280;
+        margin: 0;
+    }
+
+    /* Filters Section */
+    .filters-section {
+        display: flex;
+        gap: 16px;
+        align-items: flex-end;
+        margin-bottom: 24px;
+        padding: 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-group {
+        flex: 1;
+        max-width: 300px;
+    }
+
+    .filter-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 6px;
+    }
+
+    .filter-select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid #D1D5DB;
+        border-radius: 8px;
+        font-size: 14px;
+        background: white;
+        cursor: pointer;
+    }
+
+    .filter-select:focus {
+        outline: none;
+        border-color: #00A63E;
+        box-shadow: 0 0 0 3px rgba(0, 166, 62, 0.1);
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+    }
+
+    .btn-primary {
+        background: #00A63E;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #008631;
+    }
+
+    .btn-outline {
+        background: white;
+        color: #374151;
+        border: 1px solid #D1D5DB;
+    }
+
+    .btn-outline:hover {
+        background: #F9FAFB;
+    }
+
+    /* KPI Cards */
+    .kpis-section {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+
+    .kpi-card {
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: all 0.2s;
+    }
+
+    .kpi-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .kpi-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .kpi-icon {
+        font-size: 24px;
+    }
+
+    .kpi-label {
+        font-size: 13px;
+        color: #6B7280;
+        font-weight: 600;
+    }
+
+    .kpi-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: #101828;
+    }
+
+    /* Map Section */
+    .map-section {
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        margin-bottom: 24px;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .section-header h3 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #101828;
+        margin: 0;
+    }
+
+    .map-legend {
+        display: flex;
+        gap: 16px;
+        font-size: 13px;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+
+    .dot.green { background: #10B981; }
+    .dot.orange { background: #F59E0B; }
+    .dot.red { background: #EF4444; }
+
+    .map-container {
+        height: 600px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #E5E7EB;
+    }
+
+    /* Content Grid */
+    .content-grid-two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+    }
+
+    .content-panel {
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .panel-header h3 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #101828;
+        margin: 0;
+    }
+
+    .btn-link {
+        background: none;
+        border: none;
+        color: #00A63E;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    .btn-link:hover {
+        color: #008631;
+        text-decoration: underline;
+    }
+
+    .sessions-list, .bookings-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .session-item, .booking-item {
+        padding: 16px;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        transition: all 0.2s;
+    }
+
+    .session-item:hover, .booking-item:hover {
+        background: #F9FAFB;
+        border-color: #00A63E;
+    }
+
+    .item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+
+    .item-title {
+        font-weight: 600;
+        color: #101828;
+        font-size: 14px;
+    }
+
+    .item-status {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .status-active {
+        background: #D1FAE5;
+        color: #065F46;
+    }
+
+    .status-pending {
+        background: #FED7AA;
+        color: #92400E;
+    }
+
+    .item-detail {
+        font-size: 13px;
+        color: #6B7280;
+        margin-top: 4px;
+    }
+
+    .loading-state, .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6B7280;
+        font-size: 14px;
+    }
+
+    /* Responsive */
+    @@media (max-width: 1200px) {
+        .content-grid-two {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .filters-section {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .filter-group {
+            max-width: none;
+        }
+
+        .kpis-section {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="page-container">
+    <section class="page-header">
+        <div class="page-title">
+            <h2>Theo dõi trạm sạc</h2>
+            <p class="page-subtitle">Giám sát trạng thái điểm sạc và hoạt động trạm</p>
+        </div>
+    </section>
+
+    <!-- Filters Section -->
+    <section class="filters-section">
+        <div class="filter-group">
+            <label>Trạm sạc</label>
+            <select id="stationFilter" class="filter-select">
+                <option value="">Tất cả trạm</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Khoảng thời gian</label>
+            <select id="timeFilter" class="filter-select">
+                <option value="today">Hôm nay</option>
+                <option value="week">Tuần này</option>
+                <option value="month">Tháng này</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" onclick="applyFilters()">
+            🔍 Áp dụng
+        </button>
+        <button class="btn btn-outline" onclick="location.reload()">
+            🔄 Làm mới
+        </button>
+    </section>
+
+    <!-- KPI Cards -->
+    <section class="kpis-section">
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <span class="kpi-icon">📍</span>
+                <span class="kpi-label">Tổng điểm sạc</span>
+            </div>
+            <div class="kpi-value" id="kpiTotal">0</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <span class="kpi-icon">⚡</span>
+                <span class="kpi-label">Đang trống</span>
+            </div>
+            <div class="kpi-value" id="kpiAvailable">0</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <span class="kpi-icon">🔥</span>
+                <span class="kpi-label">Phiên đang cháy</span>
+            </div>
+            <div class="kpi-value" id="kpiOccupied">0</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <span class="kpi-icon">❌</span>
+                <span class="kpi-label">Không hoạt động</span>
+            </div>
+            <div class="kpi-value" id="kpiOffline">0</div>
+        </div>
+    </section>
+
+    <!-- Map Section -->
+    <section class="map-section">
+        <div class="section-header">
+            <h3>Bản đồ trạm sạc</h3>
+            <div class="map-legend">
+                <span class="legend-item"><span class="dot green"></span> Có sẵn</span>
+                <span class="legend-item"><span class="dot orange"></span> Đang dùng</span>
+                <span class="legend-item"><span class="dot red"></span> Offline</span>
+            </div>
+        </div>
+        <div id="stationMap" class="map-container"></div>
+    </section>
+
+    <!-- Sessions & Bookings Grid -->
+    <section class="content-grid-two">
+        <div class="content-panel">
+            <div class="panel-header">
+                <h3>Phiên sạc gần đây</h3>
+                <button class="btn-link" onclick="alert('View all sessions')">Xem tất cả →</button>
+            </div>
+            <div id="recentSessionsList" class="sessions-list">
+                <div class="loading-state">Đang tải dữ liệu...</div>
+            </div>
+        </div>
+        
+        <div class="content-panel">
+            <div class="panel-header">
+                <h3>Lịch đặt chỗ hôm nay</h3>
+                <button class="btn-link" onclick="alert('View all bookings')">Xem tất cả →</button>
+            </div>
+            <div id="todayBookingsList" class="bookings-list">
+                <div class="loading-state">Đang tải dữ liệu...</div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+let mapInstance = null;
+let allStations = [];
+let markers = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    initMap();
+    loadStations();
+});
+
+function initMap() {
+    // Default center: Ho Chi Minh City
+    const defaultCenter = [10.8231, 106.6297];
+    
+    mapInstance = L.map('stationMap').setView(defaultCenter, 12);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(mapInstance);
+    
+    setTimeout(() => {
+        if (mapInstance.invalidateSize) mapInstance.invalidateSize();
+    }, 300);
+}
+
+async function loadStations() {
+    try {
+        // Call SerpApi to get real charging stations
+        const response = await fetch('/api/Maps/charging-stations');
+        const data = await response.json();
+        
+        if (data.success && data.stations) {
+            allStations = data.stations;
+            updateKPIs();
+            displayMarkersOnMap();
+            populateStationFilter();
+        }
+    } catch (error) {
+        console.error('Error loading stations:', error);
+    }
+}
+
+function updateKPIs() {
+    let totalSpots = 0;
+    let availableSpots = 0;
+    let occupiedSpots = 0;
+    let offlineSpots = 0;
+    
+    allStations.forEach(station => {
+        if (station.chargingSpots) {
+            station.chargingSpots.forEach(spot => {
+                totalSpots++;
+                if (spot.status === 0) availableSpots++;
+                else if (spot.status === 1) occupiedSpots++;
+                else if (spot.status === 3) offlineSpots++;
+            });
+        }
+    });
+    
+    document.getElementById('kpiTotal').textContent = totalSpots;
+    document.getElementById('kpiAvailable').textContent = availableSpots;
+    document.getElementById('kpiOccupied').textContent = occupiedSpots;
+    document.getElementById('kpiOffline').textContent = offlineSpots;
+}
+
+function displayMarkersOnMap() {
+    // Clear existing markers
+    markers.forEach(m => mapInstance.removeLayer(m));
+    markers = [];
+    
+    allStations.forEach(station => {
+        if (station.latitude && station.longitude) {
+            // Determine marker color based on availability
+            let availableCount = 0;
+            let totalCount = station.chargingSpots ? station.chargingSpots.length : 0;
+            
+            if (station.chargingSpots) {
+                availableCount = station.chargingSpots.filter(s => s.status === 0).length;
+            }
+            
+            let color = '#EF4444'; // Red - no spots available
+            if (availableCount > 0) {
+                color = availableCount === totalCount ? '#10B981' : '#F59E0B'; // Green if all available, Orange if some
+            }
+            
+            const icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="background:${color};width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [18, 18],
+                iconAnchor: [9, 9]
+            });
+            
+            const marker = L.marker([station.latitude, station.longitude], {icon: icon}).addTo(mapInstance);
+            
+            // Popup content with link to detail page
+            let popupContent = `
+                <div style="min-width: 220px;">
+                    <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">${station.name}</h4>
+                    <p style="margin: 0 0 4px 0; font-size: 12px; color: #6B7280;">${station.address || ''}</p>
+                    ${station.rating ? `<p style="margin: 4px 0; font-size: 12px;">⭐ ${station.rating} ${station.reviews ? `(${station.reviews})` : ''}</p>` : ''}
+                    <p style="margin: 4px 0; font-size: 12px; font-weight: 600;">Điểm sạc: ${availableCount}/${totalCount} sẵn sàng</p>
+                    <a href="/Staff/StationDetail/${station.id}" style="display: inline-block; margin-top: 8px; padding: 6px 12px; background: #00A63E; color: white; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 600;">Xem chi tiết →</a>
+                </div>
+            `;
+            
+            marker.bindPopup(popupContent);
+            markers.push(marker);
+        }
+    });
+    
+    // Fit map to show all markers
+    if (markers.length > 0) {
+        const group = L.featureGroup(markers);
+        mapInstance.fitBounds(group.getBounds().pad(0.1));
+    }
+}
+
+function populateStationFilter() {
+    const filterSelect = document.getElementById('stationFilter');
+    filterSelect.innerHTML = '<option value="">Tất cả trạm</option>';
+    
+    allStations.forEach(station => {
+        const option = document.createElement('option');
+        option.value = station.id;
+        option.textContent = station.name;
+        filterSelect.appendChild(option);
+    });
+}
+
+function applyFilters() {
+    const stationId = document.getElementById('stationFilter').value;
+    const timeRange = document.getElementById('timeFilter').value;
+    
+    console.log('Applying filters:', stationId, timeRange);
+    
+    // If a specific station is selected, zoom to it
+    if (stationId) {
+        const station = allStations.find(s => s.id === stationId);
+        if (station && station.latitude && station.longitude) {
+            mapInstance.setView([station.latitude, station.longitude], 15);
+            
+            // Find and open popup for this station
+            const marker = markers.find(m => {
+                const latlng = m.getLatLng();
+                return latlng.lat === station.latitude && latlng.lng === station.longitude;
+            });
+            if (marker) marker.openPopup();
+        }
+    } else {
+        // Show all markers
+        if (markers.length > 0) {
+            const group = L.featureGroup(markers);
+            mapInstance.fitBounds(group.getBounds().pad(0.1));
+        }
+    }
+}
+</script>
 
