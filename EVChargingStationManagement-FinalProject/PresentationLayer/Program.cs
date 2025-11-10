@@ -83,6 +83,15 @@ namespace PresentationLayer
             builder.Services.AddScoped<IStationMaintenanceService, StationMaintenanceService>();
             builder.Services.AddScoped<IStationErrorService, StationErrorService>();
             builder.Services.AddScoped<IChargingSessionService, ChargingSessionService>();
+            builder.Services.AddScoped<IStationMonitoringService, StationMonitoringService>();
+
+            // Add SignalR for real-time monitoring
+            builder.Services.AddSignalR(options =>
+            {
+                options.EnableDetailedErrors = true;
+                options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+                options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+            });
 
             // Add Controllers
             builder.Services.AddControllers();
@@ -158,6 +167,9 @@ namespace PresentationLayer
 
             app.MapRazorPages();
             app.MapControllers();
+            
+            // Map SignalR Hub
+            app.MapHub<BusinessLayer.Hubs.StationMonitoringHub>("/hubs/stationMonitoring");
 
             app.Run();
         }

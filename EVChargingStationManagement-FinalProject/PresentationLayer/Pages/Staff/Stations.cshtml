@@ -6,6 +6,9 @@
 }
 
 <link rel="stylesheet" href="/css/staff-common.css">
+<link rel="stylesheet" href="/css/realtime-monitor.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
+<script src="/js/station-monitoring.js"></script>
 
 <style>
     .station-grid {
@@ -390,23 +393,86 @@ document.addEventListener('DOMContentLoaded', function() {
     loadStations();
     updateStats();
     
+    // Setup SignalR event handlers
+    setupRealtimeMonitoring();
+    
+    // Fallback: Still refresh periodically (less frequently since we have real-time updates)
     setInterval(() => {
-        loadStations();
-        updateStats();
-    }, 30000);
+        if (!window.stationMonitor || !window.stationMonitor.isConnected) {
+            loadStations();
+            updateStats();
+        }
+    }, 60000); // Every minute instead of 30 seconds
 });
+
+function setupRealtimeMonitoring() {
+    // Wait for stationMonitor to be ready
+    const checkMonitor = setInterval(() => {
+        if (window.stationMonitor && window.stationMonitor.isConnected) {
+            clearInterval(checkMonitor);
+            
+            // Register event handlers
+            window.stationMonitor.on('spotStatusChanged', (data) => {
+                console.log('Spot status changed:', data);
+                // Reload stations to reflect changes
+                loadStations();
+                updateStats();
+            });
+            
+            window.stationMonitor.on('stationStatusChanged', (data) => {
+                console.log('Station status changed:', data);
+                loadStations();
+            });
+            
+            window.stationMonitor.on('statsUpdated', (data) => {
+                console.log('Stats updated:', data);
+                // Stats are auto-updated by the monitoring service
+            });
+            
+            window.stationMonitor.on('sessionStarted', (data) => {
+                console.log('Session started:', data);
+                loadStations();
+                updateStats();
+            });
+            
+            window.stationMonitor.on('sessionEnded', (data) => {
+                console.log('Session ended:', data);
+                loadStations();
+                updateStats();
+            });
+            
+            window.stationMonitor.on('errorReported', (data) => {
+                console.log('Error reported:', data);
+                // Refresh to show new error
+                loadStations();
+            });
+            
+            window.stationMonitor.on('maintenanceScheduled', (data) => {
+                console.log('Maintenance scheduled:', data);
+                loadStations();
+            });
+        }
+    }, 500);
+    
+    // Give up after 10 seconds
+    setTimeout(() => clearInterval(checkMonitor), 10000);
+}
 
 async function loadStations() {
     try {
-        const response = await fetch('/api/ChargingStation');
+        // Use SerpApi to get real charging stations from Google Maps
+        const response = await fetch('/api/Maps/charging-stations');
         if (!response.ok) throw new Error('Failed to fetch stations');
         
-        allStations = await response.json();
+        const data = await response.json();
+        console.log('[Stations] Loaded from:', data.source, '- Count:', data.count);
+        
+        allStations = data.stations || [];
         filteredStations = [...allStations];
         applyFilters();
     } catch (error) {
         console.error('Error loading stations:', error);
-        showError('Không thể tải dữ liệu');
+        showError('Không thể tải dữ liệu từ Google Maps');
     }
 }
 
@@ -414,10 +480,10 @@ async function updateStats() {
     try {
         let totalAvailable = 0, totalOccupied = 0, totalMaintenance = 0, totalOffline = 0;
         
+        // Calculate stats from loaded stations (from SerpApi)
         for (const station of allStations) {
-            const spotsRes = await fetch(`/api/ChargingSpot/station/${station.id}`);
-            if (spotsRes.ok) {
-                const spots = await spotsRes.json();
+            if (station.chargingSpots && Array.isArray(station.chargingSpots)) {
+                const spots = station.chargingSpots;
                 totalAvailable += spots.filter(s => s.status === 0).length;
                 totalOccupied += spots.filter(s => s.status === 1).length;
                 totalMaintenance += spots.filter(s => s.status === 2).length;
@@ -429,6 +495,9 @@ async function updateStats() {
         document.getElementById('statOccupied').textContent = totalOccupied;
         document.getElementById('statMaintenance').textContent = totalMaintenance;
         document.getElementById('statOffline').textContent = totalOffline;
+        
+        console.log('[Stats] Available:', totalAvailable, 'Occupied:', totalOccupied, 
+                    'Maintenance:', totalMaintenance, 'Offline:', totalOffline);
     } catch (error) {
         console.error('Error updating stats:', error);
     }
@@ -494,8 +563,8 @@ async function renderGrid(container) {
     let html = '<div class="station-grid">';
     
     for (const station of filteredStations) {
-        const spotsRes = await fetch(`/api/ChargingSpot/station/${station.id}`);
-        const spots = spotsRes.ok ? await spotsRes.json() : [];
+        // Use spots from station data (already included from SerpApi)
+        const spots = station.chargingSpots || [];
         
         const available = spots.filter(s => s.status === 0).length;
         const occupied = spots.filter(s => s.status === 1).length;
@@ -505,14 +574,22 @@ async function renderGrid(container) {
         const statusClass = getStationStatusClass(station.status);
         const statusText = getStationStatusText(station.status);
         
+        // Show rating if available
+        const ratingHtml = station.rating ? `
+            <div style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: #F59E0B; margin-top: 4px;">
+                ⭐ ${station.rating} ${station.reviews ? `(${station.reviews})` : ''}
+            </div>
+        ` : '';
+        
         html += `
-            <div class="station-card" onclick="showStationDetail('${station.id}')">
+            <div class="station-card" onclick="showStationDetail('${station.id}')" data-station-id="${station.id}">
                 <div class="station-header">
                     <div>
                         <h3 class="station-name">${station.name}</h3>
                         <div class="station-address">
                             📍 ${station.address || 'N/A'}
                         </div>
+                        ${ratingHtml}
                     </div>
                     <span class="station-status-badge ${statusClass}">${statusText}</span>
                 </div>
@@ -540,7 +617,9 @@ async function renderGrid(container) {
                     <div class="spots-title">Điểm sạc (${spots.length})</div>
                     <div class="spots-grid">
                         ${spots.map(spot => `
-                            <div class="spot-item ${getSpotStatusClass(spot.status)}" title="${spot.spotNumber} - ${getSpotStatusText(spot.status)}">
+                            <div class="spot-item ${getSpotStatusClass(spot.status)}" 
+                                 title="${spot.spotNumber} - ${spot.connectorType} ${spot.powerOutput}kW - ${getSpotStatusText(spot.status)}"
+                                 data-spot-id="${spot.id}">
                                 ${spot.spotNumber}
                             </div>
                         `).join('')}
@@ -572,10 +651,18 @@ async function showStationDetail(stationId) {
     const station = allStations.find(s => s.id === stationId);
     if (!station) return;
     
-    const spotsRes = await fetch(`/api/ChargingSpot/station/${stationId}`);
-    const spots = spotsRes.ok ? await spotsRes.json() : [];
+    const spots = station.chargingSpots || [];
     
     document.getElementById('modalTitle').textContent = station.name;
+    
+    const ratingHtml = station.rating ? `
+        <div class="detail-row">
+            <div class="detail-label">Đánh giá</div>
+            <div class="detail-value" style="color: #F59E0B;">
+                ⭐ ${station.rating} ${station.reviews ? `(${station.reviews} reviews)` : ''}
+            </div>
+        </div>
+    ` : '';
     
     let modalContent = `
         <div class="detail-row">
@@ -587,20 +674,21 @@ async function showStationDetail(stationId) {
             <div class="detail-value">${station.city || 'N/A'}</div>
         </div>
         <div class="detail-row">
-            <div class="detail-label">Tỉnh</div>
+            <div class="detail-label">Tỉnh/Quốc gia</div>
             <div class="detail-value">${station.province || 'N/A'}</div>
         </div>
+        ${ratingHtml}
         <div class="detail-row">
             <div class="detail-label">Số điện thoại</div>
             <div class="detail-value">${station.phone || 'N/A'}</div>
         </div>
         <div class="detail-row">
-            <div class="detail-label">Email</div>
-            <div class="detail-value">${station.email || 'N/A'}</div>
+            <div class="detail-label">Giờ mở cửa</div>
+            <div class="detail-value">${station.hours || (station.is24Hours ? 'Open 24 hours' : 'N/A')}</div>
         </div>
         <div class="detail-row">
-            <div class="detail-label">Giờ mở cửa</div>
-            <div class="detail-value">${station.is24Hours ? '24/7' : (station.openingTime || 'N/A') + ' - ' + (station.closingTime || 'N/A')}</div>
+            <div class="detail-label">Tọa độ GPS</div>
+            <div class="detail-value">${station.latitude ? station.latitude.toFixed(6) : 'N/A'}, ${station.longitude ? station.longitude.toFixed(6) : 'N/A'}</div>
         </div>
         <div class="detail-row">
             <div class="detail-label">Tổng điểm sạc</div>
@@ -616,10 +704,17 @@ async function showStationDetail(stationId) {
         </div>
         
         <h4 style="margin: 20px 0 12px; font-size: 16px; font-weight: 600;">Danh sách điểm sạc</h4>
-        <div class="spots-grid">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px;">
             ${spots.map(spot => `
-                <div class="spot-item ${getSpotStatusClass(spot.status)}" title="${getSpotStatusText(spot.status)}">
-                    ${spot.spotNumber}
+                <div style="padding: 12px; background: #F9FAFB; border-radius: 8px; border-left: 3px solid ${getSpotStatusColor(spot.status)};">
+                    <div style="font-weight: 600; margin-bottom: 4px;">${spot.spotNumber}</div>
+                    <div style="font-size: 12px; color: #6B7280; margin-bottom: 2px;">${spot.connectorType} - ${spot.powerOutput}kW</div>
+                    <div style="font-size: 12px; color: #6B7280; margin-bottom: 4px;">${spot.pricePerKwh}đ/kWh</div>
+                    <div style="font-size: 11px;">
+                        <span class="station-status-badge ${getSpotStatusClass(spot.status)}" style="font-size: 10px; padding: 2px 8px;">
+                            ${getSpotStatusText(spot.status)}
+                        </span>
+                    </div>
                 </div>
             `).join('')}
         </div>
@@ -627,6 +722,16 @@ async function showStationDetail(stationId) {
     
     document.getElementById('modalBody').innerHTML = modalContent;
     document.getElementById('stationModal').classList.add('show');
+}
+
+function getSpotStatusColor(status) {
+    const colors = {
+        0: '#10B981', // Available - Green
+        1: '#3B82F6', // Occupied - Blue
+        2: '#F59E0B', // Maintenance - Orange
+        3: '#EF4444'  // Out of service - Red
+    };
+    return colors[status] || '#6B7280';
 }
 
 function closeModal() {

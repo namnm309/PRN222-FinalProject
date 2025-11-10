@@ -470,9 +470,15 @@
         var lastSidebarState = defaultSidebarState;
 
         function setSidebarLoading() {
-            if (stationCountTextEl) stationCountTextEl.textContent = 'Đang tìm kiếm trạm sạc...';
+            if (stationCountTextEl) stationCountTextEl.textContent = '🔍 Đang tìm kiếm trạm sạc...';
             if (stationListEl) {
-                stationListEl.innerHTML = '<div class="station-empty">Đang tìm trạm sạc gần bạn...</div>';
+                stationListEl.innerHTML = `
+                    <div class="station-empty" style="padding: 40px 20px;">
+                        <div style="font-size: 48px; margin-bottom: 12px; animation: pulse 1.5s ease-in-out infinite;">⚡</div>
+                        <div style="font-weight: 600; margin-bottom: 8px; color: #1F2937;">Đang tìm trạm sạc gần bạn</div>
+                        <div style="font-size: 12px; color: #6B7280;">Vui lòng đợi trong giây lát...</div>
+                    </div>
+                `;
             }
         }
 
@@ -632,26 +638,7 @@
                         if (mapInstance.invalidateSize) mapInstance.invalidateSize();
                     }, 300);
                     
-                    var stations = [
-                        { lat: 21.0285, lng: 105.8542, status: "available" },
-                        { lat: 21.0055, lng: 105.8435, status: "available" },
-                        { lat: 21.0175, lng: 105.9185, status: "full" },
-                        { lat: 21.0375, lng: 105.8145, status: "available" },
-                        { lat: 21.0245, lng: 105.8525, status: "busy" },
-                        { lat: 21.0505, lng: 105.7545, status: "available" }
-                    ];
-                    
-                    for (var i = 0; i < stations.length; i++) {
-                        var s = stations[i];
-                        var c = s.status === 'available' ? '#00A63E' : s.status === 'busy' ? '#F0B100' : '#E7000B';
-                        var icon = L.divIcon({
-                            className: 'custom-marker',
-                            html: '<div style="background:' + c + ';width:16px;height:16px;border-radius:50%;border:2px solid white;"></div>',
-                            iconSize: [16, 16],
-                            iconAnchor: [8, 8]
-                        });
-                        L.marker([s.lat, s.lng], {icon: icon}).addTo(mapInstance);
-                    }
+                    // Don't show hardcoded stations anymore - will load real data from user location
                     
                     // Function to update user location
                     function updateUserLocation(lat, lng, showPopup) {
@@ -681,6 +668,7 @@
                     }
 
                     function fetchApproximateLocation() {
+                        console.log('🌐 Đang lấy vị trí từ IP address...');
                         return fetch('https://ipapi.co/json/')
                             .then(function(response) {
                                 if (!response.ok) {
@@ -694,7 +682,12 @@
                                 if (isNaN(lat) || isNaN(lng)) {
                                     throw new Error('Invalid IP location response');
                                 }
-                                return { lat: lat, lng: lng };
+                                console.log('✅ IP Location:', lat, lng, '(' + (data.city || '') + ', ' + (data.country_name || '') + ')');
+                                return { lat: lat, lng: lng, city: data.city, country: data.country_name };
+                            })
+                            .catch(function(err) {
+                                console.error('❌ IP location failed:', err);
+                                throw err;
                             });
                     }
 
@@ -740,19 +733,28 @@
 
                         navigator.geolocation.getCurrentPosition(
                             function(position) {
-                                updateUserLocation(position.coords.latitude, position.coords.longitude, showPopup);
+                                var lat = position.coords.latitude;
+                                var lng = position.coords.longitude;
+                                updateUserLocation(lat, lng, showPopup);
+                                
+                                console.log('✅ Vị trí chính xác:', lat, lng);
+                                
                                 onFinally();
                             },
                             function(error) {
-                                var errorMessage = 'Không thể lấy vị trí của bạn.';
+                                console.log('❌ Lỗi lấy vị trí GPS:', error);
+                                
+                                var errorMessage = 'Không thể lấy vị trí GPS chính xác.';
                                 if (error && error.code === 1) {
-                                    errorMessage = 'Bạn đã từ chối quyền truy cập vị trí.';
+                                    errorMessage = 'Bạn đã từ chối quyền truy cập vị trí. Sẽ dùng vị trí ước lượng.';
                                 } else if (error && error.code === 2) {
-                                    errorMessage = 'Vị trí hiện không khả dụng.';
+                                    errorMessage = 'Vị trí GPS không khả dụng. Sẽ dùng vị trí ước lượng.';
                                 } else if (error && error.code === 3) {
-                                    errorMessage = 'Yêu cầu lấy vị trí bị hết thời gian.';
+                                    errorMessage = 'Yêu cầu GPS hết thời gian. Sẽ dùng vị trí ước lượng.';
                                 }
 
+                                console.log('🔄 Chuyển sang IP location...');
+                                
                                 useApproximateLocation({
                                     showPopup: showPopup,
                                     notify: notify,
@@ -762,14 +764,40 @@
                             },
                             {
                                 enableHighAccuracy: true,
-                                timeout: 10000,
-                                maximumAge: 0
+                                timeout: 15000,
+                                maximumAge: 300000
                             }
                         );
                     }
                     
-                    // Try to get real location on page load
-                    requestUserLocation({ showPopup: false, notify: false });
+                    // Show initial loading state
+                    console.log('🚀 Bắt đầu tải trang Home...');
+                    setSidebarLoading();
+                    if (stationCountTextEl) stationCountTextEl.textContent = '📍 Đang xác định vị trí của bạn...';
+                    
+                    // Try to get real location on page load and automatically search nearby stations
+                    requestUserLocation({ 
+                        showPopup: true, 
+                        notify: false,
+                        onFinally: function() {
+                            console.log('✅ Đã lấy vị trí, bắt đầu tìm trạm sạc...');
+                            // After getting user location, automatically search for nearby stations
+                            setTimeout(function() {
+                                if (mapInstance) {
+                                    // Trigger automatic search for nearby stations
+                                    setSidebarLoading();
+                                    if (stationCountTextEl) stationCountTextEl.textContent = '🔍 Đang tìm trạm sạc gần bạn...';
+                                    
+                                    searchNearbyStations(defaultSidebarState).catch(function(err){
+                                        console.error('❌ Lỗi tìm trạm sạc:', err);
+                                        // On error, restore default state
+                                        applySidebarState(defaultSidebarState);
+                                        if (stationCountTextEl) stationCountTextEl.textContent = '❌ Không thể tải trạm sạc. Vui lòng thử lại.';
+                                    });
+                                }
+                            }, 500);
+                        }
+                    });
                     
                     // Add click handler for location button
                     var btnLocation = document.getElementById('btn-current-location');
@@ -958,6 +986,11 @@
             color: #4A5565;
             font-size: 13px;
             line-height: 20px;
+        }
+        
+        @@keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
         }
     </style>
 }

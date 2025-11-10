@@ -189,11 +189,40 @@ body {
   border-radius: 8px;
   transition: all 0.2s;
   position: relative;
+  display: inline-flex;
+  align-items: center;
 }
 
 .nav-link:hover {
   color: #101828;
   background: #F9FAFB;
+}
+
+/* Dashboard Link - Special styling */
+.nav-link-dashboard {
+  background: linear-gradient(135deg, #00A63E 0%, #008631 100%);
+  color: white !important;
+  font-weight: 600;
+  padding: 10px 18px;
+  box-shadow: 0 2px 8px rgba(0, 166, 62, 0.25);
+  border: none;
+  margin-right: 16px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.nav-link-dashboard:hover {
+  background: linear-gradient(135deg, #008631 0%, #006b28 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 166, 62, 0.35);
+  color: white !important;
+}
+
+.nav-link-dashboard svg {
+  flex-shrink: 0;
 }
 
 .nav-link.active {

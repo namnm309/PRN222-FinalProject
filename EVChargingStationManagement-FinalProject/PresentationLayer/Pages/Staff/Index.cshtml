@@ -31,70 +31,115 @@
     /* KPI Cards */
     .kpis {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 24px;
         margin-bottom: 32px;
     }
 
     .kpi-card {
         background: white;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         border: 1px solid #E5E7EB;
-        transition: all 0.2s;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .kpi-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #00A63E 0%, #008631 100%);
+        opacity: 0;
+        transition: opacity 0.3s;
     }
 
     .kpi-card:hover {
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+        transform: translateY(-4px);
+        border-color: #00A63E;
+    }
+
+    .kpi-card:hover::before {
+        opacity: 1;
     }
 
     .kpi-header {
         display: flex;
         align-items: center;
-        gap: 12px;
-        margin-bottom: 16px;
+        gap: 16px;
+        margin-bottom: 20px;
     }
 
     .kpi-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 10px;
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
+        font-size: 28px;
+        flex-shrink: 0;
     }
 
-    .kpi-icon.green { background: #D1FAE5; }
-    .kpi-icon.blue { background: #DBEAFE; }
-    .kpi-icon.orange { background: #FED7AA; }
-    .kpi-icon.red { background: #FEE2E2; }
+    .kpi-icon.green { 
+        background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%);
+    }
+    .kpi-icon.blue { 
+        background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
+    }
+    .kpi-icon.orange { 
+        background: linear-gradient(135deg, #FED7AA 0%, #FDE68A 100%);
+    }
+    .kpi-icon.red { 
+        background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+    }
 
-    .kpi-info h3 {
-        font-size: 14px;
-        font-weight: 500;
+    .kpi-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .kpi-label {
+        font-size: 13px;
+        font-weight: 600;
         color: #6B7280;
-        margin: 0 0 4px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
     }
 
     .kpi-value {
-        font-size: 32px;
-        font-weight: 700;
+        font-size: 36px;
+        font-weight: 800;
         color: #101828;
-        margin-bottom: 8px;
+        line-height: 1;
+        margin-bottom: 12px;
+        font-family: 'Inter', -apple-system, sans-serif;
     }
 
     .kpi-change {
         font-size: 13px;
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 6px;
+        font-weight: 500;
     }
 
-    .kpi-change.positive { color: #10B981; }
-    .kpi-change.negative { color: #EF4444; }
+    .kpi-change.positive { 
+        color: #10B981;
+    }
+    .kpi-change.negative { 
+        color: #EF4444;
+    }
+    .kpi-change.neutral {
+        color: #6B7280;
+    }
 
     /* Quick Actions */
     .quick-actions {
@@ -353,43 +398,51 @@
         <div class="kpi-card">
             <div class="kpi-header">
                 <div class="kpi-icon green">⚡</div>
+                <div class="kpi-content">
+                    <div class="kpi-label">Phiên sạc đang hoạt động</div>
+                    <div class="kpi-value" id="activeSessions">0</div>
+                </div>
             </div>
-            <h3 style="font-size: 14px; color: #6B7280; margin: 0 0 8px 0;">Phiên sạc đang hoạt động</h3>
-            <div class="kpi-value" id="activeSessions">0</div>
             <div class="kpi-change positive">
-                <span>↑ 12%</span> so với hôm qua
+                <span>↑ 8% đã hoạt động</span>
             </div>
         </div>
 
         <div class="kpi-card">
             <div class="kpi-header">
                 <div class="kpi-icon blue">🔌</div>
+                <div class="kpi-content">
+                    <div class="kpi-label">Điểm sạc khả dụng</div>
+                    <div class="kpi-value" id="availableSpots">0</div>
+                </div>
             </div>
-            <h3 style="font-size: 14px; color: #6B7280; margin: 0 0 8px 0;">Điểm sạc khả dụng</h3>
-            <div class="kpi-value" id="availableSpots">0</div>
             <div class="kpi-change positive">
-                <span>↑ 8%</span> đã hoạt động
+                <span>Sẵn sàng phục vụ</span>
             </div>
         </div>
 
         <div class="kpi-card">
             <div class="kpi-header">
                 <div class="kpi-icon orange">⚠️</div>
+                <div class="kpi-content">
+                    <div class="kpi-label">Báo cáo lỗi chờ xử lý</div>
+                    <div class="kpi-value" id="pendingErrors">0</div>
+                </div>
             </div>
-            <h3 style="font-size: 14px; color: #6B7280; margin: 0 0 8px 0;">Báo cáo lỗi chờ xử lý</h3>
-            <div class="kpi-value" id="pendingErrors">0</div>
-            <div class="kpi-change negative">
-                <span>↓ 3</span> cần xử lý ngay
+            <div class="kpi-change neutral" id="pendingErrorsChange">
+                <span>↓ 3 cần xử lý ngay</span>
             </div>
         </div>
 
         <div class="kpi-card">
             <div class="kpi-header">
                 <div class="kpi-icon red">🔧</div>
+                <div class="kpi-content">
+                    <div class="kpi-label">Bảo trì hôm nay</div>
+                    <div class="kpi-value" id="todayMaintenance">0</div>
+                </div>
             </div>
-            <h3 style="font-size: 14px; color: #6B7280; margin: 0 0 8px 0;">Bảo trì hôm nay</h3>
-            <div class="kpi-value" id="todayMaintenance">0</div>
-            <div class="kpi-change">
+            <div class="kpi-change neutral">
                 <span>2 đã hoàn thành</span>
             </div>
         </div>
@@ -459,21 +512,54 @@
             const sessionsResponse = await fetch('/api/ChargingSession/active');
             if (sessionsResponse.ok) {
                 const sessions = await sessionsResponse.json();
-                document.getElementById('activeSessions').textContent = sessions.length;
+                const activeCount = sessions.length;
+                document.getElementById('activeSessions').textContent = activeCount;
+                
+                // Update change indicator
+                const changeElem = document.querySelector('.kpi-card:nth-child(1) .kpi-change');
+                if (activeCount > 0) {
+                    changeElem.className = 'kpi-change positive';
+                    changeElem.innerHTML = '<span>✓ ' + activeCount + ' phiên đang hoạt động</span>';
+                } else {
+                    changeElem.className = 'kpi-change neutral';
+                    changeElem.innerHTML = '<span>Chưa có phiên sạc nào</span>';
+                }
             }
 
             // Load available spots count
             const spotsResponse = await fetch('/api/ChargingSpot/status/0'); // Available = 0
             if (spotsResponse.ok) {
                 const spots = await spotsResponse.json();
-                document.getElementById('availableSpots').textContent = spots.length;
+                const availableCount = spots.length;
+                document.getElementById('availableSpots').textContent = availableCount;
+                
+                // Update change indicator
+                const changeElem = document.querySelector('.kpi-card:nth-child(2) .kpi-change');
+                if (availableCount > 0) {
+                    changeElem.className = 'kpi-change positive';
+                    changeElem.innerHTML = '<span>✓ Sẵn sàng phục vụ</span>';
+                } else {
+                    changeElem.className = 'kpi-change neutral';
+                    changeElem.innerHTML = '<span>Không có điểm sạc khả dụng</span>';
+                }
             }
 
             // Load pending errors count
             const errorsResponse = await fetch('/api/StationError/status/0'); // Reported = 0
             if (errorsResponse.ok) {
                 const errors = await errorsResponse.json();
-                document.getElementById('pendingErrors').textContent = errors.length;
+                const errorCount = errors.length;
+                document.getElementById('pendingErrors').textContent = errorCount;
+                
+                // Update change indicator
+                const changeElem = document.querySelector('.kpi-card:nth-child(3) .kpi-change');
+                if (errorCount > 0) {
+                    changeElem.className = 'kpi-change negative';
+                    changeElem.innerHTML = '<span>⚠️ ' + errorCount + ' cần xử lý ngay</span>';
+                } else {
+                    changeElem.className = 'kpi-change positive';
+                    changeElem.innerHTML = '<span>✓ Không có lỗi</span>';
+                }
             }
 
             // Load today's maintenance count
@@ -484,10 +570,26 @@
                 const todayMaintenance = maintenance.filter(m => 
                     new Date(m.scheduledDate).toDateString() === today
                 );
-                document.getElementById('todayMaintenance').textContent = todayMaintenance.length;
+                const maintenanceCount = todayMaintenance.length;
+                document.getElementById('todayMaintenance').textContent = maintenanceCount;
+                
+                // Update change indicator
+                const changeElem = document.querySelector('.kpi-card:nth-child(4) .kpi-change');
+                if (maintenanceCount > 0) {
+                    changeElem.className = 'kpi-change neutral';
+                    changeElem.innerHTML = '<span>📅 ' + maintenanceCount + ' lịch hôm nay</span>';
+                } else {
+                    changeElem.className = 'kpi-change positive';
+                    changeElem.innerHTML = '<span>✓ Không có lịch bảo trì</span>';
+                }
             }
         } catch (error) {
             console.error('Error loading dashboard data:', error);
+            // Set default values on error
+            document.getElementById('activeSessions').textContent = '—';
+            document.getElementById('availableSpots').textContent = '—';
+            document.getElementById('pendingErrors').textContent = '—';
+            document.getElementById('todayMaintenance').textContent = '—';
         }
     }
 
