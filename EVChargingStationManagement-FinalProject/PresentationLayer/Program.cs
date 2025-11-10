@@ -84,6 +84,10 @@ namespace PresentationLayer
             builder.Services.AddScoped<IStationErrorService, StationErrorService>();
             builder.Services.AddScoped<IChargingSessionService, ChargingSessionService>();
             builder.Services.AddScoped<IStationMonitoringService, StationMonitoringService>();
+            
+            // TODO: Uncomment after merging Booking/Vehicle services from main branch
+            // builder.Services.AddScoped<IBookingService, BookingService>();
+            // builder.Services.AddScoped<IVehicleService, VehicleService>();
 
             // Add SignalR for real-time monitoring
             builder.Services.AddSignalR(options =>

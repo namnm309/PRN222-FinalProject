@@ -2,6 +2,7 @@ using DataAccessLayer.Enums;
 
 namespace BusinessLayer.DTOs
 {
+    // DTO for ChargingSession (TuDev - standalone sessions)
     public class ChargingSessionDTO
     {
         public Guid Id { get; set; }
@@ -38,6 +39,21 @@ namespace BusinessLayer.DTOs
         }
     }
 
+    // DTO for Booking-based ChargingSession (Main branch)
+    public class BookingChargingSessionDTO
+    {
+        public Guid Id { get; set; }
+        public Guid BookingId { get; set; }
+        public Guid ChargingStationId { get; set; }
+        public Guid ChargingSpotId { get; set; }
+        public DateTime? StartedAt { get; set; }
+        public DateTime? EndedAt { get; set; }
+        public decimal? EnergyKwh { get; set; }
+        public decimal? PricePerKwh { get; set; }
+        public decimal? TotalAmount { get; set; }
+        public string Status { get; set; } = string.Empty;
+    }
+
     public class CreateChargingSessionRequest
     {
         public Guid UserId { get; set; }
@@ -67,4 +83,3 @@ namespace BusinessLayer.DTOs
         public string? Notes { get; set; }
     }
 }
-
