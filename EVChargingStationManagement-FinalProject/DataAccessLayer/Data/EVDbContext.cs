@@ -19,12 +19,6 @@ namespace DataAccessLayer.Data
         public DbSet<ChargingSpot> ChargingSpots { get; set; }
         public DbSet<StationMaintenance> StationMaintenances { get; set; }
         public DbSet<StationError> StationErrors { get; set; }
-		public DbSet<Vehicle> Vehicles { get; set; }
-		public DbSet<Booking> Bookings { get; set; }
-		public DbSet<ChargingSession> ChargingSessions { get; set; }
-		public DbSet<Transaction> Transactions { get; set; }
-		public DbSet<Review> Reviews { get; set; }
-		public DbSet<BookingPayment> BookingPayments { get; set; }
 
 
         //Cấu hình chi tiết entities thì tại đây
@@ -125,106 +119,6 @@ namespace DataAccessLayer.Data
                     .WithMany()
                     .HasForeignKey(e => e.ResolvedByUserId)
                     .OnDelete(DeleteBehavior.Restrict);
-            });
-
-			// Vehicle
-			modelBuilder.Entity<Vehicle>(entity =>
-			{
-				entity.HasIndex(e => e.UserId);
-				entity.HasIndex(e => e.LicensePlate).IsUnique();
-				entity.Property(e => e.LicensePlate).IsRequired();
-				entity.HasOne(e => e.User)
-					.WithMany()
-					.HasForeignKey(e => e.UserId)
-					.OnDelete(DeleteBehavior.Cascade);
-			});
-
-			// Booking
-			modelBuilder.Entity<Booking>(entity =>
-			{
-				entity.HasIndex(e => e.UserId);
-				entity.HasIndex(e => e.VehicleId);
-				entity.HasIndex(e => e.ChargingStationId);
-				entity.HasIndex(e => e.ChargingSpotId);
-				entity.HasIndex(e => e.StartTime);
-				entity.HasIndex(e => e.EndTime);
-
-				entity.HasOne(e => e.User)
-					.WithMany()
-					.HasForeignKey(e => e.UserId)
-					.OnDelete(DeleteBehavior.Restrict);
-
-				entity.HasOne(e => e.Vehicle)
-					.WithMany(v => v.Bookings!)
-					.HasForeignKey(e => e.VehicleId)
-					.OnDelete(DeleteBehavior.Restrict);
-
-				entity.HasOne(e => e.ChargingStation)
-					.WithMany()
-					.HasForeignKey(e => e.ChargingStationId)
-					.OnDelete(DeleteBehavior.Restrict);
-
-				entity.HasOne(e => e.ChargingSpot)
-					.WithMany()
-					.HasForeignKey(e => e.ChargingSpotId)
-					.OnDelete(DeleteBehavior.Restrict);
-			});
-
-			// ChargingSession
-			modelBuilder.Entity<ChargingSession>(entity =>
-			{
-				entity.HasIndex(e => e.BookingId).IsUnique();
-				entity.HasOne(e => e.Booking)
-					.WithOne(b => b.ChargingSession!)
-					.HasForeignKey<ChargingSession>(e => e.BookingId)
-					.OnDelete(DeleteBehavior.Cascade);
-
-				entity.HasOne(e => e.ChargingStation)
-					.WithMany()
-					.HasForeignKey(e => e.ChargingStationId)
-					.OnDelete(DeleteBehavior.Restrict);
-
-				entity.HasOne(e => e.ChargingSpot)
-					.WithMany()
-					.HasForeignKey(e => e.ChargingSpotId)
-					.OnDelete(DeleteBehavior.Restrict);
-			});
-
-			// Transaction
-			modelBuilder.Entity<Transaction>(entity =>
-			{
-				entity.HasIndex(e => e.ChargingSessionId).IsUnique();
-				entity.HasOne(e => e.ChargingSession)
-					.WithOne(s => s.Transaction!)
-					.HasForeignKey<Transaction>(e => e.ChargingSessionId)
-					.OnDelete(DeleteBehavior.Cascade);
-			});
-
-			// Review
-			modelBuilder.Entity<Review>(entity =>
-			{
-				entity.HasIndex(e => e.UserId);
-				entity.HasIndex(e => e.ChargingStationId);
-				entity.HasOne(e => e.User)
-					.WithMany()
-					.HasForeignKey(e => e.UserId)
-					.OnDelete(DeleteBehavior.Restrict);
-				entity.HasOne(e => e.ChargingStation)
-					.WithMany()
-					.HasForeignKey(e => e.ChargingStationId)
-					.OnDelete(DeleteBehavior.Cascade);
-			});
-
-			// BookingPayment
-			modelBuilder.Entity<BookingPayment>(entity =>
-			{
-				entity.HasIndex(e => e.BookingId);
-				entity.HasIndex(e => e.VnpTxnRef);
-				entity.HasIndex(e => e.Status);
-				entity.HasOne(e => e.Booking)
-					.WithMany()
-					.HasForeignKey(e => e.BookingId)
-					.OnDelete(DeleteBehavior.Cascade);
             });
         }
     }

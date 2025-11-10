@@ -22,161 +22,6 @@ namespace DataAccessLayer.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("DataAccessLayer.Entities.Booking", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ChargingSpotId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ChargingStationId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("EndTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("StartTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("VehicleId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ChargingSpotId");
-
-                    b.HasIndex("ChargingStationId");
-
-                    b.HasIndex("EndTime");
-
-                    b.HasIndex("StartTime");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("VehicleId");
-
-                    b.ToTable("tbl_booking");
-                });
-
-            modelBuilder.Entity("DataAccessLayer.Entities.BookingPayment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<long>("Amount")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("BankCode")
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("BookingId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("PaidAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Provider")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("VnpTransactionNo")
-                        .HasColumnType("text");
-
-                    b.Property<string>("VnpTxnRef")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BookingId");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("VnpTxnRef");
-
-                    b.ToTable("tbl_booking_payment");
-                });
-
-            modelBuilder.Entity("DataAccessLayer.Entities.ChargingSession", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("BookingId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ChargingSpotId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ChargingStationId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("EndedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal?>("EnergyKwh")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal?>("PricePerKwh")
-                        .HasColumnType("numeric");
-
-                    b.Property<DateTime?>("StartedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<decimal?>("TotalAmount")
-                        .HasColumnType("numeric");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BookingId")
-                        .IsUnique();
-
-                    b.HasIndex("ChargingSpotId");
-
-                    b.HasIndex("ChargingStationId");
-
-                    b.ToTable("tbl_charging_session");
-                });
-
             modelBuilder.Entity("DataAccessLayer.Entities.ChargingSpot", b =>
                 {
                     b.Property<Guid>("Id")
@@ -325,42 +170,6 @@ namespace DataAccessLayer.Migrations
                     b.ToTable("tbl_refresh_token");
                 });
 
-            modelBuilder.Entity("DataAccessLayer.Entities.Review", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ChargingStationId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Comment")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Rating")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("ReviewedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ChargingStationId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("tbl_review");
-                });
-
             modelBuilder.Entity("DataAccessLayer.Entities.StationError", b =>
                 {
                     b.Property<Guid>("Id")
@@ -495,46 +304,6 @@ namespace DataAccessLayer.Migrations
                     b.ToTable("tbl_station_maintenance");
                 });
 
-            modelBuilder.Entity("DataAccessLayer.Entities.Transaction", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("numeric");
-
-                    b.Property<Guid>("ChargingSessionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("PaidAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("PaymentMethod")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("ReferenceCode")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ChargingSessionId")
-                        .IsUnique();
-
-                    b.ToTable("Transactions");
-                });
-
             modelBuilder.Entity("DataAccessLayer.Entities.Users", b =>
                 {
                     b.Property<Guid>("Id")
@@ -588,123 +357,6 @@ namespace DataAccessLayer.Migrations
                     b.ToTable("tbl_user");
                 });
 
-            modelBuilder.Entity("DataAccessLayer.Entities.Vehicle", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ConnectorType")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("LicensePlate")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Make")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Model")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Vin")
-                        .HasColumnType("text");
-
-                    b.Property<int?>("Year")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LicensePlate")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Vehicles");
-                });
-
-            modelBuilder.Entity("DataAccessLayer.Entities.Booking", b =>
-                {
-                    b.HasOne("DataAccessLayer.Entities.ChargingSpot", "ChargingSpot")
-                        .WithMany()
-                        .HasForeignKey("ChargingSpotId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("DataAccessLayer.Entities.ChargingStation", "ChargingStation")
-                        .WithMany()
-                        .HasForeignKey("ChargingStationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("DataAccessLayer.Entities.Users", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("DataAccessLayer.Entities.Vehicle", "Vehicle")
-                        .WithMany("Bookings")
-                        .HasForeignKey("VehicleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("ChargingSpot");
-
-                    b.Navigation("ChargingStation");
-
-                    b.Navigation("User");
-
-                    b.Navigation("Vehicle");
-                });
-
-            modelBuilder.Entity("DataAccessLayer.Entities.BookingPayment", b =>
-                {
-                    b.HasOne("DataAccessLayer.Entities.Booking", "Booking")
-                        .WithMany()
-                        .HasForeignKey("BookingId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Booking");
-                });
-
-            modelBuilder.Entity("DataAccessLayer.Entities.ChargingSession", b =>
-                {
-                    b.HasOne("DataAccessLayer.Entities.Booking", "Booking")
-                        .WithOne("ChargingSession")
-                        .HasForeignKey("DataAccessLayer.Entities.ChargingSession", "BookingId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("DataAccessLayer.Entities.ChargingSpot", "ChargingSpot")
-                        .WithMany()
-                        .HasForeignKey("ChargingSpotId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("DataAccessLayer.Entities.ChargingStation", "ChargingStation")
-                        .WithMany()
-                        .HasForeignKey("ChargingStationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Booking");
-
-                    b.Navigation("ChargingSpot");
-
-                    b.Navigation("ChargingStation");
-                });
-
             modelBuilder.Entity("DataAccessLayer.Entities.ChargingSpot", b =>
                 {
                     b.HasOne("DataAccessLayer.Entities.ChargingStation", "ChargingStation")
@@ -723,25 +375,6 @@ namespace DataAccessLayer.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("DataAccessLayer.Entities.Review", b =>
-                {
-                    b.HasOne("DataAccessLayer.Entities.ChargingStation", "ChargingStation")
-                        .WithMany()
-                        .HasForeignKey("ChargingStationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("DataAccessLayer.Entities.Users", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("ChargingStation");
 
                     b.Navigation("User");
                 });
@@ -811,46 +444,9 @@ namespace DataAccessLayer.Migrations
                     b.Navigation("ReportedByUser");
                 });
 
-            modelBuilder.Entity("DataAccessLayer.Entities.Transaction", b =>
-                {
-                    b.HasOne("DataAccessLayer.Entities.ChargingSession", "ChargingSession")
-                        .WithOne("Transaction")
-                        .HasForeignKey("DataAccessLayer.Entities.Transaction", "ChargingSessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ChargingSession");
-                });
-
-            modelBuilder.Entity("DataAccessLayer.Entities.Vehicle", b =>
-                {
-                    b.HasOne("DataAccessLayer.Entities.Users", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("DataAccessLayer.Entities.Booking", b =>
-                {
-                    b.Navigation("ChargingSession");
-                });
-
-            modelBuilder.Entity("DataAccessLayer.Entities.ChargingSession", b =>
-                {
-                    b.Navigation("Transaction");
-                });
-
             modelBuilder.Entity("DataAccessLayer.Entities.ChargingStation", b =>
                 {
                     b.Navigation("ChargingSpots");
-                });
-
-            modelBuilder.Entity("DataAccessLayer.Entities.Vehicle", b =>
-                {
-                    b.Navigation("Bookings");
                 });
 #pragma warning restore 612, 618
         }
