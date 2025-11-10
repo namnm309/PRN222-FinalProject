@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace PresentationLayer.DTOs
+namespace BusinessLayer.DTOs
 {
     public class EditProfileRequest
     {

@@ -1,4 +1,4 @@
-namespace PresentationLayer.DTOs
+namespace BusinessLayer.DTOs
 {
     public class AuthResponse
     {
@@ -17,8 +17,4 @@ namespace PresentationLayer.DTOs
         public string Role { get; set; } = string.Empty;
     }
 }
-
-
-
-
 

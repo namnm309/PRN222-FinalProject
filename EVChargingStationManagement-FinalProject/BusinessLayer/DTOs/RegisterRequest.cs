@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using DataAccessLayer.Enums;
 
-namespace PresentationLayer.DTOs
+namespace BusinessLayer.DTOs
 {
     public class RegisterRequest
     {
@@ -32,8 +32,4 @@ namespace PresentationLayer.DTOs
         public UserRole Role { get; set; } = UserRole.EVDriver;
     }
 }
-
-
-
-
 
