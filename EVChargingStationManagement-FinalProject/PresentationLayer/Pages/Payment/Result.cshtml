@@ -1,19 +1,56 @@
 @page
 @model PresentationLayer.Pages.Payment.ResultModel
 @{
+    Layout = null; // No layout, standalone page
     ViewData["Title"] = "Payment Result";
     var isSuccess = Model.IsSuccess;
     var message = Model.Message;
 }
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+</head>
+<body>
 
 <div id="paymentResultModal" class="modal-backdrop" style="display:flex;">
     <div class="modal-card">
-        <button class="modal-close" onclick="closePaymentModal()">×</button>
+        <button class="modal-close" onclick="closePaymentModal()" title="Đóng">×</button>
         <div class="modal-icon @(isSuccess ? "success" : "failed")">
-            @(isSuccess ? "✔" : "✖")
+            @if (isSuccess)
+            {
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            }
+            else
+            {
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            }
         </div>
-        <h2>@(isSuccess ? "Success" : "Failed")</h2>
-        <p>@message</p>
+        <h2 style="margin: 16px 0 12px; font-size: 24px; font-weight: 600; color: @(isSuccess ? "#16a34a" : "#dc2626");">
+            @(isSuccess ? "Thành công" : "Thất bại")
+        </h2>
+        <p style="font-size: 16px; line-height: 1.6; color: #4A5565; margin: 0 0 24px; padding: 0 20px;">
+            @message
+        </p>
+        <button onclick="closePaymentModal()" style="
+            background: @(isSuccess ? "#16a34a" : "#dc2626");
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        " onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+            Đóng
+        </button>
     </div>
 </div>
 
@@ -49,28 +86,51 @@
         line-height: 1;
     }
     .modal-icon {
-        width: 70px;
-        height: 70px;
+        width: 80px;
+        height: 80px;
         border-radius: 50%;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 12px;
-        font-size: 36px;
+        margin: 0 auto 20px;
         color: #fff;
     }
-    .modal-icon.success { background: #16a34a; }
-    .modal-icon.failed { background: #dc2626; }
-    h2 {
-        margin: 6px 0 8px;
+    .modal-icon.success { 
+        background: #16a34a; 
+        box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+    }
+    .modal-icon.failed { 
+        background: #dc2626; 
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+    }
+    .modal-icon svg {
+        width: 48px;
+        height: 48px;
     }
 </style>
 
 <script>
     function closePaymentModal() {
-        const el = document.getElementById('paymentResultModal');
-        if (el) el.style.display = 'none';
+        // Redirect về trang chủ sau khi đóng modal
+        window.location.href = '/';
     }
+    
+    // Tự động đóng sau 5 giây nếu user không click
+    setTimeout(function() {
+        const el = document.getElementById('paymentResultModal');
+        if (el && el.style.display !== 'none') {
+            closePaymentModal();
+        }
+    }, 5000);
+    
+    // Log thông tin thanh toán để debug
+    console.log('Payment Result:', {
+        isSuccess: @(isSuccess ? "true" : "false"),
+        message: '@message',
+        responseCode: '@(Model.ResponseCode ?? "N/A")',
+        txnRef: '@(Model.TxnRef ?? "N/A")',
+        amount: '@(Model.Amount ?? "N/A")'
+    });
 </script>
-
-
+</body>
+</html>
