@@ -89,6 +89,10 @@ body {
     padding: 8px 12px;
   }
   
+  .btn-register {
+    display: none;
+  }
+  
   .btn-login {
     display: none;
   }
@@ -218,6 +222,27 @@ body {
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+}
+
+.btn-register {
+  padding: 9.5px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: all 0.2s;
+  border: none;
+  background: #00A63E;
+  box-shadow: 0px 2px 4px rgba(0, 166, 62, 0.2);
+}
+
+.btn-register:hover {
+  background: #008A33;
+  color: white;
+  text-decoration: none;
+  box-shadow: 0px 4px 8px rgba(0, 166, 62, 0.3);
+  transform: translateY(-1px);
 }
 
 .btn-login {
@@ -586,6 +611,23 @@ body {
   height: 1px;
   background: rgba(0, 0, 0, 0.1);
   margin: 8px 0;
+}
+
+.mobile-nav-register {
+  background: #00A63E;
+  color: white !important;
+  border: none;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.mobile-nav-register:hover {
+  background: #008A33 !important;
+  color: white !important;
+}
+
+.mobile-nav-register svg {
+  color: white !important;
 }
 
 .mobile-nav-login {

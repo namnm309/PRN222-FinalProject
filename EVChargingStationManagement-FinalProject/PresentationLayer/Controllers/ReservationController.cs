@@ -1,0 +1,227 @@
+using System.Linq;
+using System.Security.Claims;
+using BusinessLayer.DTOs;
+using BusinessLayer.Services;
+using DataAccessLayer.Entities;
+using DataAccessLayer.Enums;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace PresentationLayer.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    [Authorize]
+    public class ReservationController : ControllerBase
+    {
+        private readonly IReservationService _reservationService;
+        private readonly IChargingSpotService _spotService;
+        private readonly IRealtimeNotifier _notifier;
+        private readonly IChargingStationService _stationService;
+
+        public ReservationController(
+            IReservationService reservationService,
+            IChargingSpotService spotService,
+            IRealtimeNotifier notifier,
+            IChargingStationService stationService)
+        {
+            _reservationService = reservationService;
+            _spotService = spotService;
+            _notifier = notifier;
+            _stationService = stationService;
+        }
+
+        [HttpGet("me")]
+        [Authorize(Roles = "EVDriver,Admin")]
+        public async Task<IActionResult> GetMyReservations([FromQuery] DateTime? from, [FromQuery] DateTime? to)
+        {
+            var userId = GetUserId();
+            var reservations = await _reservationService.GetReservationsForUserAsync(userId, from, to);
+            return Ok(reservations.Select(MapToDto));
+        }
+
+        [HttpGet("{id:guid}")]
+        public async Task<IActionResult> GetReservationById(Guid id)
+        {
+            var reservation = await _reservationService.GetReservationByIdAsync(id);
+            if (reservation == null)
+            {
+                return NotFound();
+            }
+
+            var userId = GetUserId();
+            var role = User.FindFirstValue(ClaimTypes.Role);
+            if (reservation.UserId != userId && role != UserRole.Admin.ToString() && role != UserRole.CSStaff.ToString())
+            {
+                return Forbid();
+            }
+
+            return Ok(MapToDto(reservation));
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "EVDriver,Admin")]
+        public async Task<IActionResult> CreateReservation([FromBody] CreateReservationRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { message = "Dữ liệu không hợp lệ", errors = ModelState });
+            }
+
+            try
+            {
+                var spot = await _spotService.GetSpotByIdAsync(request.ChargingSpotId);
+                if (spot == null)
+                {
+                    return NotFound(new { message = "Không tìm thấy cổng sạc" });
+                }
+
+                var reservation = new Reservation
+                {
+                    ChargingSpotId = request.ChargingSpotId,
+                    VehicleId = request.VehicleId,
+                    ScheduledStartTime = request.ScheduledStartTime.ToUniversalTime(),
+                    ScheduledEndTime = request.ScheduledEndTime.HasValue ? request.ScheduledEndTime.Value.ToUniversalTime() : default(DateTime),
+                    EstimatedEnergyKwh = request.EstimatedEnergyKwh,
+                    EstimatedCost = request.EstimatedCost,
+                    IsPrepaid = request.IsPrepaid,
+                    Notes = request.Notes
+                };
+
+                var created = await _reservationService.CreateReservationAsync(GetUserId(), reservation);
+                await _notifier.NotifyReservationChangedAsync(created);
+                
+                // Notify station availability change
+                var stationId = created.ChargingSpot?.ChargingStationId ?? Guid.Empty;
+                if (stationId != Guid.Empty)
+                {
+                    await NotifyStationAvailabilityAsync(stationId);
+                }
+                
+                return CreatedAtAction(nameof(GetReservationById), new { id = created.Id }, MapToDto(created));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi tạo đặt trước: " + ex.Message });
+            }
+        }
+
+        [HttpPatch("{id:guid}/status")]
+        [Authorize(Roles = "Admin,CSStaff")]
+        public async Task<IActionResult> UpdateReservationStatus(Guid id, [FromBody] UpdateReservationStatusRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            if (!Enum.IsDefined(typeof(ReservationStatus), request.Status))
+            {
+                return BadRequest(new { message = "Trạng thái không hợp lệ" });
+            }
+
+            var updated = await _reservationService.UpdateReservationStatusAsync(id, request.Status, request.Notes);
+            if (updated == null)
+            {
+                return NotFound();
+            }
+
+            await _notifier.NotifyReservationChangedAsync(updated);
+            
+            // Notify station availability change when status changes (Confirmed, Cancelled, Completed)
+            if (updated.Status == ReservationStatus.Confirmed || 
+                updated.Status == ReservationStatus.Cancelled || 
+                updated.Status == ReservationStatus.Completed)
+            {
+                var stationId = updated.ChargingSpot?.ChargingStationId ?? Guid.Empty;
+                if (stationId != Guid.Empty)
+                {
+                    await NotifyStationAvailabilityAsync(stationId);
+                }
+            }
+            
+            return Ok(MapToDto(updated));
+        }
+
+        [HttpDelete("{id:guid}")]
+        [Authorize(Roles = "EVDriver,Admin")]
+        public async Task<IActionResult> CancelReservation(Guid id, [FromBody] UpdateReservationStatusRequest request)
+        {
+            var userId = GetUserId();
+            var success = await _reservationService.CancelReservationAsync(id, userId, request.Notes);
+            if (!success)
+            {
+                return NotFound();
+            }
+
+            var reservation = await _reservationService.GetReservationByIdAsync(id);
+            if (reservation != null)
+            {
+                await _notifier.NotifyReservationChangedAsync(reservation);
+                
+                // Notify station availability change
+                var stationId = reservation.ChargingSpot?.ChargingStationId ?? Guid.Empty;
+                if (stationId != Guid.Empty)
+                {
+                    await NotifyStationAvailabilityAsync(stationId);
+                }
+            }
+
+            return NoContent();
+        }
+
+        [HttpGet("station/{stationId:guid}")]
+        [Authorize(Roles = "Admin,CSStaff")]
+        public async Task<IActionResult> GetReservationsForStation(Guid stationId, [FromQuery] ReservationStatus? status)
+        {
+            var reservations = await _reservationService.GetReservationsForStationAsync(stationId, status);
+            return Ok(reservations.Select(MapToDto));
+        }
+
+        private ReservationDTO MapToDto(Reservation reservation)
+        {
+            return new ReservationDTO
+            {
+                Id = reservation.Id,
+                ChargingSpotId = reservation.ChargingSpotId,
+                ChargingSpotNumber = reservation.ChargingSpot?.SpotNumber,
+                ChargingStationId = reservation.ChargingSpot?.ChargingStationId ?? Guid.Empty,
+                ChargingStationName = reservation.ChargingSpot?.ChargingStation?.Name,
+                UserId = reservation.UserId,
+                VehicleId = reservation.VehicleId,
+                VehicleName = reservation.Vehicle != null ? $"{reservation.Vehicle.Make} {reservation.Vehicle.Model}" : null,
+                UserFullName = reservation.User?.FullName,
+                Status = reservation.Status,
+                ConfirmationCode = reservation.ConfirmationCode,
+                ScheduledStartTime = reservation.ScheduledStartTime,
+                ScheduledEndTime = reservation.ScheduledEndTime,
+                EstimatedEnergyKwh = reservation.EstimatedEnergyKwh,
+                EstimatedCost = reservation.EstimatedCost,
+                IsPrepaid = reservation.IsPrepaid,
+                Notes = reservation.Notes
+            };
+        }
+
+        private Guid GetUserId()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return Guid.Parse(userId!);
+        }
+
+        private async Task NotifyStationAvailabilityAsync(Guid stationId)
+        {
+            var station = await _stationService.GetStationByIdAsync(stationId);
+            if (station != null)
+            {
+                var spots = station.ChargingSpots?.ToList() ?? new List<ChargingSpot>();
+                var totalSpots = spots.Count;
+                var availableSpots = spots.Count(s => s.Status == SpotStatus.Available);
+                await _notifier.NotifyStationAvailabilityChangedAsync(stationId, totalSpots, availableSpots);
+            }
+        }
+    }
+}
+

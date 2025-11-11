@@ -20,9 +20,17 @@ namespace DataAccessLayer.Entities
 
         public string? Description { get; set; }
 
+        // QR Code and online status
+        public string? QrCode { get; set; }
+        public bool IsOnline { get; set; } = true;
+
         // Navigation properties
         [ForeignKey("ChargingStationId")]
         public virtual ChargingStation? ChargingStation { get; set; }
+
+        public virtual ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
+
+        public virtual ICollection<ChargingSession> ChargingSessions { get; set; } = new List<ChargingSession>();
     }
 }
 

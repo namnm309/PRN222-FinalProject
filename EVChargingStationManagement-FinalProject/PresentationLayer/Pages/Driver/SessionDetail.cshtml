@@ -1,0 +1,82 @@
+@page "/Driver/SessionDetail/{id:guid}"
+@model PresentationLayer.Pages.Driver.SessionDetailModel
+@{
+    Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
+    ViewData["Title"] = "Driver • Chi tiết phiên sạc";
+}
+
+<section class="page-header">
+    <h2>@ViewData["Title"]</h2>
+</section>
+
+<section class="content-grid">
+    <!-- Session Info -->
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <h3>Thông tin phiên sạc</h3>
+        </div>
+        <div class="panel-body" id="session-info">
+            <div class="text-center text-muted">Đang tải...</div>
+        </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <h3>Tiến trình sạc</h3>
+        </div>
+        <div class="panel-body">
+            <!-- SOC Progress -->
+            <div class="progress-section">
+                <div class="progress-label">
+                    <span>Mức pin (SOC)</span>
+                    <span id="soc-percentage" class="progress-value">--</span>
+                </div>
+                <div class="progress" style="height: 30px;">
+                    <div id="soc-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%"></div>
+                </div>
+                <div class="progress-details">
+                    <span>Bắt đầu: <span id="initial-soc">--</span>%</span>
+                    <span>Mục tiêu: <span id="target-soc">--</span>%</span>
+                </div>
+            </div>
+
+            <!-- Energy & Power -->
+            <div class="stats-row">
+                <div class="stat-box">
+                    <div class="stat-label">Năng lượng đã sạc</div>
+                    <div class="stat-value" id="energy-delivered">0 kWh</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Công suất hiện tại</div>
+                    <div class="stat-value" id="current-power">0 kW</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Thời gian đã sạc</div>
+                    <div class="stat-value" id="charging-time">00:00:00</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Chi phí hiện tại</div>
+                    <div class="stat-value" id="current-cost">10,000 VND</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="dashboard-panel" id="session-actions" style="display: none;">
+        <div class="panel-body">
+            <button id="btn-stop-charging" class="btn btn-warning btn-lg w-100 mb-2">Ngưng sạc</button>
+            <button id="btn-payment" class="btn btn-success btn-lg w-100" style="display: none;">Thanh toán</button>
+        </div>
+    </div>
+</section>
+
+<input type="hidden" id="session-id" value="@Model.Id" />
+
+@section Scripts {
+    <script src="~/js/signalr-manager.js"></script>
+    <script src="~/js/driver-session-detail.js"></script>
+}
+
