@@ -1,0 +1,71 @@
+@page
+@model PresentationLayer.Pages.Driver.ReservationsModel
+@{
+    Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
+    ViewData["Title"] = "Driver • Đặt chỗ của tôi";
+}
+
+<section class="page-header">
+    <div>
+        <h2>Đặt chỗ của tôi</h2>
+        <p class="text-muted">Quản lý các đặt chỗ trạm sạc của bạn</p>
+    </div>
+</section>
+
+<section class="filters">
+    <div class="filter-group">
+        <label for="statusFilter">Lọc theo trạng thái</label>
+        <select id="statusFilter" class="form-select">
+            <option value="">Tất cả</option>
+            <option value="Pending">Chờ xác nhận</option>
+            <option value="Confirmed">Đã xác nhận</option>
+            <option value="Completed">Hoàn thành</option>
+            <option value="Cancelled">Đã hủy</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <button class="btn btn-primary" onclick="loadReservations()">
+            <i class="bi bi-funnel"></i> Lọc
+        </button>
+        <button class="btn btn-outline-secondary" onclick="resetFilters()">
+            <i class="bi bi-arrow-counterclockwise"></i> Đặt lại
+        </button>
+    </div>
+</section>
+
+<section class="content-grid">
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <h3>Danh sách đặt chỗ</h3>
+            <span class="badge bg-primary" id="reservation-count">0</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Thời gian đặt</th>
+                        <th>Trạm sạc</th>
+                        <th>Cổng sạc</th>
+                        <th>Xe</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="reservations-table-body">
+                    <tr>
+                        <td colspan="6" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Đang tải...</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="~/js/driver-reservations.js"></script>
+}
+

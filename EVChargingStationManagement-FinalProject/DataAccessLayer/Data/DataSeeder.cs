@@ -57,9 +57,10 @@ namespace DataAccessLayer.Data
                 });
             }
 
-            if (!await context.Users.AnyAsync(u => u.Username == "evdriver" || u.Email == "evdriver@example.com"))
+            var driverUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "evdriver" || u.Email == "evdriver@example.com");
+            if (driverUser == null)
             {
-                await context.Users.AddAsync(new Users
+                driverUser = new Users
                 {
                     Id = Guid.NewGuid(),
                     FullName = "EV Driver",
@@ -73,140 +74,206 @@ namespace DataAccessLayer.Data
                     Role = UserRole.EVDriver,
                     CreatedAt = nowUtc,
                     UpdatedAt = nowUtc
-                });
+                };
+
+                await context.Users.AddAsync(driverUser);
             }
 
             await context.SaveChangesAsync();
 
-            // Seed Charging Stations nếu chưa có
+            // Seed sample charging station with spots and amenities
             if (!await context.ChargingStations.AnyAsync())
             {
-                var stations = new[]
+                var stationId = Guid.NewGuid();
+                var station = new ChargingStation
                 {
-                    new ChargingStation
+                    Id = stationId,
+                    Name = "EV City Center",
+                    Address = "123 Electric Avenue",
+                    City = "Ho Chi Minh City",
+                    Province = "HCMC",
+                    PostalCode = "700000",
+                    Latitude = 10.776530m,
+                    Longitude = 106.700981m,
+                    Phone = "0123456789",
+                    Email = "center@evstations.vn",
+                    Status = StationStatus.Active,
+                    Description = "Trạm sạc trung tâm với nhiều đầu sạc nhanh.",
+                    OpeningTime = new TimeOnly(6, 0),
+                    ClosingTime = new TimeOnly(22, 0),
+                    Is24Hours = false,
+                    CreatedAt = nowUtc,
+                    UpdatedAt = nowUtc
+                };
+
+                await context.ChargingStations.AddAsync(station);
+
+                var spotFast = new ChargingSpot
+                {
+                    Id = Guid.NewGuid(),
+                    SpotNumber = "A1",
+                    ChargingStationId = stationId,
+                    Status = SpotStatus.Available,
+                    ConnectorType = "CCS",
+                    PowerOutput = 120m,
+                    PricePerKwh = 4500m,
+                    Description = "Đầu sạc nhanh CCS",
+                    CreatedAt = nowUtc,
+                    UpdatedAt = nowUtc
+                };
+
+                var spotStandard = new ChargingSpot
+                {
+                    Id = Guid.NewGuid(),
+                    SpotNumber = "A2",
+                    ChargingStationId = stationId,
+                    Status = SpotStatus.Available,
+                    ConnectorType = "Type2",
+                    PowerOutput = 22m,
+                    PricePerKwh = 3200m,
+                    Description = "Đầu sạc Type 2 AC",
+                    CreatedAt = nowUtc,
+                    UpdatedAt = nowUtc
+                };
+
+                await context.ChargingSpots.AddRangeAsync(spotFast, spotStandard);
+
+                var amenities = new[]
+                {
+                    new StationAmenity
                     {
                         Id = Guid.NewGuid(),
-                        Name = "Trạm sạc VinFast Times City",
-                        Address = "458 Minh Khai, Hai Bà Trưng, Hà Nội",
-                        City = "Hà Nội",
-                        Province = "Hà Nội",
-                        Latitude = 21.0085m,
-                        Longitude = 105.8542m,
-                        Status = StationStatus.Active,
-                        Is24Hours = true,
+                        ChargingStationId = stationId,
+                        Name = "Wifi miễn phí",
+                        Description = "Kết nối Internet tốc độ cao",
+                        IsActive = true,
+                        DisplayOrder = 1,
                         CreatedAt = nowUtc,
                         UpdatedAt = nowUtc
                     },
-                    new ChargingStation
+                    new StationAmenity
                     {
                         Id = Guid.NewGuid(),
-                        Name = "Trạm sạc Vincom Mega Mall",
-                        Address = "Royal City, Thanh Xuân, Hà Nội",
-                        City = "Hà Nội",
-                        Province = "Hà Nội",
-                        Latitude = 21.0055m,
-                        Longitude = 105.8435m,
-                        Status = StationStatus.Active,
-                        Is24Hours = false,
-                        OpeningTime = TimeOnly.Parse("08:00"),
-                        ClosingTime = TimeOnly.Parse("22:00"),
-                        CreatedAt = nowUtc,
-                        UpdatedAt = nowUtc
-                    },
-                    new ChargingStation
-                    {
-                        Id = Guid.NewGuid(),
-                        Name = "Trạm sạc Aeon Mall Long Biên",
-                        Address = "27 Cổ Linh, Long Biên, Hà Nội",
-                        City = "Hà Nội",
-                        Province = "Hà Nội",
-                        Latitude = 21.0175m,
-                        Longitude = 105.9185m,
-                        Status = StationStatus.Active,
-                        Is24Hours = false,
-                        OpeningTime = TimeOnly.Parse("09:00"),
-                        ClosingTime = TimeOnly.Parse("22:00"),
-                        CreatedAt = nowUtc,
-                        UpdatedAt = nowUtc
-                    },
-                    new ChargingStation
-                    {
-                        Id = Guid.NewGuid(),
-                        Name = "Trạm sạc Lotte Mall",
-                        Address = "Lieu Giai, Ba Đình, Hà Nội",
-                        City = "Hà Nội",
-                        Province = "Hà Nội",
-                        Latitude = 21.0375m,
-                        Longitude = 105.8145m,
-                        Status = StationStatus.Active,
-                        Is24Hours = true,
-                        CreatedAt = nowUtc,
-                        UpdatedAt = nowUtc
-                    },
-                    new ChargingStation
-                    {
-                        Id = Guid.NewGuid(),
-                        Name = "Trạm sạc Vincom Center",
-                        Address = "Bà Triệu, Hoàn Kiếm, Hà Nội",
-                        City = "Hà Nội",
-                        Province = "Hà Nội",
-                        Latitude = 21.0245m,
-                        Longitude = 105.8525m,
-                        Status = StationStatus.Active,
-                        Is24Hours = false,
-                        OpeningTime = TimeOnly.Parse("08:00"),
-                        ClosingTime = TimeOnly.Parse("23:00"),
-                        CreatedAt = nowUtc,
-                        UpdatedAt = nowUtc
-                    },
-                    new ChargingStation
-                    {
-                        Id = Guid.NewGuid(),
-                        Name = "Trạm sạc Big C Thăng Long",
-                        Address = "Đường Thăng Long, Nam Từ Liêm, Hà Nội",
-                        City = "Hà Nội",
-                        Province = "Hà Nội",
-                        Latitude = 21.0505m,
-                        Longitude = 105.7545m,
-                        Status = StationStatus.Active,
-                        Is24Hours = true,
+                        ChargingStationId = stationId,
+                        Name = "Khu vực nghỉ ngơi",
+                        Description = "Ghế ngồi, nước uống miễn phí",
+                        IsActive = true,
+                        DisplayOrder = 2,
                         CreatedAt = nowUtc,
                         UpdatedAt = nowUtc
                     }
                 };
 
-                await context.ChargingStations.AddRangeAsync(stations);
+                await context.StationAmenities.AddRangeAsync(amenities);
+            }
+
+            await context.SaveChangesAsync();
+
+            // Seed vehicle for driver
+            if (driverUser != null && !await context.UserVehicles.AnyAsync(uv => uv.UserId == driverUser.Id))
+            {
+                var vehicle = new Vehicle
+                {
+                    Id = Guid.NewGuid(),
+                    Make = "VinFast",
+                    Model = "VF8",
+                    ModelYear = 2024,
+                    LicensePlate = "51A-123.45",
+                    VehicleType = VehicleType.Car,
+                    BatteryCapacityKwh = 82m,
+                    MaxChargingPowerKw = 160m,
+                    Color = "Trắng",
+                    Notes = "Xe sử dụng thường xuyên",
+                    CreatedAt = nowUtc,
+                    UpdatedAt = nowUtc
+                };
+
+                var userVehicle = new UserVehicle
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = driverUser.Id,
+                    VehicleId = vehicle.Id,
+                    IsPrimary = true,
+                    Nickname = "VinFast VF8",
+                    ChargePortLocation = "Trước bên trái",
+                    CreatedAt = nowUtc,
+                    UpdatedAt = nowUtc
+                };
+
+                await context.Vehicles.AddAsync(vehicle);
+                await context.UserVehicles.AddAsync(userVehicle);
                 await context.SaveChangesAsync();
 
-                // Seed Charging Spots cho mỗi trạm
-                foreach (var station in stations)
+                // Create sample reservation & session
+                var spot = await context.ChargingSpots.FirstAsync();
+
+                var reservation = new Reservation
                 {
-                    var spots = new List<ChargingSpot>();
-                    var spotCount = station.Name.Contains("Times City") ? 8 :
-                                   station.Name.Contains("Mega Mall") ? 6 :
-                                   station.Name.Contains("Aeon") ? 4 :
-                                   station.Name.Contains("Lotte") ? 10 :
-                                   station.Name.Contains("Vincom Center") ? 4 : 6;
+                    Id = Guid.NewGuid(),
+                    UserId = driverUser.Id,
+                    ChargingSpotId = spot.Id,
+                    VehicleId = vehicle.Id,
+                    ScheduledStartTime = nowUtc.AddHours(1),
+                    ScheduledEndTime = nowUtc.AddHours(2),
+                    Status = ReservationStatus.Confirmed,
+                    ConfirmationCode = $"RSV-{nowUtc:yyyyMMddHHmmss}",
+                    EstimatedEnergyKwh = 40m,
+                    EstimatedCost = 180000m,
+                    Notes = "Đặt chỗ minh họa",
+                    IsPrepaid = false,
+                    CreatedAt = nowUtc,
+                    UpdatedAt = nowUtc
+                };
 
-                    for (int i = 1; i <= spotCount; i++)
-                    {
-                        var isAvailable = i <= (spotCount * 0.5); // 50% available
-                        spots.Add(new ChargingSpot
-                        {
-                            Id = Guid.NewGuid(),
-                            SpotNumber = $"SP{i:D2}",
-                            ChargingStationId = station.Id,
-                            Status = isAvailable ? SpotStatus.Available : SpotStatus.Occupied,
-                            ConnectorType = i % 2 == 0 ? "CCS" : "Type 2",
-                            PowerOutput = i % 2 == 0 ? 50 : 22,
-                            PricePerKwh = 3500 + (i * 100),
-                            CreatedAt = nowUtc,
-                            UpdatedAt = nowUtc
-                        });
-                    }
+                await context.Reservations.AddAsync(reservation);
+                await context.SaveChangesAsync();
 
-                    await context.ChargingSpots.AddRangeAsync(spots);
-                }
+                var session = new ChargingSession
+                {
+                    Id = Guid.NewGuid(),
+                    ChargingSpotId = spot.Id,
+                    UserId = driverUser.Id,
+                    ReservationId = reservation.Id,
+                    VehicleId = vehicle.Id,
+                    Status = ChargingSessionStatus.Scheduled,
+                    SessionStartTime = reservation.ScheduledStartTime,
+                    SessionEndTime = null,
+                    EnergyRequestedKwh = 40m,
+                    PricePerKwh = spot.PricePerKwh,
+                    CreatedAt = nowUtc,
+                    UpdatedAt = nowUtc
+                };
+
+                await context.ChargingSessions.AddAsync(session);
+                await context.SaveChangesAsync();
+
+                await context.PaymentTransactions.AddAsync(new PaymentTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = driverUser.Id,
+                    ReservationId = reservation.Id,
+                    ChargingSessionId = session.Id,
+                    Amount = reservation.EstimatedCost ?? 0,
+                    Currency = "VND",
+                    Method = PaymentMethod.QrCode,
+                    Status = PaymentStatus.Pending,
+                    Description = "Thanh toán giữ chỗ minh họa",
+                    CreatedAt = nowUtc,
+                    UpdatedAt = nowUtc
+                });
+
+                await context.Notifications.AddAsync(new Notification
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = driverUser.Id,
+                    Title = "Đặt chỗ thành công",
+                    Message = "Bạn đã đặt chỗ thành công tại EV City Center vào giờ tới.",
+                    Type = NotificationType.Reservation,
+                    IsRead = false,
+                    SentAt = nowUtc,
+                    CreatedAt = nowUtc,
+                    UpdatedAt = nowUtc
+                });
 
                 await context.SaveChangesAsync();
             }

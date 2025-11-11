@@ -1,3 +1,4 @@
+using System.Linq;
 using BusinessLayer.Services;
 using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
@@ -13,10 +14,12 @@ namespace PresentationLayer.Controllers
     public class ChargingSpotController : ControllerBase
     {
         private readonly IChargingSpotService _spotService;
+        private readonly IRealtimeNotifier _notifier;
 
-        public ChargingSpotController(IChargingSpotService spotService)
+        public ChargingSpotController(IChargingSpotService spotService, IRealtimeNotifier notifier)
         {
             _spotService = spotService;
+            _notifier = notifier;
         }
 
         [HttpGet]
@@ -82,6 +85,8 @@ namespace PresentationLayer.Controllers
                 };
 
                 var createdSpot = await _spotService.CreateSpotAsync(spot);
+                await _notifier.NotifySpotStatusChangedAsync(createdSpot);
+                await _notifier.NotifySpotsListUpdatedAsync(createdSpot.ChargingStationId);
                 return CreatedAtAction(nameof(GetSpotById), new { id = createdSpot.Id }, MapToDTO(createdSpot));
             }
             catch (InvalidOperationException ex)
@@ -118,6 +123,8 @@ namespace PresentationLayer.Controllers
                 if (updatedSpot == null)
                     return NotFound(new { message = "Charging spot not found" });
 
+                await _notifier.NotifySpotStatusChangedAsync(updatedSpot);
+                await _notifier.NotifySpotsListUpdatedAsync(updatedSpot.ChargingStationId);
                 return Ok(MapToDTO(updatedSpot));
             }
             catch (InvalidOperationException ex)
@@ -130,10 +137,16 @@ namespace PresentationLayer.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteSpot(Guid id)
         {
+            var existingSpot = await _spotService.GetSpotByIdAsync(id);
+            if (existingSpot == null)
+                return NotFound(new { message = "Charging spot not found" });
+
+            var stationId = existingSpot.ChargingStationId;
             var result = await _spotService.DeleteSpotAsync(id);
             if (!result)
                 return NotFound(new { message = "Charging spot not found" });
 
+            await _notifier.NotifySpotsListUpdatedAsync(stationId);
             return Ok(new { message = "Charging spot deleted successfully" });
         }
 
