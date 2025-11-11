@@ -14,7 +14,8 @@
         stationId: null,
         stations: [],
         connection: null,
-        previousStationId: null
+        previousStationId: null,
+        dateRange: 'today' // today, yesterday, 7days, 30days
     };
 
     const buildQueryString = (params) => {
@@ -199,10 +200,59 @@
         }
     };
 
+    const getDateRange = (range) => {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        let startDate, endDate;
+
+        switch (range) {
+            case 'today':
+                startDate = new Date(today);
+                endDate = new Date(today);
+                endDate.setHours(23, 59, 59, 999);
+                break;
+            case 'yesterday':
+                startDate = new Date(today);
+                startDate.setDate(startDate.getDate() - 1);
+                endDate = new Date(today);
+                endDate.setDate(endDate.getDate() - 1);
+                endDate.setHours(23, 59, 59, 999);
+                break;
+            case '7days':
+                startDate = new Date(today);
+                startDate.setDate(startDate.getDate() - 7);
+                endDate = new Date(today);
+                endDate.setHours(23, 59, 59, 999);
+                break;
+            case '30days':
+                startDate = new Date(today);
+                startDate.setDate(startDate.getDate() - 30);
+                endDate = new Date(today);
+                endDate.setHours(23, 59, 59, 999);
+                break;
+            default:
+                startDate = new Date(today);
+                endDate = new Date(today);
+                endDate.setHours(23, 59, 59, 999);
+        }
+
+        return { startDate, endDate };
+    };
+
     const loadSessions = async () => {
         try {
-            const data = await utils.fetchJson(`/api/dashboard/sessions${buildQueryString({ stationId: state.stationId })}`);
-            updateSessions(data);
+            const { startDate, endDate } = getDateRange(state.dateRange);
+            const params = {
+                stationId: state.stationId,
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString(),
+                page: 1,
+                pageSize: 50
+            };
+            
+            const response = await utils.fetchJson(`/api/dashboard/sessions/all${buildQueryString(params)}`);
+            const sessions = response?.data || response || [];
+            updateSessions(sessions);
         } catch (err) {
             console.error('sessions', err);
             if (sessionTable) sessionTable.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Không thể tải dữ liệu phiên sạc.</td></tr>`;
@@ -222,8 +272,9 @@
         });
 
         if (rangeSelect) {
-            rangeSelect.addEventListener('change', () => {
-                // Hiện tại API hỗ trợ phạm vi "today", ghi chú lại để mở rộng sau.
+            rangeSelect.addEventListener('change', async (e) => {
+                state.dateRange = e.target.value || 'today';
+                await loadSessions();
             });
         }
 

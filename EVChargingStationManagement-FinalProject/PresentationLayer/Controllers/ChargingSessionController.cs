@@ -191,6 +191,10 @@ namespace PresentationLayer.Controllers
             if (spot == null)
                 return NotFound(new { message = "Charging spot not found" });
 
+            // Kiểm tra station status - chỉ cho phép bắt đầu sạc khi station Active
+            if (spot.ChargingStation == null || spot.ChargingStation.Status != StationStatus.Active)
+                return BadRequest(new { message = "Trạm sạc hiện không khả dụng để bắt đầu sạc." });
+
             if (spot.Status != SpotStatus.Available)
                 return BadRequest(new { message = "Charging spot is not available" });
 
@@ -315,7 +319,12 @@ namespace PresentationLayer.Controllers
             {
                 var spots = station.ChargingSpots?.ToList() ?? new List<ChargingSpot>();
                 var totalSpots = spots.Count;
-                var availableSpots = spots.Count(s => s.Status == SpotStatus.Available);
+                
+                // Nếu station không Active, thì availableSpots = 0
+                var availableSpots = station.Status == StationStatus.Active 
+                    ? spots.Count(s => s.Status == SpotStatus.Available)
+                    : 0;
+                
                 await _notifier.NotifyStationAvailabilityChangedAsync(stationId, totalSpots, availableSpots);
             }
         }

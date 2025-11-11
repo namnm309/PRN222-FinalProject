@@ -72,6 +72,12 @@ namespace PresentationLayer.Controllers
             [FromQuery] StationStatus? status = null,
             [FromQuery] string? connectorType = null)
         {
+            // Mặc định chỉ trả về Active stations nếu không có filter status
+            if (!status.HasValue)
+            {
+                status = StationStatus.Active;
+            }
+            
             var stations = await _stationService.GetNearestStationsAsync(lat, lng, radiusKm, status, connectorType);
             
             // Calculate distance for each station and map to DTO
@@ -572,6 +578,11 @@ namespace PresentationLayer.Controllers
             // Lấy thông tin từ spot đầu tiên (hoặc spot có sẵn đầu tiên)
             var firstSpot = spots.FirstOrDefault(s => s.Status == SpotStatus.Available) ?? spots.FirstOrDefault();
             
+            // Nếu station không Active, thì AvailableSpots = 0
+            var availableSpots = station.Status == StationStatus.Active 
+                ? spots.Count(s => s.Status == SpotStatus.Available)
+                : 0;
+            
             return new ChargingStationDTO
             {
                 Id = station.Id,
@@ -592,7 +603,7 @@ namespace PresentationLayer.Controllers
                 CreatedAt = station.CreatedAt,
                 UpdatedAt = station.UpdatedAt,
                 TotalSpots = spots.Count,
-                AvailableSpots = spots.Count(s => s.Status == SpotStatus.Available),
+                AvailableSpots = availableSpots,
                 ConnectorType = firstSpot?.ConnectorType,
                 PricePerKwh = firstSpot?.PricePerKwh,
                 SerpApiPlaceId = station.SerpApiPlaceId,

@@ -110,6 +110,90 @@ namespace PresentationLayer.Controllers
             return Ok(MapToDto(updated));
         }
 
+        [HttpPost("cash")]
+        [Authorize(Roles = "EVDriver,Admin")]
+        public async Task<IActionResult> CreateCashPayment([FromBody] CreateCashPaymentRequest request)
+        {
+            if (request == null || request.SessionId == Guid.Empty)
+            {
+                return BadRequest(new { message = "Session ID is required" });
+            }
+
+            var session = await _sessionService.GetSessionByIdAsync(request.SessionId);
+            if (session == null)
+            {
+                return NotFound(new { message = "Charging session not found" });
+            }
+
+            var userId = GetUserId();
+            if (session.UserId != userId)
+            {
+                return Forbid();
+            }
+
+            // Check if session is completed
+            if (session.Status != DataAccessLayer.Enums.ChargingSessionStatus.Completed)
+            {
+                return BadRequest(new { message = "Session must be completed before payment" });
+            }
+
+            // Check if payment already exists
+            var existingPayments = await _paymentService.GetPaymentsForUserAsync(userId, 100);
+            var existingPayment = existingPayments.FirstOrDefault(p => p.ChargingSessionId == request.SessionId);
+
+            PaymentTransaction payment;
+            if (existingPayment != null)
+            {
+                // If payment already exists and is captured, return it
+                if (existingPayment.Status == PaymentStatus.Captured)
+                {
+                    return Ok(MapToDto(existingPayment));
+                }
+                // Use existing payment
+                payment = existingPayment;
+            }
+            else
+            {
+                // Create new payment transaction with Cash method
+                payment = new PaymentTransaction
+                {
+                    ChargingSessionId = request.SessionId,
+                    Amount = request.Amount > 0 ? request.Amount : (session.Cost ?? 0),
+                    Currency = "VND",
+                    Method = PaymentMethod.Cash,
+                    Description = request.Description ?? $"Thanh toán tiền mặt cho phiên sạc {session.Id}",
+                    Status = PaymentStatus.Pending
+                };
+
+                payment = await _paymentService.CreatePaymentAsync(userId, payment);
+            }
+
+            // Update payment status to Captured (for cash payment)
+            // Note: If payment method is different, it will remain as is, but status will be updated
+            payment = await _paymentService.UpdatePaymentStatusAsync(
+                payment.Id,
+                PaymentStatus.Captured,
+                $"CASH-{DateTime.UtcNow:yyyyMMddHHmmss}");
+
+            if (payment == null)
+            {
+                return NotFound();
+            }
+
+            // Notify related entities
+            if (payment.ChargingSession != null)
+            {
+                await _notifier.NotifySessionChangedAsync(payment.ChargingSession);
+            }
+
+            if (payment.Reservation != null)
+            {
+                await _notifier.NotifyReservationChangedAsync(payment.Reservation);
+            }
+
+            return Ok(MapToDto(payment));
+        }
+
         [HttpPost("vnpay/create")]
         [Authorize(Roles = "EVDriver,Admin")]
         public async Task<IActionResult> CreateVnPayPayment([FromBody] CreateVnPayPaymentRequest request)
