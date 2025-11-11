@@ -105,6 +105,7 @@ namespace PresentationLayer
             builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
             builder.Services.AddScoped<IReportingService, ReportingService>();
             builder.Services.AddScoped<IVnPayService, VnPayService>();
+            builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddHostedService<RefreshTokenCleanupService>();
 
             // Add Controllers with JSON options

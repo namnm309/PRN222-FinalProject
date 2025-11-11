@@ -13,7 +13,12 @@
         pageSize: 50,
         totalPages: 1,
         connection: null,
-        refreshInterval: null
+        refreshInterval: null,
+        durationInterval: null, // Timer để cập nhật thời gian
+        energyInterval: null, // Timer để cập nhật năng lượng
+        activeSessions: [], // Lưu danh sách session đang hoạt động
+        subscribedSessions: new Set(), // Track các session đã subscribe
+        sessionSimulations: new Map() // Track simulation data cho mỗi session {startTime, initialEnergy, powerKw}
     };
 
     // DOM Elements
@@ -52,6 +57,11 @@
             const data = await utils.fetchJson('/api/ChargingStation');
             state.stations = data || [];
             renderStations();
+            
+            // Subscribe to all stations after loading
+            if (state.connection && state.connection.state === signalR.HubConnectionState.Connected) {
+                await subscribeToStations();
+            }
         } catch (err) {
             console.error('Error loading stations:', err);
             if (stationFilter) {
@@ -71,13 +81,71 @@
         });
     };
 
+    const loadProgressForSession = async (sessionId) => {
+        try {
+            // Chỉ lấy progress từ session entity (giống driver view)
+            const progress = await utils.fetchJson(`/api/ChargingSession/${sessionId}/progress`);
+            console.log(`Progress loaded for session ${sessionId}:`, progress);
+            return progress;
+        } catch (err) {
+            // Progress có thể chưa có nếu session mới bắt đầu
+            console.log(`No progress for session ${sessionId}:`, err.message);
+            return null;
+        }
+    };
+
     const loadActiveSessions = async () => {
         try {
             const params = {};
             if (state.stationId) params.stationId = state.stationId;
             
             const data = await utils.fetchJson(`/api/ChargingSession/active${buildQueryString(params)}`);
-            renderActiveSessions(data || []);
+            state.activeSessions = data || [];
+            
+            // Load progress cho từng session để lấy giá trị mới nhất
+            // Sử dụng Promise.allSettled để không bị block nếu một session lỗi
+            const progressPromises = state.activeSessions.map(session => 
+                loadProgressForSession(session.id).then(progress => ({ session, progress }))
+            );
+            
+            const results = await Promise.allSettled(progressPromises);
+            
+            // Cập nhật energyDeliveredKwh từ progress nếu có
+            results.forEach(result => {
+                if (result.status === 'fulfilled') {
+                    const { session, progress } = result.value;
+                    if (progress) {
+                        // Lưu toàn bộ progress vào session
+                        session.progress = progress;
+                        // Cập nhật energyDeliveredKwh từ progress
+                        if (progress.energyDeliveredKwh !== null && progress.energyDeliveredKwh !== undefined) {
+                            session.energyDeliveredKwh = progress.energyDeliveredKwh;
+                            console.log(`Updated session ${session.id} energyDeliveredKwh to ${session.energyDeliveredKwh}`);
+                        }
+                    } else {
+                        console.log(`No progress data for session ${session.id}`);
+                    }
+                }
+            });
+            
+            renderActiveSessions(state.activeSessions);
+            
+            // Subscribe to all active sessions for progress updates
+            await subscribeToActiveSessions();
+            
+            // Khởi tạo simulation cho các session InProgress
+            state.activeSessions.forEach(session => {
+                if (getStatusCode(session.status) === 1) { // InProgress
+                    const powerKw = session.chargingSpotPower || session.progress?.currentPowerKw || 120;
+                    const initialEnergy = session.energyDeliveredKwh || session.progress?.energyDeliveredKwh || 0;
+                    state.sessionSimulations.set(session.id, {
+                        startTime: Date.now(),
+                        initialEnergy: initialEnergy,
+                        powerKw: powerKw
+                    });
+                    console.log(`Initialized simulation for session ${session.id}: energy=${initialEnergy}, power=${powerKw}`);
+                }
+            });
         } catch (err) {
             console.error('Error loading active sessions:', err);
             if (activeTableBody) {
@@ -102,18 +170,37 @@
                 ? `${Math.floor(duration / 60)}h ${duration % 60}m`
                 : `${duration}m`;
 
-            const canStart = session.status === 0; // Scheduled
-            const canStop = session.status === 1; // InProgress
-            const canPay = session.status === 2; // Completed
+            const statusCode = getStatusCode(session.status);
+            const canStart = statusCode === 0; // Scheduled
+            const canStop = statusCode === 1; // InProgress - Staff có thể dừng session
+            const canPay = statusCode === 2; // Completed
+
+            // Lấy năng lượng: ưu tiên progress.energyDeliveredKwh, sau đó session.energyDeliveredKwh
+            let energyKwh = 0;
+            if (session.progress && session.progress.energyDeliveredKwh != null) {
+                energyKwh = session.progress.energyDeliveredKwh;
+            } else if (session.energyDeliveredKwh != null) {
+                energyKwh = session.energyDeliveredKwh;
+            }
+            
+            // Debug: log giá trị để kiểm tra
+            if (session.status === 1) { // InProgress
+                console.log(`Session ${session.id} (InProgress):`, {
+                    'progress': session.progress,
+                    'progress.energyDeliveredKwh': session.progress?.energyDeliveredKwh,
+                    'session.energyDeliveredKwh': session.energyDeliveredKwh,
+                    'final energyKwh': energyKwh
+                });
+            }
 
             return `
-                <tr>
-                    <td>${utils.formatDateTime(session.sessionStartTime)}</td>
-                    <td><strong>${session.chargingStationName || '--'}</strong><br/><small>Điểm: ${session.chargingSpotNumber || '--'}</small></td>
+                <tr data-session-id="${session.id}">
+                    <td>${utils.formatDateTime ? utils.formatDateTime(session.sessionStartTime) : new Date(session.sessionStartTime).toLocaleString('vi-VN')}</td>
+                    <td><strong>${session.chargingStationName || '--'}</strong><br/><small>Cổng: ${session.chargingSpotNumber || '--'}</small></td>
                     <td>${session.userName || session.user?.fullName || session.user?.email || 'N/A'}</td>
                     <td>${session.vehicleName || '--'}</td>
-                    <td>${utils.formatNumber(session.energyDeliveredKwh ?? session.energyRequestedKwh ?? 0, 2)}</td>
-                    <td>${durationText}</td>
+                    <td data-energy="${session.id}">${utils.formatNumber ? utils.formatNumber(energyKwh, 2) : energyKwh.toFixed(2)} kWh</td>
+                    <td data-duration="${session.id}">${durationText}</td>
                     <td>${utils.renderStatusBadge ? utils.renderStatusBadge(session.status) : getStatusBadge(session.status)}</td>
                     <td>
                         <div class="btn-group" role="group">
@@ -164,7 +251,27 @@
             3: '<span class="badge bg-danger">Cancelled</span>',
             4: '<span class="badge bg-warning">Failed</span>'
         };
-        return statusMap[status] || '<span class="badge bg-secondary">Unknown</span>';
+        // Normalize when status is a string (because JsonStringEnumConverter)
+        const toCode = (s) => {
+            if (typeof s === 'number') return s;
+            if (typeof s === 'string') {
+                const m = { Scheduled: 0, InProgress: 1, Completed: 2, Cancelled: 3, Failed: 4 };
+                return m[s] !== undefined ? m[s] : -1;
+            }
+            return -1;
+        };
+        const code = toCode(status);
+        return statusMap[code] || '<span class="badge bg-secondary">Unknown</span>';
+    };
+
+    // Helper: normalize status to numeric code 0..4
+    const getStatusCode = (status) => {
+        if (typeof status === 'number') return status;
+        if (typeof status === 'string') {
+            const m = { Scheduled: 0, InProgress: 1, Completed: 2, Cancelled: 3, Failed: 4 };
+            return m[status] !== undefined ? m[status] : -1;
+        }
+        return -1;
     };
 
     const startSession = async (sessionId) => {
@@ -471,6 +578,86 @@
         });
     };
 
+    const subscribeToStations = async () => {
+        if (!state.connection) return;
+        
+        try {
+            if (state.stationId) {
+                // Subscribe to specific station
+                await state.connection.invoke('SubscribeStation', state.stationId);
+            } else {
+                // Subscribe to all stations
+                for (const station of state.stations) {
+                    try {
+                        await state.connection.invoke('SubscribeStation', station.id);
+                    } catch (err) {
+                        console.warn(`Không thể subscribe station ${station.id}`, err);
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn('Không thể subscribe stations', err);
+        }
+    };
+
+    const subscribeToActiveSessions = async () => {
+        if (!state.connection || state.connection.state !== signalR.HubConnectionState.Connected) {
+            return;
+        }
+
+        // Subscribe to all active sessions for progress updates
+        for (const session of state.activeSessions) {
+            if (!state.subscribedSessions.has(session.id)) {
+                try {
+                    await state.connection.invoke('SubscribeSession', session.id);
+                    state.subscribedSessions.add(session.id);
+                    console.log(`Subscribed to session ${session.id}`);
+                } catch (err) {
+                    console.warn(`Không thể subscribe session ${session.id}`, err);
+                }
+            }
+        }
+
+        // Unsubscribe from sessions that are no longer active
+        const activeSessionIds = new Set(state.activeSessions.map(s => s.id));
+        for (const sessionId of state.subscribedSessions) {
+            if (!activeSessionIds.has(sessionId)) {
+                try {
+                    await state.connection.invoke('UnsubscribeSession', sessionId);
+                    state.subscribedSessions.delete(sessionId);
+                    console.log(`Unsubscribed from session ${sessionId}`);
+                } catch (err) {
+                    console.warn(`Không thể unsubscribe session ${sessionId}`, err);
+                }
+            }
+        }
+    };
+
+    const updateSessionProgress = (sessionId, progress) => {
+        if (!activeTableBody || !progress) return;
+
+        // Cập nhật trong state
+        const session = state.activeSessions.find(s => s.id === sessionId);
+        if (session) {
+            session.progress = progress;
+            if (progress.energyDeliveredKwh != null) {
+                session.energyDeliveredKwh = progress.energyDeliveredKwh;
+            }
+            
+            // Reset simulation data với giá trị mới từ SignalR
+            const powerKw = progress.currentPowerKw || session.chargingSpotPower || 120;
+            state.sessionSimulations.set(sessionId, {
+                startTime: Date.now(),
+                initialEnergy: progress.energyDeliveredKwh || 0,
+                powerKw: powerKw
+            });
+            
+            console.log(`SignalR updated session ${sessionId}: energy=${progress.energyDeliveredKwh}, power=${powerKw}`);
+        }
+
+        // UI sẽ được cập nhật bởi updateAllEnergies() và updateAllDurations() mỗi giây
+    };
+
     const initSignalR = async () => {
         if (!window.signalR) return;
 
@@ -479,41 +666,186 @@
             .withUrl('/hubs/station')
             .build();
 
-        state.connection.on('SessionUpdated', () => {
+        // Listen for session updates - reload active sessions immediately
+        state.connection.on('SessionUpdated', (sessionId) => {
+            console.log('SessionUpdated received:', sessionId);
             if (activeTab && activeTab.classList.contains('active')) {
                 loadActiveSessions();
             }
         });
 
+        // Listen for charging progress updates - update UI in real-time
+        state.connection.on('ChargingProgressUpdated', (sessionId, progress) => {
+            console.log('ChargingProgressUpdated received:', sessionId, progress);
+            
+            // Cập nhật session trong state
+            const session = state.activeSessions.find(s => s.id === sessionId);
+            if (session && progress) {
+                // Cập nhật progress object
+                session.progress = progress;
+                
+                // Cập nhật energyDeliveredKwh
+                if (progress.energyDeliveredKwh != null) {
+                    session.energyDeliveredKwh = progress.energyDeliveredKwh;
+                }
+                
+                // Cập nhật lastUpdatedAt
+                if (progress.lastUpdatedAt) {
+                    session.lastUpdatedAt = progress.lastUpdatedAt;
+                }
+            }
+            
+            // Cập nhật UI ngay lập tức
+            updateSessionProgress(sessionId, progress);
+        });
+
+        // Listen for station availability updates
+        state.connection.on('StationAvailabilityUpdated', (stationId, totalSpots, availableSpots) => {
+            console.log('StationAvailabilityUpdated:', stationId);
+            if (activeTab && activeTab.classList.contains('active')) {
+                loadActiveSessions();
+            }
+        });
+
+        // Handle reconnection
+        state.connection.onreconnecting(() => {
+            console.log('SignalR reconnecting...');
+        });
+
+        state.connection.onreconnected(() => {
+            console.log('SignalR reconnected');
+            subscribeToStations();
+            subscribeToActiveSessions();
+        });
+
         try {
             await state.connection.start();
-            if (state.stationId) {
-                await state.connection.invoke('SubscribeStation', state.stationId);
-            }
+            console.log('SignalR connected for staff sessions');
+            await subscribeToStations();
         } catch (err) {
             console.warn('Không thể kết nối SignalR', err);
         }
     };
 
+    const updateAllDurations = () => {
+        if (!activeTableBody) return;
+        
+        // Cập nhật thời gian cho tất cả session đang hoạt động (InProgress)
+        state.activeSessions.forEach(session => {
+            if (getStatusCode(session.status) !== 1) return; // Chỉ update cho InProgress
+            
+            const row = activeTableBody.querySelector(`tr[data-session-id="${session.id}"]`);
+            if (!row) return;
+
+            const durationCell = row.querySelector(`td[data-duration="${session.id}"]`);
+            if (durationCell && session.sessionStartTime) {
+                const startTime = new Date(session.sessionStartTime);
+                const now = new Date();
+                const duration = Math.floor((now - startTime) / 60000); // minutes
+                const durationText = duration >= 60 
+                    ? `${Math.floor(duration / 60)}h ${duration % 60}m`
+                    : `${duration}m`;
+                durationCell.textContent = durationText;
+            }
+        });
+    };
+
+    const updateAllEnergies = () => {
+        if (!activeTableBody) return;
+        
+        console.log('[updateAllEnergies] Running...');
+        
+        // Cập nhật năng lượng cho tất cả session đang hoạt động (InProgress)
+        state.activeSessions.forEach(session => {
+            if (getStatusCode(session.status) !== 1) return; // Chỉ update cho InProgress
+            
+            const row = activeTableBody.querySelector(`tr[data-session-id="${session.id}"]`);
+            if (!row) {
+                console.log(`[updateAllEnergies] Row not found for session ${session.id}`);
+                return;
+            }
+
+            const energyCell = row.querySelector(`td[data-energy="${session.id}"]`);
+            if (!energyCell) {
+                console.log(`[updateAllEnergies] Energy cell not found for session ${session.id}`);
+                return;
+            }
+
+            // Lấy simulation data cho session này
+            let simData = state.sessionSimulations.get(session.id);
+            
+            // Nếu chưa có simulation data, khởi tạo
+            if (!simData) {
+                const powerKw = session.chargingSpotPower || session.progress?.currentPowerKw || 120; // Default 120kW
+                const initialEnergy = session.energyDeliveredKwh || session.progress?.energyDeliveredKwh || 0;
+                simData = {
+                    startTime: Date.now(),
+                    initialEnergy: initialEnergy,
+                    powerKw: powerKw
+                };
+                state.sessionSimulations.set(session.id, simData);
+                console.log(`[updateAllEnergies] Initialized sim for ${session.id}: energy=${initialEnergy}, power=${powerKw}`);
+            }
+
+            // Tính năng lượng dựa trên thời gian đã trôi qua và công suất
+            const elapsedSeconds = (Date.now() - simData.startTime) / 1000;
+            const elapsedHours = elapsedSeconds / 3600;
+            const energyDelivered = simData.initialEnergy + (simData.powerKw * elapsedHours);
+            
+            console.log(`[updateAllEnergies] Session ${session.id}: elapsed=${elapsedSeconds.toFixed(1)}s, energy=${energyDelivered.toFixed(2)} kWh`);
+            
+            // Cập nhật UI
+            energyCell.textContent = `${utils.formatNumber ? utils.formatNumber(energyDelivered, 2) : energyDelivered.toFixed(2)} kWh`;
+            
+            // Cập nhật trong session object
+            session.energyDeliveredKwh = energyDelivered;
+            if (session.progress) {
+                session.progress.energyDeliveredKwh = energyDelivered;
+            }
+        });
+    };
+
     const setupAutoRefresh = () => {
+        // Clear existing intervals
         if (state.refreshInterval) {
             clearInterval(state.refreshInterval);
         }
+        if (state.durationInterval) {
+            clearInterval(state.durationInterval);
+        }
 
+        // Cập nhật thời gian mỗi giây
+        state.durationInterval = setInterval(() => {
+            if (activeTab && activeTab.classList.contains('active')) {
+                updateAllDurations();
+            }
+        }, 1000);
+
+        // Cập nhật năng lượng mỗi giây (simulation)
+        state.energyInterval = setInterval(() => {
+            if (activeTab && activeTab.classList.contains('active')) {
+                updateAllEnergies();
+            }
+        }, 1000);
+
+        // Reload toàn bộ danh sách mỗi 30 giây để đảm bảo sync
         state.refreshInterval = setInterval(() => {
             if (activeTab && activeTab.classList.contains('active')) {
                 loadActiveSessions();
             }
-        }, 10000); // Refresh mỗi 10 giây
+        }, 30000);
     };
 
     const bindEvents = () => {
         if (stationFilter) {
-            stationFilter.addEventListener('change', (e) => {
+            stationFilter.addEventListener('change', async (e) => {
                 state.stationId = e.target.value || null;
-                if (state.connection && state.stationId) {
-                    state.connection.invoke('SubscribeStation', state.stationId).catch(console.error);
+                
+                // Update SignalR subscriptions
+                if (state.connection && state.connection.state === signalR.HubConnectionState.Connected) {
+                    await subscribeToStations();
                 }
+                
                 if (activeTab && activeTab.classList.contains('active')) {
                     loadActiveSessions();
                 } else {
@@ -553,8 +885,12 @@
 
         if (historyTab) {
             historyTab.addEventListener('shown.bs.tab', () => {
+                // Clear intervals khi chuyển sang tab lịch sử
                 if (state.refreshInterval) {
                     clearInterval(state.refreshInterval);
+                }
+                if (state.durationInterval) {
+                    clearInterval(state.durationInterval);
                 }
                 loadHistorySessions();
             });
@@ -566,8 +902,8 @@
     };
 
     const init = async () => {
-        await loadStations();
         bindEvents();
+        await loadStations();
         await initSignalR();
         loadActiveSessions();
         setupAutoRefresh();

@@ -7,6 +7,7 @@ let sessionStartTime = null;
 let simulatedPowerKw = 0;
 const BASE_FEE = 10000; // Phí cơ bản 10k
 let pricePerKwh = 0;
+let previousStatus = null; // Track previous status to detect changes
 
 document.addEventListener('DOMContentLoaded', function() {
     const sessionId = document.getElementById('session-id').value;
@@ -28,6 +29,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// Function to stop charging simulation
+function stopChargingSimulation() {
+    if (chargingTimer) {
+        clearInterval(chargingTimer);
+        chargingTimer = null;
+        console.log('Charging simulation stopped');
+    }
+}
+
 async function loadSession(sessionId) {
     try {
         const response = await fetch(`/api/ChargingSession/${sessionId}`, {
@@ -35,7 +45,10 @@ async function loadSession(sessionId) {
         });
 
         if (response.ok) {
-            sessionData = await response.json();
+            const newSessionData = await response.json();
+            const statusChanged = previousStatus && previousStatus === 'InProgress' && newSessionData.status === 'Completed';
+            
+            sessionData = newSessionData;
             sessionStartTime = new Date(sessionData.sessionStartTime);
             pricePerKwh = sessionData.pricePerKwh || 0;
             
@@ -53,12 +66,26 @@ async function loadSession(sessionId) {
                 // Bắt đầu simulation
                 startChargingSimulation(sessionId);
             } else if (sessionData.status === 'Completed') {
+                // Dừng simulation nếu đang chạy (khi staff dừng session)
+                stopChargingSimulation();
+                
                 actionsPanel.style.display = 'block';
                 btnStop.style.display = 'none';
                 btnPayment.style.display = 'block';
+                
+                // Reload progress để lấy giá trị cuối cùng
+                loadProgress(sessionId);
+                
+                // Chỉ hiển thị alert nếu đang từ InProgress chuyển sang Completed (staff dừng)
+                if (statusChanged) {
+                    alert('Phiên sạc đã được dừng bởi nhân viên trạm sạc. Vui lòng thanh toán.');
+                }
             } else {
                 actionsPanel.style.display = 'none';
             }
+            
+            // Update previous status
+            previousStatus = sessionData.status;
         } else {
             document.getElementById('session-info').innerHTML = 
                 '<div class="text-center text-danger">Không tìm thấy phiên sạc</div>';
@@ -156,26 +183,62 @@ function updateProgressUI(progress) {
 }
 
 async function setupSignalR(sessionId) {
-    if (window.signalRManager) {
+    if (!window.signalRManager) {
+        console.warn('signalRManager not available');
+        return;
+    }
+
+    try {
+        // Connect to SignalR
         await window.signalRManager.connect();
+        
+        if (!window.signalRManager.connection) {
+            console.error('SignalR connection failed');
+            return;
+        }
+
+        // Subscribe to session for progress updates
         await window.signalRManager.subscribeSession(sessionId, (progress) => {
             updateProgressUI(progress);
         });
+        
+        // Remove existing listener to avoid duplicates
+        const connection = window.signalRManager.connection;
+        if (connection) {
+            connection.off('SessionUpdated');
+            
+            // Listen for session status changes (when staff stops the session)
+            // SessionUpdated is sent to user-{userId} group (automatically added on connect)
+            connection.on('SessionUpdated', async (updatedSessionId) => {
+                console.log('SessionUpdated event received:', updatedSessionId, 'for session:', sessionId);
+                if (updatedSessionId === sessionId) {
+                    console.log('SessionUpdated for current session, stopping simulation and reloading...');
+                    // Dừng simulation ngay lập tức
+                    stopChargingSimulation();
+                    // Reload session để lấy status mới
+                    await loadSession(sessionId);
+                }
+            });
+        }
+        
+        console.log('SignalR setup completed for session:', sessionId);
+    } catch (error) {
+        console.error('Error setting up SignalR:', error);
     }
 }
 
 function startChargingSimulation(sessionId) {
-    if (chargingTimer) {
-        clearInterval(chargingTimer);
-    }
+    // Dừng timer cũ nếu có
+    stopChargingSimulation();
     
     // Lấy power từ spot hoặc mặc định 50kW
     simulatedPowerKw = sessionData?.chargingSpotPower || 50; // kW từ spot hoặc mặc định
     
     // Cập nhật mỗi giây
     chargingTimer = setInterval(() => {
+        // Kiểm tra status trước khi update
         if (!sessionData || sessionData.status !== 'InProgress') {
-            clearInterval(chargingTimer);
+            stopChargingSimulation();
             return;
         }
         
@@ -263,10 +326,7 @@ async function stopCharging(sessionId) {
     }
 
     // Dừng timer
-    if (chargingTimer) {
-        clearInterval(chargingTimer);
-        chargingTimer = null;
-    }
+    stopChargingSimulation();
 
     try {
         // Lấy giá trị năng lượng từ UI (loại bỏ " kWh")

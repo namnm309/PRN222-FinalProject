@@ -102,6 +102,9 @@ function displayPaymentForm(session) {
                     <button class="btn btn-primary btn-lg w-100 mb-2" onclick="payWithVNPay('${session.id}', ${cost})">
                         <i class="bi bi-credit-card"></i> Thanh toán VNPay
                     </button>
+                    <button class="btn btn-success btn-lg w-100 mb-2" onclick="payWithCash('${session.id}', ${cost})">
+                        <i class="bi bi-cash-coin"></i> Thanh toán bằng tiền mặt
+                    </button>
                     <button class="btn btn-outline-secondary btn-lg w-100" onclick="payWithWallet('${session.id}', ${cost})" disabled>
                         <i class="bi bi-wallet2"></i> Thanh toán bằng ví (Sắp có)
                     </button>
@@ -172,6 +175,43 @@ async function payWithVNPay(sessionId, amount) {
 
 function payWithWallet(sessionId, amount) {
     alert('Tính năng thanh toán bằng ví sẽ sớm có mặt!');
+}
+
+async function payWithCash(sessionId, amount) {
+    if (!confirm(`Xác nhận thanh toán ${new Intl.NumberFormat('vi-VN').format(amount)} VND bằng tiền mặt?`)) {
+        return;
+    }
+
+    try {
+        // Create cash payment using dedicated endpoint
+        const paymentResponse = await fetch('/api/Payment/cash', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                sessionId: sessionId,
+                amount: amount,
+                description: `Thanh toán tiền mặt cho phiên sạc ${sessionId}`
+            })
+        });
+
+        if (!paymentResponse.ok) {
+            const error = await paymentResponse.json();
+            throw new Error(error.message || 'Không thể tạo thanh toán');
+        }
+
+        const payment = await paymentResponse.json();
+        
+        alert('Thanh toán bằng tiền mặt thành công!');
+        
+        // Reload payment info to show success status
+        loadPayment(payment.id);
+    } catch (error) {
+        console.error('Error processing cash payment:', error);
+        alert('Lỗi khi xử lý thanh toán: ' + error.message);
+    }
 }
 
 function getPaymentStatusBadge(status) {

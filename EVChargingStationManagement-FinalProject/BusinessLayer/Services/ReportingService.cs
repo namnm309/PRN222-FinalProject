@@ -67,8 +67,8 @@ namespace BusinessLayer.Services
 
         public async Task<RevenueReportDTO> GetRevenueReportAsync(DateOnly startDate, DateOnly endDate, Guid? stationId = null)
         {
-            var startDateTime = startDate.ToDateTime(TimeOnly.MinValue);
-            var endDateTime = endDate.ToDateTime(TimeOnly.MaxValue);
+            var startDateTime = DateTime.SpecifyKind(startDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            var endDateTime = DateTime.SpecifyKind(endDate.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
 
             var query = _context.PaymentTransactions
                 .Include(pt => pt.ChargingSession)
@@ -119,8 +119,8 @@ namespace BusinessLayer.Services
 
         public async Task<UsageStatisticsDTO> GetUsageStatisticsAsync(DateOnly startDate, DateOnly endDate, Guid? stationId = null)
         {
-            var startDateTime = startDate.ToDateTime(TimeOnly.MinValue);
-            var endDateTime = endDate.ToDateTime(TimeOnly.MaxValue);
+            var startDateTime = DateTime.SpecifyKind(startDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            var endDateTime = DateTime.SpecifyKind(endDate.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
 
             var query = _context.ChargingSessions
                 .Include(cs => cs.ChargingSpot)
@@ -176,8 +176,8 @@ namespace BusinessLayer.Services
 
         public async Task<StationReport> GenerateDailyReportAsync(Guid stationId, DateOnly reportDate)
         {
-            var startDateTime = reportDate.ToDateTime(TimeOnly.MinValue);
-            var endDateTime = reportDate.ToDateTime(TimeOnly.MaxValue);
+            var startDateTime = DateTime.SpecifyKind(reportDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            var endDateTime = DateTime.SpecifyKind(reportDate.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
 
             var sessions = await _context.ChargingSessions
                 .Include(cs => cs.ChargingSpot)

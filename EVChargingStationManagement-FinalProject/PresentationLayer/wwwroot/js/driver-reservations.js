@@ -75,16 +75,33 @@ function displayReservations(reservations) {
         const stationName = r.chargingStationName || 'N/A';
         const spotNumber = r.chargingSpotNumber || 'N/A';
         const vehicleName = r.vehicleName || 'N/A';
+        
+        // Convert status to string để xử lý cả enum (số) và string
+        // ReservationStatus enum: Pending=0, Confirmed=1, CheckedIn=2, Completed=3, Cancelled=4, Expired=5, NoShow=6
+        const statusValue = String(r.status).toLowerCase();
+        const statusNum = typeof r.status === 'number' ? r.status : 
+                         (statusValue === 'pending' ? 0 :
+                          statusValue === 'confirmed' ? 1 :
+                          statusValue === 'checkedin' ? 2 :
+                          statusValue === 'completed' ? 3 :
+                          statusValue === 'cancelled' ? 4 :
+                          statusValue === 'expired' ? 5 :
+                          statusValue === 'noshow' ? 6 : -1);
+        
         const status = getStatusBadge(r.status);
         
         // Check if can start charging (cho phép bắt đầu sớm nếu có reservation)
         const now = new Date();
         const scheduledStart = new Date(r.scheduledStartTime);
         // Cho phép bắt đầu nếu có reservation và có spot (có thể bắt đầu sớm)
-        const canStart = (r.status === 'Confirmed' || r.status === 'Pending') && r.chargingSpotId;
+        // So sánh cả số và string
+        const isPending = statusNum === 0 || statusValue === 'pending';
+        const isConfirmed = statusNum === 1 || statusValue === 'confirmed';
+        const isCheckedIn = statusNum === 2 || statusValue === 'checkedin';
+        const canStart = (isConfirmed || isPending) && r.chargingSpotId;
         
         // Check if reservation is upcoming (not yet started)
-        const isUpcoming = now < scheduledStart && r.status === 'Confirmed';
+        const isUpcoming = now < scheduledStart && isConfirmed;
 
         let actions = '';
         if (canStart) {
@@ -106,9 +123,10 @@ function displayReservations(reservations) {
             }
         }
         
-        if (r.status === 'Pending' || r.status === 'Confirmed') {
+        // Hiển thị nút hủy cho các trạng thái có thể hủy (Pending, Confirmed, CheckedIn)
+        if (isPending || isConfirmed || isCheckedIn) {
             actions += `
-                <button class="btn btn-sm btn-outline-danger ms-2" onclick="cancelReservation('${r.id}')">
+                <button class="btn btn-sm btn-outline-danger ms-2" onclick="cancelReservation('${r.id}', '${escapeHtml(stationName)}', '${escapeHtml(spotNumber)}')">
                     <i class="bi bi-x-circle"></i> Hủy
                 </button>
             `;
@@ -148,19 +166,67 @@ function escapeHtml(text) {
 }
 
 function getStatusBadge(status) {
+    // Xử lý cả enum (số) và string
+    // ReservationStatus enum: Pending=0, Confirmed=1, CheckedIn=2, Completed=3, Cancelled=4, Expired=5, NoShow=6
+    let statusKey = status;
+    
+    if (typeof status === 'number') {
+        const statusMap = {
+            0: 'Pending',
+            1: 'Confirmed',
+            2: 'CheckedIn',
+            3: 'Completed',
+            4: 'Cancelled',
+            5: 'Expired',
+            6: 'NoShow'
+        };
+        statusKey = statusMap[status] || status;
+    } else {
+        // Convert string to proper case
+        const statusStr = String(status);
+        if (statusStr === '0' || statusStr.toLowerCase() === 'pending') statusKey = 'Pending';
+        else if (statusStr === '1' || statusStr.toLowerCase() === 'confirmed') statusKey = 'Confirmed';
+        else if (statusStr === '2' || statusStr.toLowerCase() === 'checkedin') statusKey = 'CheckedIn';
+        else if (statusStr === '3' || statusStr.toLowerCase() === 'completed') statusKey = 'Completed';
+        else if (statusStr === '4' || statusStr.toLowerCase() === 'cancelled') statusKey = 'Cancelled';
+        else if (statusStr === '5' || statusStr.toLowerCase() === 'expired') statusKey = 'Expired';
+        else if (statusStr === '6' || statusStr.toLowerCase() === 'noshow') statusKey = 'NoShow';
+    }
+    
     const badges = {
         'Pending': '<span class="badge bg-warning">Chờ xác nhận</span>',
         'Confirmed': '<span class="badge bg-success">Đã xác nhận</span>',
+        'CheckedIn': '<span class="badge bg-primary">Đã check-in</span>',
         'Completed': '<span class="badge bg-info">Hoàn thành</span>',
-        'Cancelled': '<span class="badge bg-secondary">Đã hủy</span>'
+        'Cancelled': '<span class="badge bg-secondary">Đã hủy</span>',
+        'Expired': '<span class="badge bg-dark">Hết hạn</span>',
+        'NoShow': '<span class="badge bg-danger">Không đến</span>'
     };
-    return badges[status] || `<span class="badge bg-secondary">${status}</span>`;
+    return badges[statusKey] || `<span class="badge bg-secondary">${status}</span>`;
 }
 
-async function cancelReservation(reservationId) {
-    if (!confirm('Bạn có chắc chắn muốn hủy đặt chỗ này?')) {
+async function cancelReservation(reservationId, stationName = '', spotNumber = '') {
+    // Thông báo xác nhận chi tiết hơn
+    const confirmMessage = stationName && spotNumber 
+        ? `Bạn có chắc chắn muốn hủy đặt chỗ tại trạm "${stationName}" - Cổng ${spotNumber}?\n\nChỗ sạc sẽ được trả về trống ngay lập tức.`
+        : 'Bạn có chắc chắn muốn hủy đặt chỗ này?\n\nChỗ sạc sẽ được trả về trống ngay lập tức.';
+    
+    if (!confirm(confirmMessage)) {
         return;
     }
+
+    // Tìm button đang được click để hiển thị loading state
+    const buttons = document.querySelectorAll(`button[onclick*="cancelReservation('${reservationId}'"]`);
+    const originalButtons = [];
+    buttons.forEach(btn => {
+        originalButtons.push({
+            element: btn,
+            originalHTML: btn.innerHTML,
+            originalDisabled: btn.disabled
+        });
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Đang hủy...';
+    });
 
     try {
         const response = await fetch(`/api/Reservation/${reservationId}`, {
@@ -175,25 +241,92 @@ async function cancelReservation(reservationId) {
         });
 
         if (response.ok || response.status === 204) {
-            // Show success message
+            // Show success message với thông tin chi tiết
             const alertDiv = document.createElement('div');
             alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
             alertDiv.style.zIndex = '9999';
+            alertDiv.style.minWidth = '300px';
             alertDiv.innerHTML = `
-                <i class="bi bi-check-circle"></i> Đã hủy đặt chỗ thành công
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-check-circle-fill me-2" style="font-size: 1.2rem;"></i>
+                    <div>
+                        <strong>Đã hủy đặt chỗ thành công!</strong>
+                        <div class="small">Chỗ sạc đã được trả về trống.</div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
             `;
             document.body.appendChild(alertDiv);
-            setTimeout(() => alertDiv.remove(), 3000);
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
             
-            loadReservations();
+            // Reload danh sách reservations
+            await loadReservations();
         } else {
-            const error = await response.json();
-            alert('Lỗi: ' + (error.message || 'Không thể hủy đặt chỗ'));
+            // Khôi phục button
+            originalButtons.forEach(btn => {
+                btn.element.disabled = btn.originalDisabled;
+                btn.element.innerHTML = btn.originalHTML;
+            });
+
+            const errorData = await response.json().catch(() => ({}));
+            const errorMessage = errorData.message || 'Không thể hủy đặt chỗ';
+            
+            // Show error message
+            const errorAlertDiv = document.createElement('div');
+            errorAlertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+            errorAlertDiv.style.zIndex = '9999';
+            errorAlertDiv.style.minWidth = '300px';
+            errorAlertDiv.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill me-2" style="font-size: 1.2rem;"></i>
+                    <div>
+                        <strong>Lỗi!</strong>
+                        <div class="small">${escapeHtml(errorMessage)}</div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            document.body.appendChild(errorAlertDiv);
+            setTimeout(() => {
+                if (errorAlertDiv.parentNode) {
+                    errorAlertDiv.remove();
+                }
+            }, 5000);
         }
     } catch (error) {
         console.error('Error cancelling reservation:', error);
-        alert('Có lỗi xảy ra. Vui lòng thử lại.');
+        
+        // Khôi phục button
+        originalButtons.forEach(btn => {
+            btn.element.disabled = btn.originalDisabled;
+            btn.element.innerHTML = btn.originalHTML;
+        });
+
+        // Show error message
+        const errorAlertDiv = document.createElement('div');
+        errorAlertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+        errorAlertDiv.style.zIndex = '9999';
+        errorAlertDiv.style.minWidth = '300px';
+        errorAlertDiv.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill me-2" style="font-size: 1.2rem;"></i>
+                <div>
+                    <strong>Lỗi!</strong>
+                    <div class="small">Có lỗi xảy ra. Vui lòng thử lại.</div>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        document.body.appendChild(errorAlertDiv);
+        setTimeout(() => {
+            if (errorAlertDiv.parentNode) {
+                errorAlertDiv.remove();
+            }
+        }, 5000);
     }
 }
 

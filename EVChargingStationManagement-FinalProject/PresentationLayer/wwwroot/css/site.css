@@ -1291,7 +1291,8 @@ body {
 
 .map-info-footer {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 16px;
   align-items: center;
   padding: 17px 24px 24px 24px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);

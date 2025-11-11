@@ -119,13 +119,19 @@ namespace PresentationLayer.Controllers
 
             if (startDate.HasValue)
             {
-                query = query.Where(s => s.SessionStartTime >= startDate.Value);
+                var startDateTimeUtc = startDate.Value.Kind == DateTimeKind.Unspecified 
+                    ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+                    : startDate.Value.ToUniversalTime();
+                query = query.Where(s => s.SessionStartTime >= startDateTimeUtc);
             }
 
             if (endDate.HasValue)
             {
                 var endDateTime = endDate.Value.Date.AddDays(1);
-                query = query.Where(s => s.SessionStartTime < endDateTime);
+                var endDateTimeUtc = endDateTime.Kind == DateTimeKind.Unspecified 
+                    ? DateTime.SpecifyKind(endDateTime, DateTimeKind.Utc)
+                    : endDateTime.ToUniversalTime();
+                query = query.Where(s => s.SessionStartTime < endDateTimeUtc);
             }
 
             var totalCount = await query.CountAsync();

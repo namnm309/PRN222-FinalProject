@@ -7,6 +7,13 @@ namespace BusinessLayer.DTOs
         public string? ReturnUrl { get; set; }
     }
 
+    public class CreateCashPaymentRequest
+    {
+        public Guid SessionId { get; set; }
+        public decimal Amount { get; set; }
+        public string? Description { get; set; }
+    }
+
     public class VnPayCallbackResult
     {
         public bool Success { get; set; }

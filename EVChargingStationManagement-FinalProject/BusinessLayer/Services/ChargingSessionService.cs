@@ -72,11 +72,18 @@ namespace BusinessLayer.Services
         {
             var spot = await _context.ChargingSpots
                 .Include(s => s.ChargingSessions.Where(cs => cs.Status == ChargingSessionStatus.InProgress))
+                .Include(s => s.ChargingStation)
                 .FirstOrDefaultAsync(s => s.Id == session.ChargingSpotId);
 
             if (spot == null)
             {
                 throw new InvalidOperationException("Charging spot not found.");
+            }
+
+            // Kiểm tra station status - chỉ cho phép bắt đầu sạc khi station Active
+            if (spot.ChargingStation == null || spot.ChargingStation.Status != StationStatus.Active)
+            {
+                throw new InvalidOperationException("Trạm sạc hiện không khả dụng để bắt đầu sạc.");
             }
 
             if (spot.Status != SpotStatus.Available)
@@ -180,6 +187,7 @@ namespace BusinessLayer.Services
         {
             var session = await _context.ChargingSessions
                 .Include(cs => cs.ChargingSpot)
+                .Include(cs => cs.User)
                 .FirstOrDefaultAsync(cs => cs.Id == sessionId);
 
             if (session == null)
@@ -191,9 +199,15 @@ namespace BusinessLayer.Services
             session.Notes = notes ?? session.Notes;
             session.UpdatedAt = DateTime.UtcNow;
 
-            if (status is ChargingSessionStatus.Cancelled or ChargingSessionStatus.Failed)
+            // Set SessionEndTime when status changes to Completed, Cancelled, or Failed
+            if (status is ChargingSessionStatus.Completed or ChargingSessionStatus.Cancelled or ChargingSessionStatus.Failed)
             {
-                session.SessionEndTime = DateTime.UtcNow;
+                if (!session.SessionEndTime.HasValue)
+                {
+                    session.SessionEndTime = DateTime.UtcNow;
+                }
+                
+                // Trả spot về Available
                 if (session.ChargingSpot != null)
                 {
                     session.ChargingSpot.Status = SpotStatus.Available;

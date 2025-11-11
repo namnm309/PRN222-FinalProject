@@ -72,11 +72,18 @@ namespace BusinessLayer.Services
             // Validate spot availability
             var spot = await _context.ChargingSpots
                 .Include(s => s.Reservations)
+                .Include(s => s.ChargingStation)
                 .FirstOrDefaultAsync(s => s.Id == reservation.ChargingSpotId);
 
             if (spot == null)
             {
                 throw new InvalidOperationException("Charging spot not found.");
+            }
+
+            // Kiểm tra station status - chỉ cho phép đặt lịch khi station Active
+            if (spot.ChargingStation == null || spot.ChargingStation.Status != StationStatus.Active)
+            {
+                throw new InvalidOperationException("Trạm sạc hiện không khả dụng để đặt lịch.");
             }
 
             // Tính ScheduledEndTime tự động nếu không được cung cấp (mặc định +2 giờ)

@@ -2,10 +2,12 @@ using System.Linq;
 using System.Security.Claims;
 using BusinessLayer.DTOs;
 using BusinessLayer.Services;
+using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace PresentationLayer.Controllers
 {
@@ -18,17 +20,20 @@ namespace PresentationLayer.Controllers
         private readonly IChargingSpotService _spotService;
         private readonly IRealtimeNotifier _notifier;
         private readonly IChargingStationService _stationService;
+        private readonly EVDbContext _context;
 
         public ReservationController(
             IReservationService reservationService,
             IChargingSpotService spotService,
             IRealtimeNotifier notifier,
-            IChargingStationService stationService)
+            IChargingStationService stationService,
+            EVDbContext context)
         {
             _reservationService = reservationService;
             _spotService = spotService;
             _notifier = notifier;
             _stationService = stationService;
+            _context = context;
         }
 
         [HttpGet("me")]
@@ -160,9 +165,11 @@ namespace PresentationLayer.Controllers
             var reservation = await _reservationService.GetReservationByIdAsync(id);
             if (reservation != null)
             {
+                // Notify user about reservation change
                 await _notifier.NotifyReservationChangedAsync(reservation);
                 
-                // Notify station availability change
+                // Notify station availability change - this will trigger SignalR update
+                // to refresh homepage immediately when reservation is cancelled
                 var stationId = reservation.ChargingSpot?.ChargingStationId ?? Guid.Empty;
                 if (stationId != Guid.Empty)
                 {
@@ -218,7 +225,32 @@ namespace PresentationLayer.Controllers
             {
                 var spots = station.ChargingSpots?.ToList() ?? new List<ChargingSpot>();
                 var totalSpots = spots.Count;
-                var availableSpots = spots.Count(s => s.Status == SpotStatus.Available);
+                
+                // Nếu station không Active, thì availableSpots = 0
+                int availableSpots = 0;
+                if (station.Status == StationStatus.Active)
+                {
+                    // Tính available spots: spot phải Available VÀ không có active reservations
+                    var now = DateTime.UtcNow;
+                    var spotIds = spots.Select(s => s.Id).ToList();
+                    
+                    // Load tất cả active reservations cho các spots trong station này một lần
+                    var activeReservations = await _context.Reservations
+                        .Where(r => spotIds.Contains(r.ChargingSpotId) &&
+                                    (r.Status == ReservationStatus.Pending ||
+                                     r.Status == ReservationStatus.Confirmed ||
+                                     r.Status == ReservationStatus.CheckedIn) &&
+                                    r.ScheduledEndTime > now)
+                        .Select(r => r.ChargingSpotId)
+                        .Distinct()
+                        .ToListAsync();
+                    
+                    // Một spot available nếu: status = Available VÀ không có active reservation
+                    availableSpots = spots.Count(s => 
+                        s.Status == SpotStatus.Available && 
+                        !activeReservations.Contains(s.Id));
+                }
+                
                 await _notifier.NotifyStationAvailabilityChangedAsync(stationId, totalSpots, availableSpots);
             }
         }
