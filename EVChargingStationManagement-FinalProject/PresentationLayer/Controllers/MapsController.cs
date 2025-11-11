@@ -29,6 +29,7 @@ namespace PresentationLayer.Controllers
             public double? Rating { get; set; }
             public int? Reviews { get; set; }
             public string Address { get; set; }
+            public string PlaceId { get; set; }
         }
 
         [HttpGet("search")]
@@ -71,6 +72,7 @@ namespace PresentationLayer.Controllers
                         string address = item.TryGetProperty("address", out var a) ? a.GetString() : null;
                         double? rating = item.TryGetProperty("rating", out var r) && r.ValueKind == JsonValueKind.Number ? r.GetDouble() : (double?)null;
                         int? reviews = item.TryGetProperty("reviews", out var rv) && rv.ValueKind == JsonValueKind.Number ? rv.GetInt32() : (int?)null;
+                        string placeId = item.TryGetProperty("place_id", out var pid) ? pid.GetString() : null;
 
                         double latitude = 0;
                         double longitude = 0;
@@ -95,7 +97,8 @@ namespace PresentationLayer.Controllers
                                 Longitude = longitude,
                                 Rating = rating,
                                 Reviews = reviews,
-                                Address = address
+                                Address = address,
+                                PlaceId = placeId
                             });
                         }
                     }

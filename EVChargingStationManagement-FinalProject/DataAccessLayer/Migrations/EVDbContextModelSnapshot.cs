@@ -22,6 +22,143 @@ namespace DataAccessLayer.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("DataAccessLayer.Entities.ChargingSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChargingSpotId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("Cost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("CurrentPowerKw")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("CurrentSocPercentage")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("EnergyDeliveredKwh")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("EnergyRequestedKwh")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("ExternalSessionId")
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("InitialSocPercentage")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("LastUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("PricePerKwh")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("QrCodeScanned")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ReservationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("SessionEndTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("SessionStartTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("TargetSocPercentage")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("VehicleId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChargingSpotId");
+
+                    b.HasIndex("ReservationId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("VehicleId");
+
+                    b.ToTable("tbl_charging_session");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.ChargingSessionProgress", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChargingSessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("EnergyDeliveredKwh")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("EstimatedTimeRemainingMinutes")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("PowerKw")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("SocPercentage")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChargingSessionId");
+
+                    b.HasIndex("RecordedAt");
+
+                    b.HasIndex("ChargingSessionId", "RecordedAt");
+
+                    b.ToTable("tbl_charging_session_progress");
+                });
+
             modelBuilder.Entity("DataAccessLayer.Entities.ChargingSpot", b =>
                 {
                     b.Property<Guid>("Id")
@@ -40,11 +177,17 @@ namespace DataAccessLayer.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsOnline")
+                        .HasColumnType("boolean");
+
                     b.Property<decimal?>("PowerOutput")
                         .HasColumnType("numeric");
 
                     b.Property<decimal?>("PricePerKwh")
                         .HasColumnType("numeric");
+
+                    b.Property<string>("QrCode")
+                        .HasColumnType("text");
 
                     b.Property<string>("SpotNumber")
                         .IsRequired()
@@ -59,6 +202,10 @@ namespace DataAccessLayer.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ChargingStationId");
+
+                    b.HasIndex("IsOnline");
+
+                    b.HasIndex("QrCode");
 
                     b.HasIndex("SpotNumber");
 
@@ -92,7 +239,17 @@ namespace DataAccessLayer.Migrations
                     b.Property<string>("Email")
                         .HasColumnType("text");
 
+                    b.Property<decimal?>("ExternalRating")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int?>("ExternalReviewCount")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("Is24Hours")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsFromSerpApi")
                         .HasColumnType("boolean");
 
                     b.Property<decimal?>("Latitude")
@@ -117,6 +274,12 @@ namespace DataAccessLayer.Migrations
                     b.Property<string>("Province")
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("SerpApiLastSynced")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SerpApiPlaceId")
+                        .HasColumnType("text");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -125,11 +288,146 @@ namespace DataAccessLayer.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("IsFromSerpApi");
+
                     b.HasIndex("Name");
+
+                    b.HasIndex("SerpApiPlaceId");
 
                     b.HasIndex("Status");
 
                     b.ToTable("tbl_charging_station");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReferenceId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsRead");
+
+                    b.HasIndex("Type");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("tbl_notification");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.PaymentTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("ChargingSessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EWalletProvider")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProviderTransactionId")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ReservationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("SubscriptionPackageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("WalletBalanceAfter")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("WalletBalanceBefore")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChargingSessionId");
+
+                    b.HasIndex("Method");
+
+                    b.HasIndex("ReservationId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("SubscriptionPackageId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("tbl_payment_transaction");
                 });
 
             modelBuilder.Entity("DataAccessLayer.Entities.RefreshToken", b =>
@@ -168,6 +466,110 @@ namespace DataAccessLayer.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("tbl_refresh_token");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.Reservation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChargingSpotId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConfirmationCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("EstimatedCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("EstimatedEnergyKwh")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<bool>("IsPrepaid")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("ScheduledEndTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ScheduledStartTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("VehicleId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChargingSpotId");
+
+                    b.HasIndex("ConfirmationCode")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("VehicleId");
+
+                    b.ToTable("tbl_reservation");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.StationAmenity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChargingStationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChargingStationId");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("ChargingStationId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("tbl_station_amenity");
                 });
 
             modelBuilder.Entity("DataAccessLayer.Entities.StationError", b =>
@@ -304,6 +706,186 @@ namespace DataAccessLayer.Migrations
                     b.ToTable("tbl_station_maintenance");
                 });
 
+            modelBuilder.Entity("DataAccessLayer.Entities.StationReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("AverageSessionDurationMinutes")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("ChargingStationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("PeakHour")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("ReportDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("TotalEnergyDeliveredKwh")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalRevenue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("TotalSessions")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChargingStationId");
+
+                    b.HasIndex("ReportDate");
+
+                    b.HasIndex("ChargingStationId", "ReportDate")
+                        .IsUnique();
+
+                    b.ToTable("tbl_station_report");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.SubscriptionPackage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<int>("DurationDays")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("EnergyKwh")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ValidFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ValidTo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("tbl_subscription_package");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.UserSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ActivatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("PurchasedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("RemainingEnergyKwh")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("SubscriptionPackageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("SubscriptionPackageId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "SubscriptionPackageId");
+
+                    b.ToTable("tbl_user_subscription");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.UserVehicle", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ChargePortLocation")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Nickname")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("VehicleId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VehicleId");
+
+                    b.HasIndex("UserId", "VehicleId")
+                        .IsUnique();
+
+                    b.ToTable("tbl_user_vehicle");
+                });
+
             modelBuilder.Entity("DataAccessLayer.Entities.Users", b =>
                 {
                     b.Property<Guid>("Id")
@@ -357,6 +939,105 @@ namespace DataAccessLayer.Migrations
                     b.ToTable("tbl_user");
                 });
 
+            modelBuilder.Entity("DataAccessLayer.Entities.Vehicle", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("BatteryCapacityKwh")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Color")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LicensePlate")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Make")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("MaxChargingPowerKw")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("ModelYear")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("VehicleType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Vin")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LicensePlate");
+
+                    b.HasIndex("Vin");
+
+                    b.ToTable("tbl_vehicle");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.ChargingSession", b =>
+                {
+                    b.HasOne("DataAccessLayer.Entities.ChargingSpot", "ChargingSpot")
+                        .WithMany("ChargingSessions")
+                        .HasForeignKey("ChargingSpotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DataAccessLayer.Entities.Reservation", "Reservation")
+                        .WithMany("ChargingSessions")
+                        .HasForeignKey("ReservationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("DataAccessLayer.Entities.Users", "User")
+                        .WithMany("ChargingSessions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DataAccessLayer.Entities.Vehicle", "Vehicle")
+                        .WithMany("ChargingSessions")
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("ChargingSpot");
+
+                    b.Navigation("Reservation");
+
+                    b.Navigation("User");
+
+                    b.Navigation("Vehicle");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.ChargingSessionProgress", b =>
+                {
+                    b.HasOne("DataAccessLayer.Entities.ChargingSession", "ChargingSession")
+                        .WithMany("ProgressHistory")
+                        .HasForeignKey("ChargingSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ChargingSession");
+                });
+
             modelBuilder.Entity("DataAccessLayer.Entities.ChargingSpot", b =>
                 {
                     b.HasOne("DataAccessLayer.Entities.ChargingStation", "ChargingStation")
@@ -368,6 +1049,49 @@ namespace DataAccessLayer.Migrations
                     b.Navigation("ChargingStation");
                 });
 
+            modelBuilder.Entity("DataAccessLayer.Entities.Notification", b =>
+                {
+                    b.HasOne("DataAccessLayer.Entities.Users", "User")
+                        .WithMany("Notifications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.PaymentTransaction", b =>
+                {
+                    b.HasOne("DataAccessLayer.Entities.ChargingSession", "ChargingSession")
+                        .WithMany("PaymentTransactions")
+                        .HasForeignKey("ChargingSessionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("DataAccessLayer.Entities.Reservation", "Reservation")
+                        .WithMany("PaymentTransactions")
+                        .HasForeignKey("ReservationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("DataAccessLayer.Entities.SubscriptionPackage", "SubscriptionPackage")
+                        .WithMany("PaymentTransactions")
+                        .HasForeignKey("SubscriptionPackageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("DataAccessLayer.Entities.Users", "User")
+                        .WithMany("PaymentTransactions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ChargingSession");
+
+                    b.Navigation("Reservation");
+
+                    b.Navigation("SubscriptionPackage");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("DataAccessLayer.Entities.RefreshToken", b =>
                 {
                     b.HasOne("DataAccessLayer.Entities.Users", "User")
@@ -377,6 +1101,43 @@ namespace DataAccessLayer.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.Reservation", b =>
+                {
+                    b.HasOne("DataAccessLayer.Entities.ChargingSpot", "ChargingSpot")
+                        .WithMany("Reservations")
+                        .HasForeignKey("ChargingSpotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DataAccessLayer.Entities.Users", "User")
+                        .WithMany("Reservations")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DataAccessLayer.Entities.Vehicle", "Vehicle")
+                        .WithMany()
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("ChargingSpot");
+
+                    b.Navigation("User");
+
+                    b.Navigation("Vehicle");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.StationAmenity", b =>
+                {
+                    b.HasOne("DataAccessLayer.Entities.ChargingStation", "ChargingStation")
+                        .WithMany("Amenities")
+                        .HasForeignKey("ChargingStationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ChargingStation");
                 });
 
             modelBuilder.Entity("DataAccessLayer.Entities.StationError", b =>
@@ -444,9 +1205,110 @@ namespace DataAccessLayer.Migrations
                     b.Navigation("ReportedByUser");
                 });
 
+            modelBuilder.Entity("DataAccessLayer.Entities.StationReport", b =>
+                {
+                    b.HasOne("DataAccessLayer.Entities.ChargingStation", "ChargingStation")
+                        .WithMany("StationReports")
+                        .HasForeignKey("ChargingStationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ChargingStation");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.UserSubscription", b =>
+                {
+                    b.HasOne("DataAccessLayer.Entities.SubscriptionPackage", "SubscriptionPackage")
+                        .WithMany("UserSubscriptions")
+                        .HasForeignKey("SubscriptionPackageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DataAccessLayer.Entities.Users", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SubscriptionPackage");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.UserVehicle", b =>
+                {
+                    b.HasOne("DataAccessLayer.Entities.Users", "User")
+                        .WithMany("UserVehicles")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DataAccessLayer.Entities.Vehicle", "Vehicle")
+                        .WithMany("UserVehicles")
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+
+                    b.Navigation("Vehicle");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.ChargingSession", b =>
+                {
+                    b.Navigation("PaymentTransactions");
+
+                    b.Navigation("ProgressHistory");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.ChargingSpot", b =>
+                {
+                    b.Navigation("ChargingSessions");
+
+                    b.Navigation("Reservations");
+                });
+
             modelBuilder.Entity("DataAccessLayer.Entities.ChargingStation", b =>
                 {
+                    b.Navigation("Amenities");
+
                     b.Navigation("ChargingSpots");
+
+                    b.Navigation("StationReports");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.Reservation", b =>
+                {
+                    b.Navigation("ChargingSessions");
+
+                    b.Navigation("PaymentTransactions");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.SubscriptionPackage", b =>
+                {
+                    b.Navigation("PaymentTransactions");
+
+                    b.Navigation("UserSubscriptions");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.Users", b =>
+                {
+                    b.Navigation("ChargingSessions");
+
+                    b.Navigation("Notifications");
+
+                    b.Navigation("PaymentTransactions");
+
+                    b.Navigation("Reservations");
+
+                    b.Navigation("UserVehicles");
+                });
+
+            modelBuilder.Entity("DataAccessLayer.Entities.Vehicle", b =>
+                {
+                    b.Navigation("ChargingSessions");
+
+                    b.Navigation("UserVehicles");
                 });
 #pragma warning restore 612, 618
         }

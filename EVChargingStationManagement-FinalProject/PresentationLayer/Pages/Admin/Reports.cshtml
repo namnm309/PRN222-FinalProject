@@ -1,18 +1,211 @@
 @page 
 @{
     Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
-    ViewData["Title"] = "Admin • Báo cáo";
+    ViewData["Title"] = "Admin • Báo cáo & Thống kê";
 }
 
 <section class="page-header">
     <h2>@ViewData["Title"]</h2>
 </section>
 
-<section class="filters">Bộ lọc báo cáo (placeholder)</section>
-
-<section class="content-grid">
-    <div class="table-placeholder">Bảng số liệu (placeholder)</div>
-    <div class="chart-placeholder">Biểu đồ tổng hợp (placeholder)</div>
+<section class="filters dashboard-filters">
+    <div class="filter-group">
+        <label for="ReportDateFrom">Từ ngày</label>
+        <input type="date" id="ReportDateFrom" class="form-control" data-date-from>
+    </div>
+    <div class="filter-group">
+        <label for="ReportDateTo">Đến ngày</label>
+        <input type="date" id="ReportDateTo" class="form-control" data-date-to>
+    </div>
+    <div class="filter-group">
+        <label for="ReportStationFilter">Trạm sạc (tùy chọn)</label>
+        <select id="ReportStationFilter" class="form-select" data-station-filter>
+            <option value="">Tất cả trạm</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <button class="btn btn-primary" data-action="apply-filters">
+            <i class="bi bi-funnel"></i> Áp dụng
+        </button>
+        <button class="btn btn-outline-secondary" data-action="reset-filters">
+            <i class="bi bi-arrow-counterclockwise"></i> Đặt lại
+        </button>
+    </div>
 </section>
 
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview-pane" type="button" role="tab">
+            <i class="bi bi-bar-chart"></i> Tổng hợp hệ thống
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="station-tab" data-bs-toggle="tab" data-bs-target="#station-pane" type="button" role="tab">
+            <i class="bi bi-building"></i> Báo cáo theo trạm
+        </button>
+    </li>
+</ul>
 
+<div class="tab-content">
+    <!-- Tab Tổng hợp hệ thống -->
+    <div class="tab-pane fade show active" id="overview-pane" role="tabpanel">
+        <section class="kpis dashboard-kpis">
+            <div class="kpi-card">
+                <span class="kpi-title">Tổng doanh thu</span>
+                <span class="kpi-value" data-kpi="total-revenue">--</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-title">Tổng phiên sạc</span>
+                <span class="kpi-value" data-kpi="total-sessions">--</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-title">Tổng năng lượng (kWh)</span>
+                <span class="kpi-value" data-kpi="total-energy">--</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-title">Giờ cao điểm</span>
+                <span class="kpi-value" data-kpi="peak-hour">--</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-title">Thời gian TB (phút)</span>
+                <span class="kpi-value" data-kpi="avg-duration">--</span>
+            </div>
+        </section>
+
+        <section class="content-grid">
+            <div class="dashboard-panel">
+                <div class="panel-header">
+                    <h3>Doanh thu theo ngày</h3>
+                </div>
+                <div class="panel-body">
+                    <canvas id="revenueChart" height="80"></canvas>
+                </div>
+            </div>
+            <div class="dashboard-panel">
+                <div class="panel-header">
+                    <h3>Sử dụng theo giờ</h3>
+                </div>
+                <div class="panel-body">
+                    <canvas id="usageByHourChart" height="80"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-grid">
+            <div class="dashboard-panel">
+                <div class="panel-header">
+                    <h3>Chi tiết doanh thu</h3>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Ngày</th>
+                                <th>Doanh thu (VND)</th>
+                                <th>Số phiên</th>
+                                <th>Năng lượng (kWh)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="revenueTableBody">
+                            <tr>
+                                <td colspan="4" class="text-center">Đang tải dữ liệu...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Tab Báo cáo theo trạm -->
+    <div class="tab-pane fade" id="station-pane" role="tabpanel">
+        <section class="filters mb-3">
+            <div class="filter-group">
+                <label for="StationReportSelect">Chọn trạm</label>
+                <select id="StationReportSelect" class="form-select" data-station-select>
+                    <option value="">-- Chọn trạm --</option>
+                </select>
+            </div>
+        </section>
+
+        <div id="stationReportContent" style="display: none;">
+            <section class="kpis dashboard-kpis">
+                <div class="kpi-card">
+                    <span class="kpi-title">Doanh thu trạm</span>
+                    <span class="kpi-value" data-kpi="station-revenue">--</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-title">Số phiên sạc</span>
+                    <span class="kpi-value" data-kpi="station-sessions">--</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-title">Năng lượng (kWh)</span>
+                    <span class="kpi-value" data-kpi="station-energy">--</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-title">Giờ cao điểm</span>
+                    <span class="kpi-value" data-kpi="station-peak-hour">--</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-title">Thời gian TB (phút)</span>
+                    <span class="kpi-value" data-kpi="station-avg-duration">--</span>
+                </div>
+            </section>
+
+            <section class="content-grid">
+                <div class="dashboard-panel">
+                    <div class="panel-header">
+                        <h3>Doanh thu theo ngày</h3>
+                    </div>
+                    <div class="panel-body">
+                        <canvas id="stationRevenueChart" height="80"></canvas>
+                    </div>
+                </div>
+                <div class="dashboard-panel">
+                    <div class="panel-header">
+                        <h3>Sử dụng theo giờ</h3>
+                    </div>
+                    <div class="panel-body">
+                        <canvas id="stationUsageByHourChart" height="80"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section class="content-grid">
+                <div class="dashboard-panel">
+                    <div class="panel-header">
+                        <h3>Báo cáo chi tiết</h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Ngày</th>
+                                    <th>Tổng phiên</th>
+                                    <th>Năng lượng (kWh)</th>
+                                    <th>Doanh thu (VND)</th>
+                                    <th>Giờ cao điểm</th>
+                                    <th>Thời gian TB (phút)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stationReportTableBody">
+                                <tr>
+                                    <td colspan="6" class="text-center">Đang tải dữ liệu...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div id="stationReportPlaceholder" class="text-center text-muted p-5">
+            <i class="bi bi-building" style="font-size: 3rem;"></i>
+            <p class="mt-3">Vui lòng chọn trạm để xem báo cáo</p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/admin-reports.js" asp-append-version="true"></script>
+}

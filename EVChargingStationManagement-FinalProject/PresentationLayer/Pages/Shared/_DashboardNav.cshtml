@@ -1,8 +1,9 @@
 @{
-    // Xác định ngữ cảnh hiện tại (Admin hay Staff) theo path
+    // Xác định ngữ cảnh hiện tại (Admin, Staff hay Driver) theo path
     var path = Context?.Request?.Path.Value?.ToLower() ?? string.Empty;
     var isAdmin = path.StartsWith("/admin");
     var isStaff = path.StartsWith("/staff");
+    var isDriver = path.StartsWith("/driver");
 
     string Active(string href)
     {
@@ -43,12 +44,25 @@
             <li><a class="nav-item @Active("/staff")" asp-page="/Staff/Index"><span class="nav-ico">▦</span><span class="nav-text">Dashboard</span></a></li>
             <li><a class="nav-item @Active("/staff/stations")" asp-page="/Staff/Stations"><span class="nav-ico">⚡</span><span class="nav-text">Trạm sạc của tôi</span></a></li>
             <li><a class="nav-item @Active("/staff/sessions")" asp-page="/Staff/Sessions"><span class="nav-ico">⏱</span><span class="nav-text">Giám sát Sạc</span></a></li>
+            <li><a class="nav-item @Active("/staff/reports")" asp-page="/Staff/Reports"><span class="nav-ico">📋</span><span class="nav-text">Báo cáo sự cố</span></a></li>
             <li><a class="nav-item @Active("/staff/settings")" asp-page="/Staff/Settings"><span class="nav-ico">⚙</span><span class="nav-text">Cài đặt</span></a></li>
+        </ul>
+    }
+    else if (isDriver)
+    {
+        <ul class="nav-list">
+            <li><a class="nav-item @Active("/driver")" asp-page="/Driver/Index"><span class="nav-ico">▦</span><span class="nav-text">Dashboard</span></a></li>
+            <li><a class="nav-item" href="/"><span class="nav-ico">🔍</span><span class="nav-text">Tìm trạm sạc</span></a></li>
+            <li><a class="nav-item @Active("/driver/vehicles")" asp-page="/Driver/Vehicles"><span class="nav-ico">🚗</span><span class="nav-text">Quản lý xe</span></a></li>
+            <li><a class="nav-item @Active("/driver/startcharging")" asp-page="/Driver/StartCharging"><span class="nav-ico">⚡</span><span class="nav-text">Bắt đầu sạc</span></a></li>
+            <li><a class="nav-item @Active("/driver/reservations")" asp-page="/Driver/Reservations"><span class="nav-ico">📅</span><span class="nav-text">Đặt chỗ của tôi</span></a></li>
+            <li><a class="nav-item @Active("/driver/sessions")" asp-page="/Driver/Sessions"><span class="nav-ico">⏱</span><span class="nav-text">Phiên sạc của tôi</span></a></li>
+            <li><a class="nav-item @Active("/driver/history")" asp-page="/Driver/History"><span class="nav-ico">📊</span><span class="nav-text">Lịch sử</span></a></li>
         </ul>
     }
     else
     {
-        <div class="sidebar-note">Chọn khu vực Admin/Staff để hiển thị menu.</div>
+        <div class="sidebar-note">Chọn khu vực Admin/Staff/Driver để hiển thị menu.</div>
     }
 </nav>
 
@@ -57,7 +71,7 @@
         <div class="avatar avatar-md">👤</div>
         <div class="user-text">
             <div class="user-name">Người dùng</div>
-            <div class="user-role">@(isAdmin ? "Quản trị viên" : (isStaff ? "Nhân viên" : ""))</div>
+            <div class="user-role">@(isAdmin ? "Quản trị viên" : (isStaff ? "Nhân viên" : (isDriver ? "Tài xế" : "")))</div>
         </div>
         <a asp-page="/Auth/Logout" class="link-logout" title="Đăng xuất">Đăng xuất</a>
     </div>

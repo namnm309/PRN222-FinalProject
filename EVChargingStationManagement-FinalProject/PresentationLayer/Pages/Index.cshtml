@@ -43,6 +43,47 @@
                 </div>
             </div>
 
+            <!-- Filter Section -->
+            <div class="filter-section" style="margin-top: 16px; padding: 16px; background: white; border-radius: 12px;">
+                <h4 style="margin: 0 0 12px 0; font-size: 0.9rem; font-weight: 600;">Bộ lọc</h4>
+                
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; margin-bottom: 4px; font-size: 0.85rem; color: #6b7280;">Loại cổng sạc</label>
+                    <select id="filter-connector-type" class="form-select form-select-sm">
+                        <option value="">Tất cả</option>
+                        <option value="Type 2">Type 2</option>
+                        <option value="CCS">CCS</option>
+                        <option value="CHAdeMO">CHAdeMO</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; margin-bottom: 4px; font-size: 0.85rem; color: #6b7280;">Trạng thái</label>
+                    <select id="filter-status" class="form-select form-select-sm">
+                        <option value="">Tất cả</option>
+                        <option value="Available">Còn trống</option>
+                        <option value="Occupied">Đang bận</option>
+                        <option value="Full">Đầy</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; margin-bottom: 4px; font-size: 0.85rem; color: #6b7280;">Sắp xếp</label>
+                    <select id="filter-sort" class="form-select form-select-sm">
+                        <option value="distance">Khoảng cách</option>
+                        <option value="rating">Đánh giá</option>
+                        <option value="name">Tên</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; margin-bottom: 4px; font-size: 0.85rem; color: #6b7280;">Bán kính: <span id="radius-value">10</span> km</label>
+                    <input type="range" id="filter-radius" class="form-range" min="1" max="50" value="10" step="1">
+                </div>
+
+                <button id="btn-apply-filters" class="btn btn-primary btn-sm w-100" onclick="if(typeof applyFilters === 'function') applyFilters(); else alert('Bộ lọc đang được khởi tạo, vui lòng đợi...'); return false;">Áp dụng bộ lọc</button>
+            </div>
+
             <!-- Station List -->
             <div class="station-list-header">
                 <p class="station-count" id="station-count-text" data-default="Chưa có trạm nào được hiển thị">Chưa có trạm nào được hiển thị</p>
@@ -76,16 +117,16 @@
         <div class="map-info-card" style="display: none;">
             <div class="map-info-header">
                 <div class="map-info-title-section">
-                    <h3 class="map-info-title">Trạm sạc Big C Thăng Long</h3>
+                    <h3 class="map-info-title" data-field="title">Trạm sạc</h3>
                     <div class="map-info-address">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M8 2C5.24 2 3 4.24 3 7C3 10.5 8 14 8 14C8 14 13 10.5 13 7C13 4.24 10.76 2 8 2Z" stroke="#4A5565" stroke-width="1.5"/>
                             <circle cx="8" cy="7" r="2" stroke="#4A5565" stroke-width="1.5"/>
                         </svg>
-                        <span>Đường Thăng Long, Nam Từ Liêm, Hà Nội</span>
+                        <span data-field="address">Đang cập nhật</span>
                     </div>
                 </div>
-                <span class="status-badge status-available">Còn trống</span>
+                <span class="status-badge status-available" data-field="status">Đang cập nhật</span>
             </div>
             <div class="map-info-details">
                 <div class="map-detail-grid">
@@ -95,7 +136,7 @@
                         </svg>
                         <div>
                             <div class="map-detail-label">Cổng sạc</div>
-                            <div class="map-detail-value">3/6</div>
+                            <div class="map-detail-value" data-field="connectors">--</div>
                         </div>
                     </div>
                     <div class="map-detail-item">
@@ -104,7 +145,7 @@
                         </svg>
                         <div>
                             <div class="map-detail-label">Khoảng cách</div>
-                            <div class="map-detail-value">5.2 km</div>
+                            <div class="map-detail-value" data-field="distance">--</div>
                         </div>
                     </div>
                     <div class="map-detail-item">
@@ -113,7 +154,7 @@
                         </svg>
                         <div>
                             <div class="map-detail-label">Loại sạc</div>
-                            <div class="map-detail-value">AC</div>
+                            <div class="map-detail-value" data-field="chargerType">--</div>
                         </div>
                     </div>
                     <div class="map-detail-item">
@@ -122,7 +163,7 @@
                         </svg>
                         <div>
                             <div class="map-detail-label">Đánh giá</div>
-                            <div class="map-detail-value">4.4/5</div>
+                            <div class="map-detail-value" data-field="rating">--</div>
                         </div>
                     </div>
                 </div>
@@ -130,14 +171,29 @@
             <div class="map-info-footer">
                 <div class="map-price-section">
                     <div class="map-price-label">Giá sạc</div>
-                    <div class="map-price-value">3,400đ/kWh</div>
+                    <div class="map-price-value" data-field="price">--</div>
                 </div>
-                <button class="btn-direction">
-                    <span>Chỉ đường</span>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M6 12L10 8L6 4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-direction" id="btn-direction">
+                        <span>Chỉ đường</span>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 12L10 8L6 4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="btn-reserve" id="btn-reserve" style="display: none;">
+                        <span>Đặt trước</span>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M8 2V14M8 2L5 5M8 2L11 5M8 14L5 11M8 14L11 11" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                    <button class="btn-start-charging" id="btn-start-charging" style="display: none;">
+                        <span>Bắt đầu sạc</span>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M8 2L12 6H9V10H7V6H4L8 2Z" fill="white"/>
+                            <path d="M2 12H14V14H2V12Z" fill="white"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -179,9 +235,61 @@
     </div>
 </div>
 
+<!-- Modal Đặt trước -->
+<div class="modal fade" id="reservationModal" tabindex="-1" aria-labelledby="reservationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reservationModalLabel">Đặt trước trạm sạc</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="reservationForm">
+                    <input type="hidden" id="reservation-station-id" />
+                    <input type="hidden" id="reservation-spot-id" />
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Trạm sạc</label>
+                        <input type="text" class="form-control" id="reservation-station-name" readonly />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Chọn cổng sạc <span class="text-danger">*</span></label>
+                        <select class="form-select" id="reservation-spot-select" required>
+                            <option value="">-- Chọn cổng sạc --</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Chọn xe <span class="text-danger">*</span></label>
+                        <select class="form-select" id="reservation-vehicle-select" required>
+                            <option value="">-- Chọn xe --</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Thời gian bắt đầu <span class="text-danger">*</span></label>
+                        <input type="datetime-local" class="form-control" id="reservation-start-time" required />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Ghi chú</label>
+                        <textarea class="form-control" id="reservation-notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" id="btn-submit-reservation">Xác nhận đặt trước</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.0/dist/browser/signalr.min.js" crossorigin="anonymous"></script>
     <script>
         var currentUserMarker = null;
         var mapInstance = null;
@@ -192,6 +300,225 @@
         var statTotalEl = document.getElementById('stat-total');
         var statRatedEl = document.getElementById('stat-rated');
         var statAverageEl = document.getElementById('stat-average');
+        var mapInfoCard = document.querySelector('.map-info-card');
+        var mapInfoFields = mapInfoCard ? {
+            title: mapInfoCard.querySelector('[data-field="title"]'),
+            address: mapInfoCard.querySelector('[data-field="address"]'),
+            status: mapInfoCard.querySelector('[data-field="status"]'),
+            connectors: mapInfoCard.querySelector('[data-field="connectors"]'),
+            distance: mapInfoCard.querySelector('[data-field="distance"]'),
+            chargerType: mapInfoCard.querySelector('[data-field="chargerType"]'),
+            rating: mapInfoCard.querySelector('[data-field="rating"]'),
+            price: mapInfoCard.querySelector('[data-field="price"]')
+        } : {};
+        var selectedStation = null;
+        var dbStations = []; // Cache trạm từ database
+        var isUserAuthenticated = false; // Sẽ được set từ server
+        var signalRConnection = null; // SignalR connection
+        window.isSearching = false; // Initialize search flag
+        var subscribedStationId = null; // Currently subscribed station ID
+
+        // Initialize SignalR connection
+        async function initSignalR() {
+            if (typeof signalR === 'undefined') {
+                console.warn('SignalR library not loaded');
+                return;
+            }
+
+            try {
+                signalRConnection = new signalR.HubConnectionBuilder()
+                    .withAutomaticReconnect()
+                    .withUrl('/hubs/station')
+                    .build();
+
+                // Listen for station availability updates
+                signalRConnection.on('StationAvailabilityUpdated', function(stationId, totalSpots, availableSpots) {
+                    // Only update if this is the currently selected station
+                    if (selectedStation && selectedStation.stationId && selectedStation.stationId === stationId) {
+                        updateStationAvailabilityUI(stationId, totalSpots, availableSpots);
+                    }
+                });
+
+                await signalRConnection.start();
+                console.log('SignalR connected');
+            } catch (err) {
+                console.warn('Không thể kết nối SignalR', err);
+            }
+        }
+
+        // Subscribe to station updates
+        async function subscribeStationSignalR(stationId) {
+            if (!signalRConnection || !stationId) return;
+
+            try {
+                // Unsubscribe from previous station if any
+                if (subscribedStationId && subscribedStationId !== stationId) {
+                    await signalRConnection.invoke('UnsubscribeStation', subscribedStationId);
+                }
+
+                // Subscribe to new station
+                await signalRConnection.invoke('SubscribeStation', stationId);
+                subscribedStationId = stationId;
+            } catch (err) {
+                console.warn('Không thể subscribe station SignalR', err);
+            }
+        }
+
+        // Update station availability UI when receiving SignalR update
+        async function updateStationAvailabilityUI(stationId, totalSpots, availableSpots) {
+            if (!selectedStation || !selectedStation.stationId || selectedStation.stationId !== stationId) {
+                return;
+            }
+
+            // Update station data
+            selectedStation.totalSpots = totalSpots;
+            selectedStation.availableSpots = availableSpots;
+            selectedStation.connectorsText = availableSpots + '/' + totalSpots;
+
+            // Update connectors display
+            setInfoField('connectors', selectedStation.connectorsText);
+
+            // Update status
+            if (availableSpots === 0) {
+                selectedStation.statusText = 'Đầy';
+                selectedStation.statusClass = 'status-full';
+            } else if (availableSpots < totalSpots / 2) {
+                selectedStation.statusText = 'Đang bận';
+                selectedStation.statusClass = 'status-busy';
+            } else {
+                selectedStation.statusText = 'Còn trống';
+                selectedStation.statusClass = 'status-available';
+            }
+
+            setInfoField('status', selectedStation.statusText);
+            if (mapInfoFields.status) {
+                mapInfoFields.status.className = 'status-badge ' + selectedStation.statusClass;
+            }
+        }
+
+        // Kiểm tra user đã đăng nhập chưa
+        function checkAuthentication() {
+            // Check bằng cách gọi API Vehicle (cần auth)
+            fetch('/api/Vehicle', {
+                credentials: 'include'
+            }).then(r => {
+                isUserAuthenticated = r.ok || r.status === 401; // 401 cũng có nghĩa là đã có session nhưng chưa đủ quyền
+                if (r.status === 401) {
+                    // Có thể là chưa đăng nhập hoặc session hết hạn
+                    isUserAuthenticated = false;
+                }
+                updateReserveButtonVisibility();
+            }).catch(() => {
+                isUserAuthenticated = false;
+                updateReserveButtonVisibility();
+            });
+        }
+
+        function updateReserveButtonVisibility() {
+            var btnReserve = document.getElementById('btn-reserve');
+            var btnStartCharging = document.getElementById('btn-start-charging');
+            
+            if (btnReserve) {
+                btnReserve.style.display = (isUserAuthenticated && selectedStation && selectedStation.stationId) ? 'flex' : 'none';
+            }
+            
+            if (btnStartCharging) {
+                // Hiển thị nút "Bắt đầu sạc" nếu có cổng sạc trống
+                const hasAvailableSpots = selectedStation && selectedStation.availableSpots > 0;
+                btnStartCharging.style.display = (isUserAuthenticated && selectedStation && selectedStation.stationId && hasAvailableSpots) ? 'flex' : 'none';
+            }
+        }
+
+        // Tìm trạm trong database match với trạm từ SerpApi
+        async function findMatchingStation(serpStation) {
+            if (!serpStation || !serpStation.latitude || !serpStation.longitude) return null;
+            
+            // Load danh sách trạm từ database nếu chưa có
+            if (dbStations.length === 0) {
+                try {
+                    var response = await fetch('/api/ChargingStation', {
+                        credentials: 'include'
+                    });
+                    if (response.ok) {
+                        dbStations = await response.json();
+                    }
+                } catch (err) {
+                    console.error('Error loading stations:', err);
+                }
+            }
+
+            // Tìm trạm match theo tọa độ (trong phạm vi 100m)
+            var bestMatch = null;
+            var minDistance = 0.1; // 100m
+
+            for (var i = 0; i < dbStations.length; i++) {
+                var dbStation = dbStations[i];
+                if (!dbStation.latitude || !dbStation.longitude) continue;
+
+                var distance = calculateDistanceKm(
+                    serpStation.latitude, serpStation.longitude,
+                    dbStation.latitude, dbStation.longitude
+                );
+
+                if (distance !== null && distance < minDistance) {
+                    minDistance = distance;
+                    bestMatch = dbStation;
+                }
+            }
+
+            return bestMatch;
+        }
+
+        // Làm giàu thông tin trạm với dữ liệu từ database
+        async function enrichStationWithDbData(station) {
+            if (!station) return station;
+
+            var dbStation = await findMatchingStation(station);
+            if (dbStation) {
+                station.stationId = dbStation.id;
+                station.totalSpots = dbStation.totalSpots || 0;
+                station.availableSpots = dbStation.availableSpots || 0;
+                station.connectorsText = station.availableSpots + '/' + station.totalSpots;
+                
+                // Xác định trạng thái
+                if (station.availableSpots === 0) {
+                    station.statusText = 'Đầy';
+                    station.statusClass = 'status-full';
+                } else if (station.availableSpots < station.totalSpots / 2) {
+                    station.statusText = 'Đang bận';
+                    station.statusClass = 'status-busy';
+                } else {
+                    station.statusText = 'Còn trống';
+                    station.statusClass = 'status-available';
+                }
+
+                // Loại sạc (lấy từ DTO)
+                if (dbStation.connectorType) {
+                    station.chargerType = dbStation.connectorType;
+                    station.connectorType = dbStation.connectorType;
+                }
+
+                // Giá sạc (lấy từ DTO)
+                if (dbStation.pricePerKwh) {
+                    station.priceText = formatPrice(dbStation.pricePerKwh);
+                }
+            } else {
+                // Nếu không tìm thấy trong DB, dùng thông tin mặc định
+                station.statusText = 'Đang cập nhật';
+                station.statusClass = 'status-available';
+            }
+
+            return station;
+        }
+
+        function formatPrice(price) {
+            if (!price) return '--';
+            return new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: 'VND',
+                minimumFractionDigits: 0
+            }).format(price * 1000) + '/kWh';
+        }
 
         function captureSidebarState() {
             return {
@@ -221,6 +548,74 @@
             if (stationListEl) {
                 stationListEl.innerHTML = '<div class="station-empty" style="color: #666;"><svg style="display: inline-block; vertical-align: middle; margin-right: 8px;" width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" stroke="#666" stroke-width="2" fill="none" stroke-dasharray="12.5 12.5" transform="rotate(0 10 10)"><animateTransform attributeName="transform" type="rotate" from="0 10 10" to="360 10 10" dur="1s" repeatCount="indefinite"/></circle></svg>' + message + '</div>';
             }
+        }
+
+        function setInfoField(field, value) {
+            if (!mapInfoFields || !mapInfoFields[field]) return;
+            mapInfoFields[field].textContent = value || '--';
+        }
+
+        async function resetStationDetails() {
+            // Unsubscribe from SignalR if subscribed
+            if (signalRConnection && subscribedStationId) {
+                try {
+                    await signalRConnection.invoke('UnsubscribeStation', subscribedStationId);
+                    subscribedStationId = null;
+                } catch (err) {
+                    console.warn('Không thể unsubscribe station SignalR', err);
+                }
+            }
+
+            selectedStation = null;
+            if (mapInfoCard) {
+                mapInfoCard.style.display = 'none';
+                setInfoField('title', 'Trạm sạc');
+                setInfoField('address', 'Đang cập nhật');
+                setInfoField('status', 'Đang cập nhật');
+                if (mapInfoFields.status) {
+                    mapInfoFields.status.className = 'status-badge status-available';
+                }
+                setInfoField('connectors', '--');
+                setInfoField('distance', '--');
+                setInfoField('chargerType', '--');
+                setInfoField('rating', '--');
+                setInfoField('price', '--');
+            }
+        }
+
+        async function showStationDetails(station) {
+            if (!mapInfoCard || !station) return;
+
+            // Làm giàu thông tin với dữ liệu từ database
+            station = await enrichStationWithDbData(station);
+            selectedStation = station;
+            mapInfoCard.style.display = 'block';
+
+            // Subscribe to SignalR updates for this station
+            if (station.stationId) {
+                await subscribeStationSignalR(station.stationId);
+            }
+
+            setInfoField('title', station.title || station.name || 'Trạm sạc');
+            setInfoField('address', station.address || 'Đang cập nhật');
+            setInfoField('status', station.statusText || 'Đang cập nhật');
+
+            var connectorDisplay = station.connectorsText || station.availableText;
+            if (!connectorDisplay && typeof station.availableSpots === 'number' && typeof station.totalSpots === 'number') {
+                connectorDisplay = station.availableSpots + '/' + station.totalSpots;
+            }
+            setInfoField('connectors', connectorDisplay || '--');
+
+            setInfoField('distance', station.distanceText || '--');
+            setInfoField('chargerType', station.chargerType || station.connectorType || '--');
+            setInfoField('rating', station.ratingText || 'Chưa có đánh giá');
+            setInfoField('price', station.priceText || '--');
+
+            if (mapInfoFields.status) {
+                mapInfoFields.status.className = 'status-badge ' + (station.statusClass || 'status-available');
+            }
+
+            updateReserveButtonVisibility();
         }
 
         function escapeHtml(str) {
@@ -267,6 +662,8 @@
 
             if (!Array.isArray(list) || list.length === 0) {
                 // Chỉ hiển thị "không tìm thấy" nếu không phải đang trong quá trình tìm kiếm khác
+                var isSearching = typeof window.isSearching !== 'undefined' ? window.isSearching : false;
+                var searchInput = document.querySelector('.search-input');
                 if (!isSearching || (searchInput && !searchInput.value.trim())) {
                     stationListEl.innerHTML = '<div class="station-empty">Không tìm thấy trạm sạc trong khu vực này.</div>';
                     if (stationCountTextEl) stationCountTextEl.textContent = '0 trạm sạc được tìm thấy';
@@ -274,6 +671,7 @@
                     if (statRatedEl) statRatedEl.textContent = '0';
                     if (statAverageEl) statAverageEl.textContent = '--';
                     lastSidebarState = captureSidebarState();
+                    resetStationDetails();
                 }
                 return;
             }
@@ -306,6 +704,17 @@
 
                 var ratingText = rating ? rating.toFixed(1) + (reviews ? ' (' + reviews + ')' : '') : 'Chưa có đánh giá';
                 var distanceText = distanceKm != null ? distanceKm + ' km' : '--';
+
+                item.distanceKm = distanceKm;
+                item.distanceText = distanceText;
+                item.ratingValue = rating;
+                item.ratingText = ratingText;
+                item.reviewCount = reviews;
+                item.connectorsText = item.connectorsText || '--';
+                item.chargerType = item.chargerType || '--';
+                item.priceText = item.priceText || '--';
+                item.statusText = item.statusText || 'Đang cập nhật';
+                item.statusClass = item.statusClass || 'status-available';
 
                 cardsHtml +=
                     '<div class="station-card station-serp-card" data-marker-index="' + i + '">' +
@@ -360,6 +769,10 @@
                             mapInstance.setView(latLng, targetZoom);
                         }
                         marker.openPopup();
+                    }
+                    var station = Array.isArray(list) ? list[idx] : null;
+                    if (station) {
+                        showStationDetails(station);
                     }
                 });
             });
@@ -563,12 +976,25 @@
                             iconAnchor: [7, 7]
                         });
                         var m = L.marker([lat, lng], { icon: icon }).addTo(mapInstance);
-                        var popup = '<b>' + escapeHtml(title || 'Địa điểm') + '</b>';
+                    var popup = '<b>' + escapeHtml(title || 'Địa điểm') + '</b>';
                         if (address) popup += '<br/>' + escapeHtml(address);
                         if (rating) popup += '<br/>Đánh giá: ' + escapeHtml(typeof rating === 'number' ? rating.toFixed(1) : rating) + (reviews ? ' (' + escapeHtml(reviews) + ')' : '');
                         // Cho phép mở nhiều popup đồng thời và mở ngay sau khi thêm marker
                         m.bindPopup(popup, { autoClose: false, closeOnClick: false });
                         m.openPopup();
+                    m.on('click', function() {
+                        var data = m.stationData || {
+                            title: title,
+                            address: address,
+                            rating: rating,
+                            ratingText: rating ? (typeof rating === 'number' ? rating.toFixed(1) : rating) + (reviews ? ' (' + reviews + ')' : '') : 'Chưa có đánh giá',
+                            reviews: reviews,
+                            priceText: '--',
+                            connectorsText: '--',
+                            distanceText: '--'
+                        };
+                        showStationDetails(data);
+                    });
                         serpMarkers.push(m);
                         return m;
                     }
@@ -608,7 +1034,10 @@
                                         longitude: lng
                                     };
                                     normalized.push(item);
-                                    addSerpMarker(item.latitude, item.longitude, item.title, item.address, item.rating, item.reviews);
+                                    var marker = addSerpMarker(item.latitude, item.longitude, item.title, item.address, item.rating, item.reviews);
+                                    if (marker) {
+                                        marker.stationData = item;
+                                    }
                                 }
                             } else {
                                 normalized = [];
@@ -628,12 +1057,15 @@
                     // Thêm chức năng tìm kiếm từ input
                     var searchInput = document.querySelector('.search-input');
                     var searchDebounceTimer = null;
-                    var isSearching = false; // Flag để theo dõi trạng thái tìm kiếm
+                    // Initialize isSearching in global scope if not already defined
+                    if (typeof window.isSearching === 'undefined') {
+                        window.isSearching = false;
+                    }
                     
                     function performSearch(searchQuery) {
                         if (!mapInstance || !searchQuery.trim()) return;
                         
-                        isSearching = true; // Đánh dấu đang tìm kiếm
+                        window.isSearching = true; // Đánh dấu đang tìm kiếm
                         var center = mapInstance.getCenter();
                         var previousState = captureSidebarState();
                         setSidebarLoading('Đang tìm kiếm "' + searchQuery + '"...');
@@ -663,17 +1095,20 @@
                                         isFromApi: true
                                     };
                                     normalized.push(item);
-                                    addSerpMarker(item.latitude, item.longitude, item.title, item.address, item.rating, item.reviews);
+                                    var marker = addSerpMarker(item.latitude, item.longitude, item.title, item.address, item.rating, item.reviews);
+                                    if (marker) {
+                                        marker.stationData = item;
+                                    }
                                 }
                             } else {
                                 normalized = [];
                                 clearSerpMarkers();
                             }
                             updateSidebarWithSerpResults(normalized, center);
-                            isSearching = false; // Reset flag sau khi hoàn thành
+                            window.isSearching = false; // Reset flag sau khi hoàn thành
                         }).catch(function(err){
                             console.error('Search error:', err);
-                            isSearching = false; // Reset flag khi lỗi
+                            window.isSearching = false; // Reset flag khi lỗi
                             if (previousState) {
                                 applySidebarState(previousState);
                                 lastSidebarState = previousState;
@@ -699,6 +1134,7 @@
                                 lastSidebarState = defaultSidebarState;
                                 // Xóa các marker từ SerpApi trên bản đồ
                                 clearSerpMarkers();
+                                resetStationDetails();
                                 return;
                             }
                             
@@ -739,9 +1175,415 @@
                             });
                         });
                     }
+
+                    // Kiểm tra authentication khi page load
+                    checkAuthentication();
+
+                    // Initialize SignalR
+                    initSignalR();
+
+                    // Xử lý nút "Đặt trước"
+                    var btnReserve = document.getElementById('btn-reserve');
+                    if (btnReserve) {
+                        btnReserve.addEventListener('click', function() {
+                            if (!selectedStation || !selectedStation.stationId) {
+                                alert('Vui lòng chọn một trạm sạc từ hệ thống để đặt trước.');
+                                return;
+                            }
+                            if (!isUserAuthenticated) {
+                                alert('Vui lòng đăng nhập để đặt trước trạm sạc.');
+                                window.location.href = '/Auth/Login';
+                                return;
+                            }
+                            openReservationModal();
+                        });
+                    }
+
+                    // Xử lý nút "Bắt đầu sạc"
+                    var btnStartCharging = document.getElementById('btn-start-charging');
+                    if (btnStartCharging) {
+                        btnStartCharging.addEventListener('click', function() {
+                            if (!selectedStation || !selectedStation.stationId) {
+                                alert('Vui lòng chọn một trạm sạc từ hệ thống.');
+                                return;
+                            }
+                            if (!isUserAuthenticated) {
+                                alert('Vui lòng đăng nhập để bắt đầu sạc.');
+                                window.location.href = '/Auth/Login';
+                                return;
+                            }
+                            // Chuyển đến trang bắt đầu sạc với stationId
+                            window.location.href = `/Driver/StartCharging?stationId=${selectedStation.stationId}`;
+                        });
+                    }
+
+                    // Xử lý nút "Chỉ đường"
+                    var btnDirection = document.getElementById('btn-direction');
+                    if (btnDirection) {
+                        btnDirection.addEventListener('click', function() {
+                            if (!selectedStation) return;
+                            var lat = selectedStation.latitude || selectedStation.lat;
+                            var lng = selectedStation.longitude || selectedStation.lng;
+                            if (lat && lng) {
+                                var url = 'https://www.google.com/maps/dir/?api=1&destination=' + lat + ',' + lng;
+                                window.open(url, '_blank');
+                            }
+                        });
+                    }
+
+
+                    // Define applyFilters function in global scope
+                    window.applyFilters = function() {
+                        if (!mapInstance) {
+                            alert('Bản đồ chưa sẵn sàng. Vui lòng đợi một chút.');
+                            return;
+                        }
+                        
+                        var center = mapInstance.getCenter();
+                        if (!center) {
+                            alert('Không thể lấy vị trí trung tâm bản đồ.');
+                            return;
+                        }
+                        
+                        var connectorTypeEl = document.getElementById('filter-connector-type');
+                        var statusFilterEl = document.getElementById('filter-status');
+                        var sortByEl = document.getElementById('filter-sort');
+                        var radiusEl = document.getElementById('filter-radius');
+                        
+                        if (!connectorTypeEl || !statusFilterEl || !sortByEl || !radiusEl) {
+                            console.error('Filter elements not found');
+                            return;
+                        }
+                        
+                        var connectorType = connectorTypeEl.value;
+                        var statusFilter = statusFilterEl.value;
+                        var sortBy = sortByEl.value;
+                        var radius = parseFloat(radiusEl.value) || 10;
+
+                        var url = '/api/ChargingStation/nearest?lat=' + center.lat + '&lng=' + center.lng + '&radiusKm=' + radius;
+                        if (connectorType) {
+                            url += '&connectorType=' + encodeURIComponent(connectorType);
+                        }
+
+                        // Check if already searching to avoid conflicts
+                        if (typeof window.isSearching !== 'undefined' && window.isSearching) {
+                            console.log('Search already in progress, skipping...');
+                            return;
+                        }
+                        
+                        // Set searching flag
+                        window.isSearching = true;
+                        
+                        if (typeof setSidebarLoading === 'function') {
+                            setSidebarLoading('Đang tìm kiếm...');
+                        }
+                        
+                        fetch(url, {
+                            credentials: 'include'
+                        }).then(function(r) {
+                            if (!r.ok) {
+                                throw new Error('Request failed with status: ' + r.status);
+                            }
+                            return r.json();
+                        }).then(function(stations) {
+                            if (!Array.isArray(stations)) {
+                                console.error('Invalid response:', stations);
+                                alert('Dữ liệu trả về không hợp lệ.');
+                                return;
+                            }
+                            
+                            // Filter by status (available spots)
+                            if (statusFilter === 'Available') {
+                                stations = stations.filter(function(s) { return s.availableSpots > 0; });
+                            } else if (statusFilter === 'Occupied') {
+                                stations = stations.filter(function(s) { return s.availableSpots > 0 && s.availableSpots < s.totalSpots; });
+                            } else if (statusFilter === 'Full') {
+                                stations = stations.filter(function(s) { return s.availableSpots === 0; });
+                            }
+
+                            // Sort
+                            if (sortBy === 'distance') {
+                                stations.sort(function(a, b) { return (a.distanceKm || 0) - (b.distanceKm || 0); });
+                            } else if (sortBy === 'rating') {
+                                stations.sort(function(a, b) { return (b.externalRating || 0) - (a.externalRating || 0); });
+                            } else if (sortBy === 'name') {
+                                stations.sort(function(a, b) { return a.name.localeCompare(b.name); });
+                            }
+
+                            // Update map and sidebar
+                            if (typeof clearSerpMarkers === 'function') {
+                                clearSerpMarkers();
+                            }
+                            
+                            var normalized = stations.map(function(s) {
+                                var marker = null;
+                                if (typeof addSerpMarker === 'function') {
+                                    marker = addSerpMarker(
+                                        parseFloat(s.latitude),
+                                        parseFloat(s.longitude),
+                                        s.name,
+                                        s.address,
+                                        s.externalRating,
+                                        s.externalReviewCount
+                                    );
+                                }
+                                
+                                if (marker) {
+                                    marker.stationData = {
+                                        title: s.name,
+                                        address: s.address,
+                                        latitude: parseFloat(s.latitude),
+                                        longitude: parseFloat(s.longitude),
+                                        stationId: s.id,
+                                        availableSpots: s.availableSpots,
+                                        totalSpots: s.totalSpots,
+                                        distanceKm: s.distanceKm,
+                                        distanceText: s.distanceKm ? s.distanceKm.toFixed(1) + ' km' : '--'
+                                    };
+                                }
+                                
+                                return {
+                                    title: s.name,
+                                    address: s.address,
+                                    latitude: parseFloat(s.latitude),
+                                    longitude: parseFloat(s.longitude),
+                                    rating: s.externalRating,
+                                    reviews: s.externalReviewCount,
+                                    stationId: s.id,
+                                    availableSpots: s.availableSpots,
+                                    totalSpots: s.totalSpots,
+                                    distanceKm: s.distanceKm,
+                                    distanceText: s.distanceKm ? s.distanceKm.toFixed(1) + ' km' : '--'
+                                };
+                            });
+                            
+                            if (typeof updateSidebarWithSerpResults === 'function') {
+                                updateSidebarWithSerpResults(normalized, center);
+                            } else {
+                                console.error('updateSidebarWithSerpResults function not found');
+                            }
+                            
+                            // Reset searching flag
+                            window.isSearching = false;
+                        }).catch(function(err) {
+                            console.error('Error applying filters:', err);
+                            alert('Không thể áp dụng bộ lọc: ' + (err.message || 'Vui lòng thử lại.'));
+                            // Reset searching flag on error
+                            window.isSearching = false;
+                        });
+                    };
                 }
             }
         }, 1000);
+
+        // Mở modal đặt trước
+        async function openReservationModal() {
+            if (!selectedStation || !selectedStation.stationId) return;
+
+            var modal = new bootstrap.Modal(document.getElementById('reservationModal'));
+            document.getElementById('reservation-station-id').value = selectedStation.stationId;
+            document.getElementById('reservation-station-name').value = selectedStation.title || selectedStation.name || '';
+
+            // Load danh sách spots
+            await loadSpotsForReservation(selectedStation.stationId);
+
+            // Load danh sách vehicles
+            await loadVehiclesForReservation();
+
+            // Set thời gian mặc định (1 giờ sau)
+            var now = new Date();
+            now.setHours(now.getHours() + 1);
+
+            document.getElementById('reservation-start-time').value = formatDateTimeLocal(now);
+
+            modal.show();
+        }
+
+        function formatDateTimeLocal(date) {
+            var d = new Date(date);
+            d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+            return d.toISOString().slice(0, 16);
+        }
+
+        async function loadSpotsForReservation(stationId) {
+            var select = document.getElementById('reservation-spot-select');
+            if (!select) return;
+
+            select.innerHTML = '<option value="">-- Đang tải --</option>';
+
+            try {
+                var response = await fetch('/api/ChargingSpot/station/' + stationId + '/available', {
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    var spots = await response.json();
+                    select.innerHTML = '<option value="">-- Chọn cổng sạc --</option>';
+                    spots.forEach(function(spot) {
+                        var option = document.createElement('option');
+                        option.value = spot.id;
+                        option.textContent = 'Cổng ' + spot.spotNumber + ' - ' + (spot.connectorType || 'N/A') + ' (' + (spot.powerOutput || 'N/A') + 'kW)';
+                        select.appendChild(option);
+                    });
+                } else {
+                    select.innerHTML = '<option value="">-- Không có cổng sạc --</option>';
+                }
+            } catch (err) {
+                console.error('Error loading spots:', err);
+                select.innerHTML = '<option value="">-- Lỗi tải dữ liệu --</option>';
+            }
+        }
+
+        async function loadVehiclesForReservation() {
+            var select = document.getElementById('reservation-vehicle-select');
+            if (!select) return;
+
+            select.innerHTML = '<option value="">-- Đang tải --</option>';
+
+            try {
+                var response = await fetch('/api/Vehicle', {
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    var vehicles = await response.json();
+                    select.innerHTML = '<option value="">-- Chọn xe --</option>';
+                    if (vehicles && vehicles.length > 0) {
+                        vehicles.forEach(function(vehicle) {
+                            var option = document.createElement('option');
+                            option.value = vehicle.id;
+                            option.textContent = vehicle.make + ' ' + vehicle.model + ' (' + vehicle.licensePlate + ')';
+                            select.appendChild(option);
+                        });
+                    } else {
+                        select.innerHTML = '<option value="">-- Bạn chưa có xe. Vui lòng thêm xe trước.</option>';
+                    }
+                } else if (response.status === 401) {
+                    select.innerHTML = '<option value="">-- Vui lòng đăng nhập --</option>';
+                } else {
+                    select.innerHTML = '<option value="">-- Không có xe --</option>';
+                }
+            } catch (err) {
+                console.error('Error loading vehicles:', err);
+                select.innerHTML = '<option value="">-- Lỗi tải dữ liệu --</option>';
+            }
+        }
+
+        // Submit form đặt trước
+        // Initialize filter button handler on DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Setup filter button click handler
+            var btnApplyFilters = document.getElementById('btn-apply-filters');
+            if (btnApplyFilters) {
+                btnApplyFilters.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (typeof window.applyFilters === 'function') {
+                        window.applyFilters();
+                    } else {
+                        // Wait a bit for the function to be defined
+                        setTimeout(function() {
+                            if (typeof window.applyFilters === 'function') {
+                                window.applyFilters();
+                            } else {
+                                alert('Bộ lọc đang được khởi tạo, vui lòng đợi vài giây rồi thử lại.');
+                            }
+                        }, 1500);
+                    }
+                });
+            }
+            
+            // Setup radius slider
+            var filterRadius = document.getElementById('filter-radius');
+            var radiusValue = document.getElementById('radius-value');
+            if (filterRadius && radiusValue) {
+                filterRadius.addEventListener('input', function() {
+                    radiusValue.textContent = this.value;
+                });
+            }
+        });
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            var btnSubmitReservation = document.getElementById('btn-submit-reservation');
+            if (btnSubmitReservation) {
+                btnSubmitReservation.addEventListener('click', async function() {
+                    var form = document.getElementById('reservationForm');
+                    if (!form.checkValidity()) {
+                        form.reportValidity();
+                        return;
+                    }
+
+                    var spotId = document.getElementById('reservation-spot-select').value;
+                    var vehicleId = document.getElementById('reservation-vehicle-select').value;
+                    var startTime = document.getElementById('reservation-start-time').value;
+                    var notes = document.getElementById('reservation-notes').value;
+
+                    if (!spotId || !vehicleId || !startTime) {
+                        alert('Vui lòng điền đầy đủ thông tin bắt buộc.');
+                        return;
+                    }
+
+                    btnSubmitReservation.disabled = true;
+                    btnSubmitReservation.textContent = 'Đang xử lý...';
+
+                    try {
+                        var requestBody = {
+                            chargingSpotId: spotId,
+                            vehicleId: vehicleId,
+                            scheduledStartTime: new Date(startTime).toISOString(),
+                            notes: notes || null
+                        };
+
+                        var response = await fetch('/api/Reservation', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify(requestBody)
+                        });
+
+                        if (response.ok) {
+                            var result = await response.json();
+                            bootstrap.Modal.getInstance(document.getElementById('reservationModal')).hide();
+                            form.reset();
+                            
+                            var message = 'Đặt trước thành công! Mã xác nhận: ' + result.confirmationCode;
+                            alert(message);
+                            
+                            // Chuyển đến trang đặt chỗ của tôi
+                            window.location.href = '/Driver/Reservations';
+                        } else {
+                            let errorMessage = 'Không thể đặt trước. Vui lòng thử lại.';
+                            try {
+                                const error = await response.json();
+                                if (error.message) {
+                                    errorMessage = error.message;
+                                } else if (error.errors) {
+                                    // Handle validation errors
+                                    const errorMessages = [];
+                                    for (const key in error.errors) {
+                                        if (error.errors[key]) {
+                                            errorMessages.push(error.errors[key].join(', '));
+                                        }
+                                    }
+                                    errorMessage = errorMessages.length > 0 ? errorMessages.join('; ') : errorMessage;
+                                } else if (typeof error === 'string') {
+                                    errorMessage = error;
+                                }
+                            } catch (e) {
+                                console.error('Error parsing error response:', e);
+                                errorMessage = `Lỗi ${response.status}: ${response.statusText}`;
+                            }
+                            alert('Lỗi: ' + errorMessage);
+                        }
+                    } catch (err) {
+                        console.error('Error submitting reservation:', err);
+                        alert('Có lỗi xảy ra. Vui lòng thử lại sau.');
+                    } finally {
+                        btnSubmitReservation.disabled = false;
+                        btnSubmitReservation.textContent = 'Xác nhận đặt trước';
+                    }
+                });
+            }
+        });
     </script>
     <style>
         .custom-marker { background: transparent !important; border: none !important; }
@@ -811,6 +1653,70 @@
             color: #4A5565;
             font-size: 13px;
             line-height: 20px;
+        }
+
+        .btn-reserve {
+            background: #10B981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-reserve:hover {
+            background: #059669;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-reserve:active {
+            transform: translateY(0);
+        }
+
+        .btn-start-charging {
+            background: #3B82F6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-start-charging:hover {
+            background: #2563EB;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-start-charging:active {
+            transform: translateY(0);
+        }
+
+
+        .status-badge.status-full {
+            background: #EF4444;
+            color: white;
+        }
+
+        .status-badge.status-busy {
+            background: #F59E0B;
+            color: white;
+        }
+
+        .status-badge.status-available {
+            background: #10B981;
+            color: white;
         }
     </style>
 }

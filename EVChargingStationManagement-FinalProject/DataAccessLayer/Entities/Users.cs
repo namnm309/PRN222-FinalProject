@@ -33,10 +33,15 @@ namespace DataAccessLayer.Entities
 
         public string? GoogleId { get; set; }
 
-        
+        // Navigation properties
+        public virtual ICollection<UserVehicle> UserVehicles { get; set; } = new List<UserVehicle>();
 
+        public virtual ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
 
+        public virtual ICollection<ChargingSession> ChargingSessions { get; set; } = new List<ChargingSession>();
 
-        
+        public virtual ICollection<PaymentTransaction> PaymentTransactions { get; set; } = new List<PaymentTransaction>();
+
+        public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
     }
 }

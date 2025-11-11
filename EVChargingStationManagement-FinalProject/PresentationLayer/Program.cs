@@ -7,6 +7,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using System.Diagnostics;
+using PresentationLayer.Hubs;
+using PresentationLayer.Services;
 
 namespace PresentationLayer
 {
@@ -82,9 +85,38 @@ namespace PresentationLayer
             builder.Services.AddScoped<IChargingSpotService, ChargingSpotService>();
             builder.Services.AddScoped<IStationMaintenanceService, StationMaintenanceService>();
             builder.Services.AddScoped<IStationErrorService, StationErrorService>();
+            builder.Services.AddScoped<IVehicleService, VehicleService>();
+            builder.Services.AddScoped<IReservationService, ReservationService>();
+            builder.Services.AddScoped<IChargingSessionService, ChargingSessionService>();
+            builder.Services.AddScoped<IPaymentService, PaymentService>();
+            builder.Services.AddScoped<INotificationService, NotificationService>();
+            builder.Services.AddScoped<IStationAmenityService, StationAmenityService>();
+            builder.Services.AddScoped<IRealtimeNotifier, StationHubNotifier>();
+            builder.Services.AddScoped<IStationDataMergeService, StationDataMergeService>();
+            builder.Services.AddScoped<IQrCodeService, QrCodeService>();
+            builder.Services.AddScoped<IChargingProgressService>(sp =>
+            {
+                var context = sp.GetRequiredService<EVDbContext>();
+                var notifier = sp.GetService<IRealtimeNotifier>();
+                return notifier != null 
+                    ? new ChargingProgressService(context, notifier)
+                    : new ChargingProgressService(context);
+            });
+            builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+            builder.Services.AddScoped<IReportingService, ReportingService>();
+            builder.Services.AddScoped<IVnPayService, VnPayService>();
+            builder.Services.AddHostedService<RefreshTokenCleanupService>();
 
-            // Add Controllers
-            builder.Services.AddControllers();
+            // Add Controllers with JSON options
+            builder.Services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+                    options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+                });
+            builder.Services.AddSignalR();
+            builder.Services.AddHealthChecks()
+                .AddDbContextCheck<EVDbContext>("database");
             // HttpClient for external APIs (SerpApi)
             builder.Services.AddHttpClient();
 
@@ -150,6 +182,31 @@ namespace PresentationLayer
             app.UseStaticFiles();
 
             app.UseRouting();
+            app.Use(async (context, next) =>
+            {
+                if (context.Request.Path.StartsWithSegments("/health"))
+                {
+                    await next();
+                    return;
+                }
+
+                var logger = context.RequestServices.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("RequestTiming");
+                var sw = Stopwatch.StartNew();
+                try
+                {
+                    await next();
+                }
+                finally
+                {
+                    sw.Stop();
+                    logger.LogInformation("HTTP {Method} {Path} responded {StatusCode} in {Elapsed} ms",
+                        context.Request.Method,
+                        context.Request.Path,
+                        context.Response.StatusCode,
+                        sw.ElapsedMilliseconds);
+                }
+            });
 
             // Authentication must come before Authorization
             app.UseAuthentication();
@@ -157,6 +214,8 @@ namespace PresentationLayer
 
             app.MapRazorPages();
             app.MapControllers();
+            app.MapHub<StationHub>("/hubs/station");
+            app.MapHealthChecks("/health");
 
             app.Run();
         }
