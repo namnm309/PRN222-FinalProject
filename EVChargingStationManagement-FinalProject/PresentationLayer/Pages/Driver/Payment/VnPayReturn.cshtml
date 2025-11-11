@@ -1,0 +1,94 @@
+@page
+@model PresentationLayer.Pages.Driver.Payment.VnPayReturnModel
+@{
+    Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
+    ViewData["Title"] = "Driver • Kết quả thanh toán";
+}
+
+<section class="page-header">
+    <h2>@ViewData["Title"]</h2>
+</section>
+
+<section class="content-grid">
+    <div class="dashboard-panel">
+        <div class="panel-body" id="payment-result">
+            <div class="text-center text-muted">Đang xử lý...</div>
+        </div>
+    </div>
+</section>
+
+<input type="hidden" id="payment-id" value="@(Model.PaymentId?.ToString() ?? "")" />
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            const paymentId = document.getElementById('payment-id').value;
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            try {
+                let url = '/api/Payment/vnpay/return';
+                if (paymentId) {
+                    url += '?paymentId=' + paymentId;
+                }
+                // Add all query params from VNPay
+                urlParams.forEach((value, key) => {
+                    if (!url.includes(key)) {
+                        url += (url.includes('?') ? '&' : '?') + key + '=' + encodeURIComponent(value);
+                    }
+                });
+
+                const response = await fetch(url, {
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    displayPaymentResult(result);
+                } else {
+                    document.getElementById('payment-result').innerHTML = 
+                        '<div class="text-center text-danger">Lỗi khi xử lý kết quả thanh toán</div>';
+                }
+            } catch (error) {
+                console.error('Error processing payment return:', error);
+                document.getElementById('payment-result').innerHTML = 
+                    '<div class="text-center text-danger">Có lỗi xảy ra</div>';
+            }
+        });
+
+        function displayPaymentResult(result) {
+            const container = document.getElementById('payment-result');
+            
+            if (result.success) {
+                container.innerHTML = `
+                    <div class="text-center">
+                        <div class="mb-4">
+                            <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
+                        </div>
+                        <h3 class="text-success">Thanh toán thành công!</h3>
+                        <p class="text-muted">${result.message || 'Giao dịch của bạn đã được xử lý thành công.'}</p>
+                        ${result.paymentId ? `
+                        <div class="mt-4">
+                            <a href="/Driver/Payment?paymentId=${result.paymentId}" class="btn btn-primary">Xem chi tiết</a>
+                            <a href="/Driver/History" class="btn btn-outline-secondary">Xem lịch sử</a>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="text-center">
+                        <div class="mb-4">
+                            <i class="bi bi-x-circle text-danger" style="font-size: 4rem;"></i>
+                        </div>
+                        <h3 class="text-danger">Thanh toán thất bại</h3>
+                        <p class="text-muted">${result.message || 'Giao dịch của bạn không thành công.'}</p>
+                        <div class="mt-4">
+                            <a href="/Driver/Sessions" class="btn btn-primary">Quay lại</a>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    </script>
+}
+

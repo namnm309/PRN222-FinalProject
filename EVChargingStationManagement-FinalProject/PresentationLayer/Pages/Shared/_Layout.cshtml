@@ -29,6 +29,17 @@
                     <!-- Navigation Menu -->
                     <nav class="header-nav">
                         <a asp-page="/Index" class="nav-link active">Trang chủ</a>
+                        @if (User.IsInRole("Admin") || User.IsInRole("CSStaff"))
+                        {
+                            @if (User.IsInRole("Admin"))
+                            {
+                                <a asp-page="/Admin/Index" class="nav-link">Dashboard</a>
+                            }
+                            else if (User.IsInRole("CSStaff"))
+                            {
+                                <a asp-page="/Staff/Index" class="nav-link">Dashboard</a>
+                            }
+                        }
                         <a href="#" class="nav-link">Tìm trạm sạc</a>
                         <a href="#" class="nav-link">Giá cả</a>
                         <a href="#" class="nav-link">Hỗ trợ</a>
@@ -75,6 +86,40 @@
                                     </svg>
                                 </button>
                                 <div class="dropdown-menu" id="userDropdownMenu">
+                                    @if (User.IsInRole("Admin"))
+                                    {
+                                        <a asp-page="/Admin/Index" class="dropdown-item">
+                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M2 4H14V12H2V4Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                                <path d="M2 8H14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                                <path d="M6 4V2H10V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                            <span>Trang người dùng</span>
+                                        </a>
+                                    }
+                                    else if (User.IsInRole("CSStaff"))
+                                    {
+                                        <a asp-page="/Staff/Index" class="dropdown-item">
+                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M2 4H14V12H2V4Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                                <path d="M2 8H14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                                <path d="M6 4V2H10V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                            <span>Trang người dùng</span>
+                                        </a>
+                                    }
+                                    else if (User.IsInRole("EVDriver"))
+                                    {
+                                        <a asp-page="/Driver/Index" class="dropdown-item">
+                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M2 4H14V12H2V4Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                                <path d="M2 8H14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                                <path d="M6 4V2H10V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                            <span>Trang người dùng</span>
+                                        </a>
+                                    }
+                                    <div class="dropdown-divider"></div>
                                     <a asp-page="/Auth/EditProfile" class="dropdown-item">
                                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path d="M8 10C9.1 10 10 9.1 10 8C10 6.9 9.1 6 8 6C6.9 6 6 6.9 6 8C6 9.1 6.9 10 8 10Z" stroke="currentColor" stroke-width="1.5"/>
@@ -99,6 +144,7 @@
                     }
                     else
                     {
+                        <a asp-page="/Auth/Register" class="btn-register">Đăng ký</a>
                         <a asp-page="/Auth/Login" class="btn-login">Đăng nhập</a>
                     }
                 </div>
@@ -108,6 +154,17 @@
             <div class="mobile-menu">
                 <nav class="mobile-nav">
                     <a asp-page="/Index" class="mobile-nav-link active">Trang chủ</a>
+                    @if (User.IsInRole("Admin") || User.IsInRole("CSStaff"))
+                    {
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <a asp-page="/Admin/Index" class="mobile-nav-link">Dashboard</a>
+                        }
+                        else if (User.IsInRole("CSStaff"))
+                        {
+                            <a asp-page="/Staff/Index" class="mobile-nav-link">Dashboard</a>
+                        }
+                    }
                     <a href="#" class="mobile-nav-link">Tìm trạm sạc</a>
                     <a href="#" class="mobile-nav-link">Giá cả</a>
                     <a href="#" class="mobile-nav-link">Hỗ trợ</a>
@@ -149,6 +206,7 @@
                     else
                     {
                         <div class="mobile-nav-divider"></div>
+                        <a asp-page="/Auth/Register" class="mobile-nav-link mobile-nav-register">Đăng ký</a>
                         <a asp-page="/Auth/Login" class="mobile-nav-link mobile-nav-login">Đăng nhập</a>
                     }
                 </nav>

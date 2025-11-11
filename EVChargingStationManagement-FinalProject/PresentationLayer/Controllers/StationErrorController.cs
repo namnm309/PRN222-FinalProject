@@ -4,6 +4,7 @@ using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using BusinessLayer.DTOs;
+using System.Security.Claims;
 
 namespace PresentationLayer.Controllers
 {
@@ -77,11 +78,26 @@ namespace PresentationLayer.Controllers
 
             try
             {
+                // Get userId from User context if not provided in request
+                var reportedByUserId = request.ReportedByUserId;
+                if (reportedByUserId == Guid.Empty)
+                {
+                    var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    if (userIdClaim != null && Guid.TryParse(userIdClaim, out var userId))
+                    {
+                        reportedByUserId = userId;
+                    }
+                    else
+                    {
+                        return BadRequest(new { message = "User ID is required" });
+                    }
+                }
+
                 var error = new StationError
                 {
                     ChargingStationId = request.ChargingStationId,
                     ChargingSpotId = request.ChargingSpotId,
-                    ReportedByUserId = request.ReportedByUserId,
+                    ReportedByUserId = reportedByUserId,
                     Status = request.Status,
                     ErrorCode = request.ErrorCode,
                     Title = request.Title,

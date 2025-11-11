@@ -51,9 +51,21 @@ namespace BusinessLayer.Services
 
         public async Task<IEnumerable<ChargingSpot>> GetAvailableSpotsByStationIdAsync(Guid stationId)
         {
+            var now = DateTime.UtcNow;
+            
+            // Lấy các cổng trống: Status = Available, không có session đang chạy, không có reservation active, và station phải Active
             return await _context.ChargingSpots
                 .Include(s => s.ChargingStation)
-                .Where(s => s.ChargingStationId == stationId && s.Status == SpotStatus.Available)
+                .Where(s => s.ChargingStationId == stationId &&
+                           s.Status == SpotStatus.Available &&
+                           s.ChargingStation != null &&
+                           s.ChargingStation.Status == StationStatus.Active &&
+                           !_context.ChargingSessions.Any(cs => cs.ChargingSpotId == s.Id && cs.Status == ChargingSessionStatus.InProgress) &&
+                           !_context.Reservations.Any(r => r.ChargingSpotId == s.Id &&
+                                                          (r.Status == ReservationStatus.Pending ||
+                                                           r.Status == ReservationStatus.Confirmed ||
+                                                           r.Status == ReservationStatus.CheckedIn) &&
+                                                          r.ScheduledEndTime > now))
                 .OrderBy(s => s.SpotNumber)
                 .ToListAsync();
         }
