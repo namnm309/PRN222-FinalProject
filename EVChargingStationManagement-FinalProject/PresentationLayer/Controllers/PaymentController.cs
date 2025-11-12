@@ -18,17 +18,20 @@ namespace PresentationLayer.Controllers
         private readonly IRealtimeNotifier _notifier;
         private readonly IVnPayService _vnPayService;
         private readonly IChargingSessionService _sessionService;
+        private readonly IReservationService _reservationService;
 
         public PaymentController(
             IPaymentService paymentService, 
             IRealtimeNotifier notifier,
             IVnPayService vnPayService,
-            IChargingSessionService sessionService)
+            IChargingSessionService sessionService,
+            IReservationService reservationService)
         {
             _paymentService = paymentService;
             _notifier = notifier;
             _vnPayService = vnPayService;
             _sessionService = sessionService;
+            _reservationService = reservationService;
         }
 
         [HttpGet("me")]
@@ -203,48 +206,102 @@ namespace PresentationLayer.Controllers
                 return BadRequest(ModelState);
             }
 
-            // Get session to get amount
-            var session = await _sessionService.GetSessionByIdAsync(request.SessionId);
-            if (session == null)
-            {
-                return NotFound(new { message = "Charging session not found" });
-            }
-
             var userId = GetUserId();
-            if (session.UserId != userId)
-            {
-                return Forbid();
-            }
-
-            // Check if session is completed
-            if (session.Status != DataAccessLayer.Enums.ChargingSessionStatus.Completed)
-            {
-                return BadRequest(new { message = "Session must be completed before payment" });
-            }
-
-            // Check if payment already exists
-            var existingPayments = await _paymentService.GetPaymentsForUserAsync(userId, 100);
-            var existingPayment = existingPayments.FirstOrDefault(p => p.ChargingSessionId == request.SessionId);
-            
             PaymentTransaction payment;
-            if (existingPayment != null)
+            decimal amount = request.Amount;
+            string description = "";
+
+            // Handle reservation payment
+            if (request.ReservationId.HasValue)
             {
-                payment = existingPayment;
+                var reservation = await _reservationService.GetReservationByIdAsync(request.ReservationId.Value);
+                if (reservation == null)
+                {
+                    return NotFound(new { message = "Reservation not found" });
+                }
+
+                if (reservation.UserId != userId)
+                {
+                    return Forbid();
+                }
+
+                amount = request.Amount > 0 ? request.Amount : (reservation.EstimatedCost ?? 0);
+                description = $"Thanh toán cho đặt lịch {reservation.Id}";
+
+                // Check if payment already exists
+                var existingPayments = await _paymentService.GetPaymentsForUserAsync(userId, 100);
+                var existingPayment = existingPayments.FirstOrDefault(p => p.ReservationId == request.ReservationId);
+                
+                if (existingPayment != null)
+                {
+                    payment = existingPayment;
+                }
+                else
+                {
+                    // Create new payment transaction
+                    payment = new PaymentTransaction
+                    {
+                        ReservationId = request.ReservationId.Value,
+                        Amount = amount,
+                        Currency = "VND",
+                        Method = PaymentMethod.VNPay,
+                        Description = description,
+                        Status = PaymentStatus.Pending
+                    };
+
+                    payment = await _paymentService.CreatePaymentAsync(userId, payment);
+                }
+            }
+            // Handle session payment
+            else if (request.SessionId.HasValue)
+            {
+                var session = await _sessionService.GetSessionByIdAsync(request.SessionId.Value);
+                if (session == null)
+                {
+                    return NotFound(new { message = "Charging session not found" });
+                }
+
+                if (session.UserId != userId)
+                {
+                    return Forbid();
+                }
+
+                // Check if session is completed
+                if (session.Status != DataAccessLayer.Enums.ChargingSessionStatus.Completed)
+                {
+                    return BadRequest(new { message = "Session must be completed before payment" });
+                }
+
+                amount = request.Amount > 0 ? request.Amount : (session.Cost ?? 0);
+                description = $"Thanh toán cho phiên sạc {session.Id}";
+
+                // Check if payment already exists
+                var existingPayments = await _paymentService.GetPaymentsForUserAsync(userId, 100);
+                var existingPayment = existingPayments.FirstOrDefault(p => p.ChargingSessionId == request.SessionId);
+                
+                if (existingPayment != null)
+                {
+                    payment = existingPayment;
+                }
+                else
+                {
+                    // Create new payment transaction
+                    payment = new PaymentTransaction
+                    {
+                        ChargingSessionId = request.SessionId.Value,
+                        Amount = amount,
+                        Currency = "VND",
+                        Method = PaymentMethod.VNPay,
+                        Description = description,
+                        Status = PaymentStatus.Pending
+                    };
+
+                    payment = await _paymentService.CreatePaymentAsync(userId, payment);
+                }
             }
             else
             {
-                // Create new payment transaction
-                payment = new PaymentTransaction
-                {
-                    ChargingSessionId = request.SessionId,
-                    Amount = request.Amount > 0 ? request.Amount : (session.Cost ?? 0),
-                    Currency = "VND",
-                    Method = PaymentMethod.VNPay,
-                    Description = $"Thanh toán cho phiên sạc {session.Id}",
-                    Status = PaymentStatus.Pending
-                };
-
-                payment = await _paymentService.CreatePaymentAsync(userId, payment);
+                return BadRequest(new { message = "Either SessionId or ReservationId must be provided" });
             }
 
             // Get client IP

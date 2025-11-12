@@ -58,9 +58,14 @@
 
                 <div class="mb-3">
                     <label class="form-label">Chọn xe <span class="text-danger">*</span></label>
-                    <select id="vehicle-select" class="form-select" required>
-                        <option value="">-- Đang tải --</option>
-                    </select>
+                    <div class="d-flex gap-2">
+                        <select id="vehicle-select" class="form-select" required>
+                            <option value="">-- Đang tải --</option>
+                        </select>
+                        <button type="button" class="btn btn-outline-primary" id="btn-add-vehicle" title="Thêm xe mới">
+                            <i class="bi bi-plus-circle"></i> Thêm xe
+                        </button>
+                    </div>
                 </div>
 
                 <div class="mb-3">
@@ -80,6 +85,48 @@
         </div>
     </div>
 </section>
+
+<!-- Modal Thêm xe -->
+<div class="modal fade" id="addVehicleModal" tabindex="-1" aria-labelledby="addVehicleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addVehicleModalLabel">Thêm xe mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-vehicle-form">
+                    <div class="mb-3">
+                        <label class="form-label">Hãng xe <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="vehicle-make" required placeholder="Ví dụ: Tesla, VinFast, ..." />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Biển số <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="vehicle-license-plate" required placeholder="Ví dụ: 30A-12345" />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Model</label>
+                        <input type="text" class="form-control" id="vehicle-model" placeholder="Ví dụ: Model 3, VF8, ..." />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Chọn cổng sạc</label>
+                        <select class="form-select" id="add-vehicle-spot-select">
+                            <option value="">-- Chọn cổng sạc (tùy chọn) --</option>
+                        </select>
+                        <small class="text-muted">Cổng sạc ưa thích của xe này (không bắt buộc)</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" id="btn-save-vehicle">Lưu</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
