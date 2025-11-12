@@ -2,7 +2,8 @@ namespace BusinessLayer.DTOs
 {
     public class CreateVnPayPaymentRequest
     {
-        public Guid SessionId { get; set; }
+        public Guid? SessionId { get; set; }
+        public Guid? ReservationId { get; set; }
         public decimal Amount { get; set; }
         public string? ReturnUrl { get; set; }
     }

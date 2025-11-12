@@ -23,6 +23,7 @@ namespace PresentationLayer.Services
         public Task NotifyReservationChangedAsync(Reservation reservation)
         {
             var stationId = reservation.ChargingSpot?.ChargingStationId ?? Guid.Empty;
+            var spotId = reservation.ChargingSpotId;
             var tasks = new List<Task>
             {
                 _hubContext.Clients.Group($"user-{reservation.UserId}")
@@ -33,6 +34,13 @@ namespace PresentationLayer.Services
             {
                 tasks.Add(_hubContext.Clients.Group($"station-{stationId}")
                     .SendAsync("ReservationUpdated", reservation.Id));
+                
+                // Notify that a spot has been reserved (for real-time locking)
+                if (spotId != Guid.Empty)
+                {
+                    tasks.Add(_hubContext.Clients.Group($"station-{stationId}")
+                        .SendAsync("SpotReserved", spotId, reservation.Status.ToString()));
+                }
             }
 
             return Task.WhenAll(tasks);

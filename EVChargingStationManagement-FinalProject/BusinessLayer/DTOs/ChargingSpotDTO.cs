@@ -15,6 +15,8 @@ namespace BusinessLayer.DTOs
         public string? Description { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public bool IsReserved { get; set; } // Có active reservation không
+        public bool IsAvailable { get; set; } // Có thể đặt được không
     }
 
     public class CreateChargingSpotRequest
