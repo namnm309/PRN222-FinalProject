@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BusinessLayer.DTOs;
+using Google.Apis.Auth;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 
 namespace PresentationLayer.Controllers
 {
@@ -14,13 +17,16 @@ namespace PresentationLayer.Controllers
     {
         private readonly IAuthService _authService;
         private readonly EVDbContext _context;
+        private readonly IConfiguration _configuration;
 
         public AuthController(
             IAuthService authService,
-            EVDbContext context)
+            EVDbContext context,
+            IConfiguration configuration)
         {
             _authService = authService;
             _context = context;
+            _configuration = configuration;
         }
 
         [HttpPost("login")]
@@ -111,6 +117,74 @@ namespace PresentationLayer.Controllers
             };
 
             return CreatedAtAction(nameof(Login), response);
+        }
+
+        [HttpPost("google")]
+        [AllowAnonymous]
+        public async Task<IActionResult> LoginWithGoogle([FromBody] GoogleLoginRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var clientId = _configuration.GetSection("GoogleOAuth")["ClientId"];
+            if (string.IsNullOrEmpty(clientId))
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Google OAuth is not configured properly." });
+            }
+
+            GoogleJsonWebSignature.Payload payload;
+            try
+            {
+                var settings = new GoogleJsonWebSignature.ValidationSettings
+                {
+                    Audience = new[] { clientId }
+                };
+
+                payload = await GoogleJsonWebSignature.ValidateAsync(request.IdToken, settings);
+            }
+            catch (InvalidJwtException)
+            {
+                return Unauthorized(new { message = "Google token is invalid or expired." });
+            }
+            catch (Exception)
+            {
+                return BadRequest(new { message = "Không thể xác thực token Google. Vui lòng thử lại." });
+            }
+
+            if (string.IsNullOrEmpty(payload.Email) || string.IsNullOrEmpty(payload.Subject))
+            {
+                return BadRequest(new { message = "Thiếu thông tin cần thiết từ Google." });
+            }
+
+            // Google payload không cung cấp gender theo mặc định. Nếu claim tồn tại thì lấy.
+            var user = await _authService.LoginWithGoogleAsync(payload.Subject, payload.Email, payload.Name ?? payload.Email);
+
+            if (user == null)
+            {
+                return Unauthorized(new { message = "Tài khoản đã bị vô hiệu hóa hoặc không thể đăng nhập bằng Google." });
+            }
+
+            var accessToken = _authService.GenerateToken(user.Id, user.Username, user.Role.ToString());
+            var refreshToken = await _authService.GenerateRefreshTokenAsync(user.Id);
+
+            var response = new AuthResponse
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                ExpiresAt = DateTime.UtcNow.AddHours(1),
+                User = new UserInfo
+                {
+                    Id = user.Id,
+                    Username = user.Username,
+                    FullName = user.FullName,
+                    Email = user.Email,
+                    Role = user.Role.ToString()
+                }
+            };
+
+            return Ok(response);
         }
 
         [HttpPost("refresh")]
