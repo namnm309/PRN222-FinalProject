@@ -267,9 +267,14 @@
                     
                     <div class="mb-3">
                         <label class="form-label">Chọn xe <span class="text-danger">*</span></label>
-                        <select class="form-select" id="reservation-vehicle-select" required>
-                            <option value="">-- Chọn xe --</option>
-                        </select>
+                        <div class="d-flex gap-2">
+                            <select class="form-select" id="reservation-vehicle-select" required>
+                                <option value="">-- Chọn xe --</option>
+                            </select>
+                            <button type="button" class="btn btn-outline-primary" id="btn-add-vehicle-reservation" title="Thêm xe mới">
+                                <i class="bi bi-plus-circle"></i> Thêm xe
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="mb-3">
@@ -323,6 +328,48 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
                 <button type="button" class="btn btn-primary" id="btn-submit-reservation">Xác nhận đặt lịch</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Thêm xe (cho Reservation) -->
+<div class="modal fade" id="addVehicleModalReservation" tabindex="-1" aria-labelledby="addVehicleModalReservationLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addVehicleModalReservationLabel">Thêm xe mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-vehicle-form-reservation">
+                    <div class="mb-3">
+                        <label class="form-label">Hãng xe <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="vehicle-make-reservation" required placeholder="Ví dụ: Tesla, VinFast, ..." />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Biển số <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="vehicle-license-plate-reservation" required placeholder="Ví dụ: 30A-12345" />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Model</label>
+                        <input type="text" class="form-control" id="vehicle-model-reservation" placeholder="Ví dụ: Model 3, VF8, ..." />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Chọn cổng sạc</label>
+                        <select class="form-select" id="add-vehicle-spot-select-reservation">
+                            <option value="">-- Chọn cổng sạc (tùy chọn) --</option>
+                        </select>
+                        <small class="text-muted">Cổng sạc ưa thích của xe này (không bắt buộc)</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" id="btn-save-vehicle-reservation">Lưu</button>
             </div>
         </div>
     </div>
@@ -1737,6 +1784,9 @@
                 var endTime = endTimeInput.value;
                 var energy = parseFloat(energyInput.value) || 0;
                 
+                // Base fee giống như khi sạc thực tế (thống nhất logic)
+                const BASE_FEE = 10000; // Phí cơ bản 10k VND
+                
                 if (!spotId || !startTime || !endTime) {
                     document.getElementById('reservation-estimated-cost').value = '0';
                     return;
@@ -1747,20 +1797,32 @@
                 if (selectedOption && selectedOption.dataset.price) {
                     var pricePerKwh = parseFloat(selectedOption.dataset.price);
                     if (!isNaN(pricePerKwh) && energy > 0) {
-                        var estimatedCost = pricePerKwh * energy;
+                        // Tính cost = (energy * price) + base fee (giống logic session thực tế)
+                        var estimatedCost = (pricePerKwh * energy) + BASE_FEE;
                         document.getElementById('reservation-estimated-cost').value = Math.round(estimatedCost).toLocaleString('vi-VN');
                     } else {
-                        document.getElementById('reservation-estimated-cost').value = '0';
+                        // Nếu không có energy, vẫn hiển thị base fee tối thiểu
+                        document.getElementById('reservation-estimated-cost').value = BASE_FEE.toLocaleString('vi-VN');
                     }
                 } else {
-                    document.getElementById('reservation-estimated-cost').value = '0';
+                    // Nếu không có price, vẫn hiển thị base fee tối thiểu
+                    document.getElementById('reservation-estimated-cost').value = BASE_FEE.toLocaleString('vi-VN');
                 }
             }
             
-            spotSelect.addEventListener('change', calculateEstimatedCost);
+            spotSelect.addEventListener('change', function() {
+                calculateEstimatedCost();
+                validateReservationVehicleSpotCompatibility();
+            });
             startTimeInput.addEventListener('change', calculateEstimatedCost);
             endTimeInput.addEventListener('change', calculateEstimatedCost);
             energyInput.addEventListener('input', calculateEstimatedCost);
+            
+            // Add validation listener cho vehicle select
+            var vehicleSelect = document.getElementById('reservation-vehicle-select');
+            if (vehicleSelect) {
+                vehicleSelect.addEventListener('change', validateReservationVehicleSpotCompatibility);
+            }
 
             modal.show();
         }
@@ -1834,6 +1896,13 @@
                             var option = document.createElement('option');
                             option.value = vehicle.id;
                             option.textContent = vehicle.make + ' ' + vehicle.model + ' (' + vehicle.licensePlate + ')';
+                            // Lưu preferred spot ID vào data attribute để validate sau
+                            var preferredSpotId = getPreferredSpotIdReservation(vehicle);
+                            if (preferredSpotId) {
+                                option.dataset.preferredSpotId = preferredSpotId;
+                            }
+                            // Lưu toàn bộ vehicle object vào dataset để dễ truy cập
+                            option.dataset.vehicleData = JSON.stringify(vehicle);
                             select.appendChild(option);
                         });
                     } else {
@@ -1883,6 +1952,197 @@
             }
         });
         
+        // Add Vehicle Modal Functions for Reservation
+        document.addEventListener('DOMContentLoaded', function() {
+            var btnAddVehicleReservation = document.getElementById('btn-add-vehicle-reservation');
+            if (btnAddVehicleReservation) {
+                btnAddVehicleReservation.addEventListener('click', function() {
+                    var modal = new bootstrap.Modal(document.getElementById('addVehicleModalReservation'));
+                    modal.show();
+                });
+            }
+            
+            var btnSaveVehicleReservation = document.getElementById('btn-save-vehicle-reservation');
+            if (btnSaveVehicleReservation) {
+                btnSaveVehicleReservation.addEventListener('click', handleSaveVehicleReservation);
+            }
+            
+            // Load spots when modal opens
+            var addVehicleModalReservation = document.getElementById('addVehicleModalReservation');
+            if (addVehicleModalReservation) {
+                addVehicleModalReservation.addEventListener('show.bs.modal', function() {
+                    loadSpotsForAddVehicleModalReservation();
+                });
+            }
+        });
+        
+        async function loadSpotsForAddVehicleModalReservation() {
+            var select = document.getElementById('add-vehicle-spot-select-reservation');
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">-- Đang tải --</option>';
+            
+            try {
+                // Load tất cả stations và spots
+                var stationsResponse = await fetch('/api/ChargingStation', {
+                    credentials: 'include'
+                });
+                
+                if (stationsResponse.ok) {
+                    var stations = await stationsResponse.json();
+                    select.innerHTML = '<option value="">-- Chọn cổng sạc (tùy chọn) --</option>';
+                    
+                    // Load spots từ tất cả stations
+                    for (var i = 0; i < stations.length; i++) {
+                        var station = stations[i];
+                        try {
+                            var spotsResponse = await fetch('/api/ChargingSpot/station/' + station.id, {
+                                credentials: 'include'
+                            });
+                            if (spotsResponse.ok) {
+                                var spots = await spotsResponse.json();
+                                spots.forEach(function(spot) {
+                                    var option = document.createElement('option');
+                                    option.value = spot.id;
+                                    option.textContent = station.name + ' - Cổng ' + spot.spotNumber + ' (' + (spot.connectorType || 'N/A') + ')';
+                                    select.appendChild(option);
+                                });
+                            }
+                        } catch (err) {
+                            console.error('Error loading spots for station ' + station.id + ':', err);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading spots:', error);
+                select.innerHTML = '<option value="">-- Lỗi tải dữ liệu --</option>';
+            }
+        }
+        
+        async function handleSaveVehicleReservation() {
+            var form = document.getElementById('add-vehicle-form-reservation');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            var make = document.getElementById('vehicle-make-reservation').value.trim();
+            var licensePlate = document.getElementById('vehicle-license-plate-reservation').value.trim();
+            var model = document.getElementById('vehicle-model-reservation').value.trim() || make;
+            var spotId = document.getElementById('add-vehicle-spot-select-reservation').value;
+            
+            if (!make || !licensePlate) {
+                alert('Vui lòng nhập đầy đủ hãng xe và biển số.');
+                return;
+            }
+            
+            var btnSave = document.getElementById('btn-save-vehicle-reservation');
+            btnSave.disabled = true;
+            btnSave.textContent = 'Đang lưu...';
+            
+            try {
+                // Lưu preferred spot ID vào Notes nếu có chọn
+                var notes = '';
+                if (spotId) {
+                    notes = 'PREFERRED_SPOT_ID:' + spotId;
+                }
+                
+                var vehicleData = {
+                    make: make,
+                    model: model,
+                    licensePlate: licensePlate,
+                    vehicleType: 'Car',
+                    isPrimary: false,
+                    notes: notes || null
+                };
+                
+                var response = await fetch('/api/Vehicle', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(vehicleData)
+                });
+                
+                if (response.ok) {
+                    var newVehicle = await response.json();
+                    
+                    // Đóng modal
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('addVehicleModalReservation'));
+                    modal.hide();
+                    
+                    // Reset form
+                    form.reset();
+                    
+                    // Reload danh sách xe và chọn xe vừa thêm
+                    await loadVehiclesForReservation();
+                    document.getElementById('reservation-vehicle-select').value = newVehicle.id;
+                    
+                    // Validate compatibility sau khi thêm xe
+                    validateReservationVehicleSpotCompatibility();
+                    
+                    alert('Thêm xe thành công!');
+                } else {
+                    var error = await response.json();
+                    alert('Lỗi: ' + (error.message || 'Không thể thêm xe'));
+                }
+            } catch (error) {
+                console.error('Error saving vehicle:', error);
+                alert('Có lỗi xảy ra. Vui lòng thử lại.');
+            } finally {
+                btnSave.disabled = false;
+                btnSave.textContent = 'Lưu';
+            }
+        }
+        
+        // Helper function để lấy preferred spot ID từ vehicle notes
+        function getPreferredSpotIdReservation(vehicle) {
+            if (!vehicle || !vehicle.notes) return null;
+            var match = vehicle.notes.match(/PREFERRED_SPOT_ID:([a-f0-9-]+)/i);
+            return match ? match[1] : null;
+        }
+        
+        // Validate xem xe đã chọn có compatible với cổng sạc đã chọn không (cho reservation)
+        function validateReservationVehicleSpotCompatibility() {
+            var vehicleSelect = document.getElementById('reservation-vehicle-select');
+            var spotSelect = document.getElementById('reservation-spot-select');
+            var btnSubmit = document.getElementById('btn-submit-reservation');
+            
+            if (!vehicleSelect || !spotSelect) return;
+            
+            var selectedVehicleOption = vehicleSelect.options[vehicleSelect.selectedIndex];
+            var selectedSpotId = spotSelect.value;
+            
+            if (!selectedVehicleOption || !selectedVehicleOption.value || !selectedSpotId) {
+                return; // Chưa chọn đủ, không validate
+            }
+            
+            var preferredSpotId = selectedVehicleOption.dataset.preferredSpotId;
+            
+            if (preferredSpotId && preferredSpotId !== selectedSpotId) {
+                // Xe có cổng sạc ưa thích nhưng không khớp với cổng đã chọn
+                var vehicleData = JSON.parse(selectedVehicleOption.dataset.vehicleData || '{}');
+                var vehicleName = vehicleData.licensePlate 
+                    ? vehicleData.make + ' ' + vehicleData.model + ' (' + vehicleData.licensePlate + ')'
+                    : vehicleData.make + ' ' + vehicleData.model;
+                
+                alert('Cảnh báo: Xe "' + vehicleName + '" chỉ tương thích với cổng sạc đã đăng ký. Vui lòng chọn cổng sạc phù hợp hoặc chọn xe khác.');
+                
+                // Disable nút submit
+                if (btnSubmit) {
+                    btnSubmit.disabled = true;
+                    btnSubmit.style.opacity = '0.5';
+                }
+            } else {
+                // Khớp hoặc không có preferred spot, enable nút
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.style.opacity = '1';
+                }
+            }
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
             var btnSubmitReservation = document.getElementById('btn-submit-reservation');
             if (btnSubmitReservation) {
@@ -1905,6 +2165,25 @@
                     if (!spotId || !vehicleId || !startTime || !endTime) {
                         alert('Vui lòng điền đầy đủ thông tin bắt buộc.');
                         return;
+                    }
+                    
+                    // Validate vehicle-spot compatibility trước khi submit
+                    var vehicleSelect = document.getElementById('reservation-vehicle-select');
+                    var spotSelect = document.getElementById('reservation-spot-select');
+                    if (vehicleSelect && spotSelect) {
+                        var selectedVehicleOption = vehicleSelect.options[vehicleSelect.selectedIndex];
+                        var selectedSpotId = spotSelect.value;
+                        if (selectedVehicleOption && selectedVehicleOption.value && selectedSpotId) {
+                            var preferredSpotId = selectedVehicleOption.dataset.preferredSpotId;
+                            if (preferredSpotId && preferredSpotId !== selectedSpotId) {
+                                var vehicleData = JSON.parse(selectedVehicleOption.dataset.vehicleData || '{}');
+                                var vehicleName = vehicleData.licensePlate 
+                                    ? vehicleData.make + ' ' + vehicleData.model + ' (' + vehicleData.licensePlate + ')'
+                                    : vehicleData.make + ' ' + vehicleData.model;
+                                alert('Không thể đặt lịch: Xe "' + vehicleName + '" chỉ tương thích với cổng sạc đã đăng ký. Vui lòng chọn cổng sạc phù hợp hoặc chọn xe khác.');
+                                return;
+                            }
+                        }
                     }
                     
                     if (!paymentMethodRadio) {

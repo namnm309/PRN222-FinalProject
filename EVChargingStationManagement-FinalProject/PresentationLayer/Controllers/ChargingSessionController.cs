@@ -293,6 +293,8 @@ namespace PresentationLayer.Controllers
                 VehicleId = session.VehicleId,
                 VehicleName = session.Vehicle != null ? $"{session.Vehicle.Make} {session.Vehicle.Model}" : null,
                 ReservationId = session.ReservationId,
+                ScheduledStartTime = session.Reservation?.ScheduledStartTime,
+                ScheduledEndTime = session.Reservation?.ScheduledEndTime,
                 Status = session.Status,
                 SessionStartTime = session.SessionStartTime,
                 SessionEndTime = session.SessionEndTime,
