@@ -1,0 +1,88 @@
+@page
+@model PresentationLayer.Pages.Driver.StartChargingModel
+@{
+    Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
+    ViewData["Title"] = "Driver • Bắt đầu sạc";
+}
+
+<section class="page-header">
+    <h2>@ViewData["Title"]</h2>
+</section>
+
+<section class="content-grid">
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <h3>Quét QR code để bắt đầu sạc</h3>
+        </div>
+        <div class="panel-body">
+            <!-- Form -->
+            <form id="start-charging-form">
+                <input type="hidden" id="qr-code-value" />
+                <input type="hidden" id="spot-id" value="@(Model.SpotId?.ToString() ?? "")" />
+                <input type="hidden" id="reservation-id" value="@(Model.ReservationId?.ToString() ?? "")" />
+                <input type="hidden" id="station-id" value="@(Model.StationId?.ToString() ?? "")" />
+
+                <!-- Chọn trạm sạc (nếu chưa có từ reservation) -->
+                <div class="mb-3" id="station-select-section" style="display: none;">
+                    <label class="form-label">Chọn trạm sạc <span class="text-danger">*</span></label>
+                    <select id="station-select" class="form-select">
+                        <option value="">-- Chọn trạm sạc --</option>
+                    </select>
+                </div>
+
+                <!-- Chọn cổng sạc -->
+                <div class="mb-3" id="spot-select-section">
+                    <label class="form-label">Chọn cổng sạc <span class="text-danger">*</span></label>
+                    <select id="spot-select" class="form-select" required>
+                        <option value="">-- Chọn cổng sạc --</option>
+                    </select>
+                    <small class="text-muted">Vui lòng chọn cổng sạc để hiển thị QR code</small>
+                </div>
+
+                <!-- QR Code Display -->
+                <div class="qr-code-section" id="qr-code-section" style="display: none;">
+                    <div class="qr-code-container text-center mb-3">
+                        <div id="qrcode"></div>
+                    </div>
+                    <p class="text-center text-muted">Quét QR code này để bắt đầu sạc</p>
+                    <div class="text-center mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-scan-qr">Đã quét QR code</button>
+                    </div>
+                </div>
+
+                <!-- Manual QR Input (fallback) -->
+                <div class="manual-input-section mb-3" id="manual-qr-section" style="display: none;">
+                    <label class="form-label">Hoặc nhập QR code thủ công:</label>
+                    <input type="text" id="manual-qr-input" class="form-control" placeholder="EVCS_..." />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Chọn xe <span class="text-danger">*</span></label>
+                    <select id="vehicle-select" class="form-select" required>
+                        <option value="">-- Đang tải --</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Mục tiêu SOC (%)</label>
+                    <input type="number" id="target-soc" class="form-control" min="0" max="100" value="80" />
+                    <small class="text-muted">Mức pin mục tiêu (0-100%)</small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Năng lượng yêu cầu (kWh)</label>
+                    <input type="number" id="energy-requested" class="form-control" min="0" step="0.1" />
+                    <small class="text-muted">Để trống nếu không giới hạn</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg w-100" id="btn-start-charging" disabled>Bắt đầu sạc</button>
+            </form>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="~/js/driver-start-charging.js"></script>
+}
+

@@ -1,4 +1,4 @@
-using BusinessLayer.DTOs;
+using System.Linq;
 using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -14,85 +14,134 @@ namespace BusinessLayer.Services
             _context = context;
         }
 
-        public async Task<IEnumerable<VehicleDTO>> GetVehiclesByUserIdAsync(Guid userId)
+        public async Task<IEnumerable<Vehicle>> GetVehiclesByUserAsync(Guid userId)
         {
-            var vehicles = await _context.Vehicles
-                .Where(v => v.UserId == userId)
-                .OrderBy(v => v.CreatedAt)
+            var userVehicles = await _context.UserVehicles
+                .Where(uv => uv.UserId == userId)
+                .Include(uv => uv.Vehicle)
                 .ToListAsync();
 
-            return vehicles.Select(v => new VehicleDTO
+            foreach (var userVehicle in userVehicles)
             {
-                Id = v.Id,
-                LicensePlate = v.LicensePlate,
-                Make = v.Make,
-                Model = v.Model,
-                Year = v.Year,
-                Vin = v.Vin,
-                ConnectorType = v.ConnectorType,
-                UserId = v.UserId,
-                CreatedAt = v.CreatedAt,
-                UpdatedAt = v.UpdatedAt
-            });
+                if (userVehicle.Vehicle != null)
+                {
+                    userVehicle.Vehicle.UserVehicles = new List<UserVehicle> { userVehicle };
+                }
+            }
+
+            return userVehicles
+                .Where(uv => uv.Vehicle != null)
+                .Select(uv => uv.Vehicle!)
+                .ToList();
         }
 
-        public async Task<VehicleDTO?> GetVehicleByIdAsync(Guid id)
+        public async Task<Vehicle?> GetVehicleByIdAsync(Guid vehicleId)
         {
-            var vehicle = await _context.Vehicles.FindAsync(id);
-            if (vehicle == null) return null;
-
-            return new VehicleDTO
-            {
-                Id = vehicle.Id,
-                LicensePlate = vehicle.LicensePlate,
-                Make = vehicle.Make,
-                Model = vehicle.Model,
-                Year = vehicle.Year,
-                Vin = vehicle.Vin,
-                ConnectorType = vehicle.ConnectorType,
-                UserId = vehicle.UserId,
-                CreatedAt = vehicle.CreatedAt,
-                UpdatedAt = vehicle.UpdatedAt
-            };
+            return await _context.Vehicles
+                .Include(v => v.UserVehicles)
+                .FirstOrDefaultAsync(v => v.Id == vehicleId);
         }
 
-        public async Task<VehicleDTO> CreateVehicleAsync(Guid userId, CreateVehicleRequest request)
+        public async Task<Vehicle> CreateVehicleAsync(Guid userId, Vehicle vehicle, bool isPrimary, string? nickname, string? chargePortLocation)
         {
-            var vehicle = new Vehicle
+            vehicle.Id = Guid.NewGuid();
+            vehicle.CreatedAt = DateTime.UtcNow;
+            vehicle.UpdatedAt = DateTime.UtcNow;
+
+            var userVehicle = new UserVehicle
             {
                 Id = Guid.NewGuid(),
-                LicensePlate = request.LicensePlate,
-                Make = request.Make,
-                Model = request.Model,
-                Year = request.Year,
-                Vin = request.Vin,
-                ConnectorType = request.ConnectorType,
                 UserId = userId,
+                VehicleId = vehicle.Id,
+                IsPrimary = isPrimary,
+                Nickname = nickname,
+                ChargePortLocation = chargePortLocation,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
             _context.Vehicles.Add(vehicle);
-            await _context.SaveChangesAsync();
+            _context.UserVehicles.Add(userVehicle);
 
-            return new VehicleDTO
+            if (isPrimary)
             {
-                Id = vehicle.Id,
-                LicensePlate = vehicle.LicensePlate,
-                Make = vehicle.Make,
-                Model = vehicle.Model,
-                Year = vehicle.Year,
-                Vin = vehicle.Vin,
-                ConnectorType = vehicle.ConnectorType,
-                UserId = vehicle.UserId,
-                CreatedAt = vehicle.CreatedAt,
-                UpdatedAt = vehicle.UpdatedAt
-            };
+                await ResetPrimaryVehicleAsync(userId, vehicle.Id);
+            }
+
+            await _context.SaveChangesAsync();
+            return vehicle;
         }
 
-        public async Task<bool> VehicleExistsAsync(Guid id, Guid userId)
+        public async Task<Vehicle?> UpdateVehicleAsync(Guid vehicleId, Vehicle vehicle, bool isPrimary, string? nickname, string? chargePortLocation)
         {
-            return await _context.Vehicles.AnyAsync(v => v.Id == id && v.UserId == userId);
+            var existingVehicle = await _context.Vehicles
+                .Include(v => v.UserVehicles)
+                .FirstOrDefaultAsync(v => v.Id == vehicleId);
+
+            if (existingVehicle == null)
+            {
+                return null;
+            }
+
+            existingVehicle.Make = vehicle.Make;
+            existingVehicle.Model = vehicle.Model;
+            existingVehicle.ModelYear = vehicle.ModelYear;
+            existingVehicle.LicensePlate = vehicle.LicensePlate;
+            existingVehicle.VehicleType = vehicle.VehicleType;
+            existingVehicle.BatteryCapacityKwh = vehicle.BatteryCapacityKwh;
+            existingVehicle.MaxChargingPowerKw = vehicle.MaxChargingPowerKw;
+            existingVehicle.Color = vehicle.Color;
+            existingVehicle.Notes = vehicle.Notes;
+            existingVehicle.UpdatedAt = DateTime.UtcNow;
+
+            var userVehicle = existingVehicle.UserVehicles.FirstOrDefault();
+            if (userVehicle != null)
+            {
+                userVehicle.IsPrimary = isPrimary;
+                userVehicle.Nickname = nickname;
+                userVehicle.ChargePortLocation = chargePortLocation;
+                userVehicle.UpdatedAt = DateTime.UtcNow;
+
+                if (isPrimary)
+                {
+                    await ResetPrimaryVehicleAsync(userVehicle.UserId, existingVehicle.Id);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return existingVehicle;
+        }
+
+        public async Task<bool> DeleteVehicleAsync(Guid vehicleId)
+        {
+            var vehicle = await _context.Vehicles.FindAsync(vehicleId);
+            if (vehicle == null)
+            {
+                return false;
+            }
+
+            _context.Vehicles.Remove(vehicle);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task SetPrimaryVehicleAsync(Guid userId, Guid vehicleId)
+        {
+            await ResetPrimaryVehicleAsync(userId, vehicleId);
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task ResetPrimaryVehicleAsync(Guid userId, Guid newPrimaryVehicleId)
+        {
+            var userVehicles = await _context.UserVehicles
+                .Where(uv => uv.UserId == userId)
+                .ToListAsync();
+
+            foreach (var uv in userVehicles)
+            {
+                uv.IsPrimary = uv.VehicleId == newPrimaryVehicleId;
+                uv.UpdatedAt = DateTime.UtcNow;
+            }
         }
     }
 }

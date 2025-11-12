@@ -1,0 +1,140 @@
+@page
+@model PresentationLayer.Pages.Driver.VehiclesModel
+@{
+    Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
+    ViewData["Title"] = "Driver • Quản lý xe";
+}
+
+<section class="page-header">
+    <div>
+        <h2>Quản lý xe</h2>
+        <p class="text-muted">Thêm và quản lý các xe điện của bạn</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#vehicleModal" onclick="openAddVehicleModal()">
+        <i class="bi bi-plus-circle"></i> Thêm xe mới
+    </button>
+</section>
+
+<section class="content-grid">
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <h3>Danh sách xe của tôi</h3>
+            <span class="badge bg-primary" id="vehicle-count">0</span>
+        </div>
+        <div id="vehicles-list" class="vehicles-list">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Đang tải...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Modal Thêm/Sửa Xe -->
+<div class="modal fade" id="vehicleModal" tabindex="-1" aria-labelledby="vehicleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="vehicleModalLabel">Thêm xe mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="vehicleForm">
+                    <input type="hidden" id="vehicle-id" />
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle-make" class="form-label">Hãng xe <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="vehicle-make" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle-model" class="form-label">Mẫu xe <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="vehicle-model" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle-year" class="form-label">Năm sản xuất <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="vehicle-year" min="1900" max="2100" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle-license" class="form-label">Biển số <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="vehicle-license" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle-type" class="form-label">Loại xe <span class="text-danger">*</span></label>
+                            <select class="form-select" id="vehicle-type" required>
+                                <option value="">-- Chọn loại xe --</option>
+                                <option value="Car">Ô tô</option>
+                                <option value="Motorcycle">Xe máy</option>
+                                <option value="Van">Xe tải nhỏ</option>
+                                <option value="Bus">Xe buýt</option>
+                                <option value="Truck">Xe tải</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle-color" class="form-label">Màu sắc</label>
+                            <input type="text" class="form-control" id="vehicle-color">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle-battery" class="form-label">Dung lượng pin (kWh) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.1" min="0" class="form-control" id="vehicle-battery" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle-power" class="form-label">Công suất sạc tối đa (kW) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.1" min="0" class="form-control" id="vehicle-power" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="vehicle-nickname" class="form-label">Tên gọi (nickname)</label>
+                        <input type="text" class="form-control" id="vehicle-nickname" placeholder="Ví dụ: Xe của tôi">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="vehicle-port-location" class="form-label">Vị trí cổng sạc</label>
+                        <select class="form-select" id="vehicle-port-location">
+                            <option value="">-- Chọn vị trí --</option>
+                            <option value="Front">Phía trước</option>
+                            <option value="Rear">Phía sau</option>
+                            <option value="Left">Bên trái</option>
+                            <option value="Right">Bên phải</option>
+                            <option value="Top">Phía trên</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="vehicle-notes" class="form-label">Ghi chú</label>
+                        <textarea class="form-control" id="vehicle-notes" rows="3"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="vehicle-is-primary">
+                            <label class="form-check-label" for="vehicle-is-primary">
+                                Đặt làm xe mặc định
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" id="btn-save-vehicle">Lưu</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/driver-vehicles.js"></script>
+}
+
