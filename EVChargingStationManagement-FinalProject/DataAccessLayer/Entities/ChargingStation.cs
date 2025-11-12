@@ -34,8 +34,19 @@ namespace DataAccessLayer.Entities
 
         public bool Is24Hours { get; set; } = false;
 
+        // SerpApi integration fields
+        public string? SerpApiPlaceId { get; set; }
+        public decimal? ExternalRating { get; set; }
+        public int? ExternalReviewCount { get; set; }
+        public bool IsFromSerpApi { get; set; } = false;
+        public DateTime? SerpApiLastSynced { get; set; }
+
         // Navigation property
         public virtual ICollection<ChargingSpot> ChargingSpots { get; set; } = new List<ChargingSpot>();
+
+        public virtual ICollection<StationAmenity> Amenities { get; set; } = new List<StationAmenity>();
+
+        public virtual ICollection<StationReport> StationReports { get; set; } = new List<StationReport>();
     }
 }
 

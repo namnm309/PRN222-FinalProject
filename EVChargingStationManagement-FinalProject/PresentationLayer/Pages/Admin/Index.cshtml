@@ -8,18 +8,122 @@
     <h2>@ViewData["Title"]</h2>
 </section>
 
-<section class="kpis">
-    <div class="kpi-card"></div>
-    <div class="kpi-card"></div>
-    <div class="kpi-card"></div>
-    <div class="kpi-card"></div>
+<section class="filters dashboard-filters">
+    <div class="filter-group">
+        <label for="DashboardStationFilter">Trạm sạc</label>
+        <select id="DashboardStationFilter" class="form-select" data-station-filter>
+            <option value="">Tất cả trạm</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="DashboardRange">Khoảng thời gian</label>
+        <select id="DashboardRange" class="form-select" data-range-filter>
+            <option value="today" selected>Hôm nay</option>
+            <option value="yesterday">Hôm qua</option>
+            <option value="7days">7 ngày gần nhất</option>
+            <option value="30days">30 ngày</option>
+        </select>
+    </div>
 </section>
 
-<section class="filters">Bộ lọc (placeholder)</section>
+<section class="kpis dashboard-kpis">
+    <div class="kpi-card">
+        <span class="kpi-title">Tổng điểm sạc</span>
+        <span class="kpi-value" data-kpi="total-spots">--</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-title">Đang trống</span>
+        <span class="kpi-value" data-kpi="available-spots">--</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-title">Phiên đang chạy</span>
+        <span class="kpi-value" data-kpi="active-sessions">--</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-title">Đặt chỗ hôm nay</span>
+        <span class="kpi-value" data-kpi="reservations-today">--</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-title">Năng lượng (kWh)</span>
+        <span class="kpi-value" data-kpi="energy-today">--</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-title">Doanh thu (VND)</span>
+        <span class="kpi-value" data-kpi="revenue-today">--</span>
+    </div>
+</section>
 
 <section class="content-grid">
-    <div class="table-placeholder">Bảng dữ liệu (placeholder)</div>
-    <div class="chart-placeholder">Biểu đồ (placeholder)</div>
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <h3>Phiên sạc gần đây</h3>
+            <button class="btn btn-sm btn-outline-primary" data-refresh-sessions>Tải lại</button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Thời gian</th>
+                        <th>Trạm/Điểm</th>
+                        <th>Trạng thái</th>
+                        <th>Năng lượng (kWh)</th>
+                        <th>Chi phí (VND)</th>
+                    </tr>
+                </thead>
+                <tbody data-session-list>
+                    <tr>
+                        <td colspan="5" class="text-center">Đang tải dữ liệu...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <h3>Lịch đặt chỗ sắp tới</h3>
+            <button class="btn btn-sm btn-outline-primary" data-refresh-reservations>Tải lại</button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Bắt đầu</th>
+                        <th>Khách hàng</th>
+                        <th>Trạm/Điểm</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody data-reservation-list>
+                    <tr>
+                        <td colspan="4" class="text-center">Đang tải dữ liệu...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </section>
+
+<section class="content-grid">
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <h3>Bản đồ trạm sạc</h3>
+        </div>
+        <div id="DashboardMap" class="dashboard-map" data-map-container>
+            <div class="placeholder">Bản đồ đang được tải...</div>
+        </div>
+    </div>
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <h3>Thông báo mới</h3>
+        </div>
+        <ul class="notification-list" data-notification-list>
+            <li class="notification-item muted">Đang tải thông báo...</li>
+        </ul>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="~/js/admin-dashboard.js" asp-append-version="true"></script>
+}
 
 
