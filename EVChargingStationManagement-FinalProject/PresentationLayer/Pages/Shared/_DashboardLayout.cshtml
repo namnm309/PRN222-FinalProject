@@ -1,0 +1,44 @@
+@*
+  Dashboard layout dùng cho Admin/Staff với sidebar trái và header trên.
+  Public site vẫn dùng `Pages/Shared/_Layout.cshtml`.
+*@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Dashboard</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/driver.css" asp-append-version="true" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="dashboard-body">
+    <div class="dashboard-root">
+        <aside class="dashboard-sidebar">
+            @await Html.PartialAsync("_DashboardNav")
+        </aside>
+        <div class="dashboard-main">
+            <header class="dashboard-header">
+                @await Html.PartialAsync("_DashboardHeader")
+            </header>
+            <main class="dashboard-content">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.0/dist/browser/signalr.min.js" crossorigin="anonymous"></script>
+    <script src="~/js/dashboard.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+
+
+
+
