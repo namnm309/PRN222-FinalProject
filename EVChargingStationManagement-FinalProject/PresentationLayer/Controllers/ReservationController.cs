@@ -188,6 +188,33 @@ namespace PresentationLayer.Controllers
             return Ok(reservations.Select(MapToDto));
         }
 
+        [HttpGet("staff/all")]
+        [Authorize(Roles = "Admin,CSStaff")]
+        public async Task<IActionResult> GetAllReservationsForStaff([FromQuery] DateTime? from, [FromQuery] DateTime? to)
+        {
+            // Get all reservations for staff to manage
+            var reservations = await _context.Reservations
+                .Include(r => r.User)
+                .Include(r => r.ChargingSpot)
+                    .ThenInclude(s => s!.ChargingStation)
+                .Include(r => r.Vehicle)
+                .OrderByDescending(r => r.ScheduledStartTime)
+                .ToListAsync();
+
+            // Apply date filters if provided
+            if (from.HasValue)
+            {
+                reservations = reservations.Where(r => r.ScheduledStartTime >= from.Value.ToUniversalTime()).ToList();
+            }
+
+            if (to.HasValue)
+            {
+                reservations = reservations.Where(r => r.ScheduledStartTime <= to.Value.ToUniversalTime()).ToList();
+            }
+
+            return Ok(reservations.Select(MapToDto));
+        }
+
         private ReservationDTO MapToDto(Reservation reservation)
         {
             return new ReservationDTO

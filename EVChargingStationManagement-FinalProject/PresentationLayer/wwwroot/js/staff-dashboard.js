@@ -43,30 +43,31 @@
         }
     };
 
-    const updateKpis = ({ overview, errors, maintenances }) => {
+    const updateKpis = ({ overview, reservations, sessions }) => {
+        // Tổng trạm sạc
+        utils.setKpiValue(kpiRoot, 'total-stations', state.stations.length);
+
+        // Điểm sạc hoạt động
         if (overview) {
             utils.setKpiValue(kpiRoot, 'available-spots', overview.availableSpots);
             utils.setKpiValue(kpiRoot, 'active-sessions', overview.activeSessions);
         }
 
-        if (errors) {
-            const openCount = errors.filter(item => {
-                const status = String(item.status || '').toLowerCase();
-                return ['reported', 'investigating', '0', '1'].includes(status);
-            }).length;
-            utils.setKpiValue(kpiRoot, 'open-errors', openCount);
-        }
-
-        if (maintenances) {
+        // Đặt chỗ hôm nay
+        if (reservations) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const todayCount = maintenances.filter(item => {
-                if (!item.scheduledDate) return false;
-                const dt = new Date(item.scheduledDate);
-                dt.setHours(0, 0, 0, 0);
-                return dt.getTime() === today.getTime();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            const todayCount = reservations.filter(item => {
+                if (!item.scheduledStartTime) return false;
+                const dt = new Date(item.scheduledStartTime);
+                return dt >= today && dt < tomorrow;
             }).length;
-            utils.setKpiValue(kpiRoot, 'maintenance-today', todayCount);
+            utils.setKpiValue(kpiRoot, 'reservations-today', todayCount);
+        } else {
+            utils.setKpiValue(kpiRoot, 'reservations-today', 0);
         }
     };
 
@@ -102,26 +103,29 @@
     };
 
     const loadReservations = async () => {
-        if (!state.stationId) {
-            reservationTable.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Hãy chọn trạm để xem đặt chỗ.</td></tr>`;
-            return [];
-        }
         try {
-            const data = await utils.fetchJson(`/api/reservation/station/${state.stationId}`);
-            const upcoming = (data || []).filter(item => new Date(item.scheduledStartTime) > new Date()).slice(0, 10);
+            // Load all reservations for KPI calculation
+            const allData = await utils.fetchJson('/api/Reservation/staff/all');
+            
+            // Filter upcoming for display
+            const now = new Date();
+            const upcoming = (allData || []).filter(item => new Date(item.scheduledStartTime) > now).slice(0, 10);
+            
             if (upcoming.length === 0) {
                 reservationTable.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Chưa có đặt chỗ sắp tới.</td></tr>`;
-                return [];
+            } else {
+                reservationTable.innerHTML = upcoming.map(item => `
+                    <tr>
+                        <td>${utils.formatDateTime(item.scheduledStartTime)}</td>
+                        <td>${item.userFullName || item.userId}</td>
+                        <td>${item.chargingSpotNumber || '--'}</td>
+                        <td>${utils.renderStatusBadge(item.status)}</td>
+                    </tr>
+                `).join('');
             }
-            reservationTable.innerHTML = upcoming.map(item => `
-                <tr>
-                    <td>${utils.formatDateTime(item.scheduledStartTime)}</td>
-                    <td>${item.userFullName || item.userId}</td>
-                    <td>${item.chargingSpotNumber || '--'}</td>
-                    <td>${utils.renderStatusBadge(item.status)}</td>
-                </tr>
-            `).join('');
-            return upcoming;
+            
+            // Return all data for KPI calculation
+            return allData || [];
         } catch (err) {
             console.error(err);
             reservationTable.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Không thể tải dữ liệu đặt chỗ.</td></tr>`;
@@ -235,7 +239,7 @@
             loadMaintenances()
         ]);
 
-        updateKpis({ overview, errors, maintenances, sessions, reservations });
+        updateKpis({ overview, sessions, reservations });
     };
 
     const bindEvents = () => {

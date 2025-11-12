@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/driver.css" asp-append-version="true" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="dashboard-body">
     <div class="dashboard-root">

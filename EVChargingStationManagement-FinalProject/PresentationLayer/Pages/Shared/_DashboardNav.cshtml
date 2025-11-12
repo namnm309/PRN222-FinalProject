@@ -42,10 +42,10 @@
     {
         <ul class="nav-list">
             <li><a class="nav-item @Active("/staff")" asp-page="/Staff/Index"><span class="nav-ico">▦</span><span class="nav-text">Dashboard</span></a></li>
-            <li><a class="nav-item @Active("/staff/stations")" asp-page="/Staff/Stations"><span class="nav-ico">⚡</span><span class="nav-text">Trạm sạc của tôi</span></a></li>
+            <li><a class="nav-item @Active("/staff/stations")" asp-page="/Staff/Stations"><span class="nav-ico">⚡</span><span class="nav-text">Trạm sạc</span></a></li>
+            <li><a class="nav-item @Active("/staff/reservations")" asp-page="/Staff/Reservations"><span class="nav-ico">📅</span><span class="nav-text">Quản lý đặt trước</span></a></li>
             <li><a class="nav-item @Active("/staff/sessions")" asp-page="/Staff/Sessions"><span class="nav-ico">⏱</span><span class="nav-text">Giám sát Sạc</span></a></li>
             <li><a class="nav-item @Active("/staff/reports")" asp-page="/Staff/Reports"><span class="nav-ico">📋</span><span class="nav-text">Báo cáo sự cố</span></a></li>
-            <li><a class="nav-item @Active("/staff/settings")" asp-page="/Staff/Settings"><span class="nav-ico">⚙</span><span class="nav-text">Cài đặt</span></a></li>
         </ul>
     }
     else if (isDriver)
