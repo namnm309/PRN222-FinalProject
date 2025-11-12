@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using BusinessLayer.DTOs;
@@ -21,7 +22,7 @@ namespace BusinessLayer.Services
         {
             _configuration = configuration;
             _tmnCode = _configuration["VNPay:TmnCode"] ?? "";
-            _hashSecret = _configuration["VNPay:HashSecret"] ?? "";
+            _hashSecret = (_configuration["VNPay:HashSecret"] ?? "").Trim(); // Trim to avoid spaces
             _url = _configuration["VNPay:Url"] ?? "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
             _returnUrl = _configuration["VNPay:ReturnUrl"] ?? "";
             _ipnUrl = _configuration["VNPay:IpnUrl"] ?? "";
@@ -53,24 +54,24 @@ namespace BusinessLayer.Services
             // Sort by key using Ordinal comparison (VNPay requirement)
             var sortedDict = filteredDict.OrderBy(x => x.Key, StringComparer.Ordinal).ToDictionary(x => x.Key, x => x.Value);
 
-            // Build query string with URL encoding for both key and value (VNPay requirement)
-            var queryString = new StringBuilder();
+            // Build query string for signature: KEY giữ nguyên, chỉ encode VALUE
+            var signDataBuilder = new StringBuilder();
             foreach (var kvp in sortedDict)
             {
-                queryString.Append(Uri.EscapeDataString(kvp.Key));
-                queryString.Append("=");
-                queryString.Append(Uri.EscapeDataString(kvp.Value));
-                queryString.Append("&");
+                signDataBuilder.Append(kvp.Key); // KEY giữ nguyên, không encode
+                signDataBuilder.Append("=");
+                signDataBuilder.Append(WebUtility.UrlEncode(kvp.Value)); // Chỉ encode VALUE
+                signDataBuilder.Append("&");
             }
             
             // Remove last '&'
-            if (queryString.Length > 0)
+            if (signDataBuilder.Length > 0)
             {
-                queryString.Length -= 1;
+                signDataBuilder.Length -= 1;
             }
             
-            // Create signature from the encoded query string
-            var signData = queryString.ToString();
+            // Create signature from the sign data (key not encoded, value encoded)
+            var signData = signDataBuilder.ToString();
             var vnp_SecureHash = HmacSHA512(_hashSecret, signData);
             
             // Debug logging
@@ -78,8 +79,19 @@ namespace BusinessLayer.Services
             Console.WriteLine($"[VNPay] HashSecret: {_hashSecret}");
             Console.WriteLine($"[VNPay] SecureHash: {vnp_SecureHash}");
             
-            // Add secure hash to query string
-            queryString.Append("&vnp_SecureHash=");
+            // Build final query string for URL (encode both key and value for URL)
+            var queryString = new StringBuilder();
+            foreach (var kvp in sortedDict)
+            {
+                queryString.Append(WebUtility.UrlEncode(kvp.Key));
+                queryString.Append("=");
+                queryString.Append(WebUtility.UrlEncode(kvp.Value));
+                queryString.Append("&");
+            }
+            
+            // Add vnp_SecureHashType and vnp_SecureHash (after signing)
+            queryString.Append("vnp_SecureHashType=HMACSHA512&");
+            queryString.Append("vnp_SecureHash=");
             queryString.Append(vnp_SecureHash);
 
             return $"{_url}?{queryString}";
@@ -93,22 +105,35 @@ namespace BusinessLayer.Services
             {
                 result.Success = false;
                 result.Message = "Invalid callback data";
+                Console.WriteLine("[VNPay ValidateCallback] No query parameters received");
+                return result;
+            }
+
+            // Extract secure hash first before filtering
+            var vnp_SecureHash = queryParams.ContainsKey("vnp_SecureHash") ? queryParams["vnp_SecureHash"] : "";
+            if (string.IsNullOrEmpty(vnp_SecureHash))
+            {
+                result.Success = false;
+                result.Message = "Missing vnp_SecureHash";
+                Console.WriteLine("[VNPay ValidateCallback] Missing vnp_SecureHash parameter");
                 return result;
             }
 
             var vnpayData = new Dictionary<string, string>();
             foreach (var item in queryParams)
             {
-                if (!string.IsNullOrEmpty(item.Value) && item.Key.StartsWith("vnp_"))
+                // Only include vnp_ parameters and exclude SecureHash and SecureHashType
+                if (item.Key.StartsWith("vnp_") && 
+                    item.Key != "vnp_SecureHash" && 
+                    item.Key != "vnp_SecureHashType" &&
+                    !string.IsNullOrEmpty(item.Value))
                 {
                     vnpayData.Add(item.Key, item.Value);
                 }
             }
 
-            // Extract secure hash and secure hash type (if exists)
-            var vnp_SecureHash = vnpayData.ContainsKey("vnp_SecureHash") ? vnpayData["vnp_SecureHash"] : "";
-            vnpayData.Remove("vnp_SecureHash");
-            vnpayData.Remove("vnp_SecureHashType"); // Remove if exists, not used in signature calculation
+            Console.WriteLine($"[VNPay ValidateCallback] Processing {vnpayData.Count} parameters for signature verification");
+            Console.WriteLine($"[VNPay ValidateCallback] Received vnp_SecureHash: {vnp_SecureHash}");
 
             // Verify signature
             if (!VerifySignature(vnpayData, vnp_SecureHash))
@@ -151,14 +176,14 @@ namespace BusinessLayer.Services
             // Sort by key using Ordinal comparison (VNPay requirement)
             var sortedDict = filteredDict.OrderBy(x => x.Key, StringComparer.Ordinal).ToDictionary(x => x.Key, x => x.Value);
 
-            // Build query string with URL encoding for both key and value (VNPay requirement)
-            // This matches the way signature was created
+            // Build query string for signature verification: KEY giữ nguyên, chỉ encode VALUE
+            // This matches VNPay's signature calculation method
             var signDataBuilder = new StringBuilder();
             foreach (var kvp in sortedDict)
             {
-                signDataBuilder.Append(Uri.EscapeDataString(kvp.Key));
+                signDataBuilder.Append(kvp.Key); // KEY giữ nguyên, không encode
                 signDataBuilder.Append("=");
-                signDataBuilder.Append(Uri.EscapeDataString(kvp.Value));
+                signDataBuilder.Append(WebUtility.UrlEncode(kvp.Value)); // Chỉ encode VALUE
                 signDataBuilder.Append("&");
             }
             
@@ -170,7 +195,7 @@ namespace BusinessLayer.Services
             
             var signData = signDataBuilder.ToString();
 
-            // Compute hash
+            // Compute hash using trimmed secret
             var computedHash = HmacSHA512(_hashSecret, signData);
             
             // Debug logging

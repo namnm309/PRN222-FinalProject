@@ -1,0 +1,186 @@
+@page
+@model PresentationLayer.Pages.Staff.ReservationsModel
+@{
+    Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
+    ViewData["Title"] = "Staff • Quản lý đặt trước";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/staff-reservations.css" asp-append-version="true" />
+}
+
+<section class="page-header">
+    <h2>@ViewData["Title"]</h2>
+    <div class="page-actions">
+        <button class="btn btn-outline-primary" data-action="refresh-reservations">
+            <i class="bi bi-arrow-clockwise"></i> Làm mới
+        </button>
+    </div>
+</section>
+
+<!-- Filters -->
+<section class="filters">
+    <div class="filter-group">
+        <label for="StationFilter">Trạm sạc</label>
+        <select id="StationFilter" class="form-select" data-filter="station">
+            <option value="">Tất cả trạm</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="StatusFilter">Trạng thái</label>
+        <select id="StatusFilter" class="form-select" data-filter="status">
+            <option value="">Tất cả</option>
+            <option value="0">Pending</option>
+            <option value="1">Confirmed</option>
+            <option value="2">CheckedIn</option>
+            <option value="3">Completed</option>
+            <option value="4">Cancelled</option>
+            <option value="5">Expired</option>
+            <option value="6">NoShow</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="DateFromFilter">Từ ngày</label>
+        <input type="date" id="DateFromFilter" class="form-control" data-filter="dateFrom">
+    </div>
+    <div class="filter-group">
+        <label for="DateToFilter">Đến ngày</label>
+        <input type="date" id="DateToFilter" class="form-control" data-filter="dateTo">
+    </div>
+    <div class="filter-group">
+        <label for="SearchFilter">Tìm kiếm</label>
+        <input type="text" id="SearchFilter" class="form-control" placeholder="Mã đặt chỗ, khách hàng..." data-filter="search">
+    </div>
+    <div class="filter-group">
+        <button class="btn btn-primary" data-action="apply-filters">
+            <i class="bi bi-funnel"></i> Áp dụng
+        </button>
+        <button class="btn btn-secondary" data-action="clear-filters">
+            <i class="bi bi-x-circle"></i> Xóa bộ lọc
+        </button>
+    </div>
+</section>
+
+<!-- KPIs -->
+<section class="kpis dashboard-kpis">
+    <div class="kpi-card">
+        <span class="kpi-title">Tổng đặt chỗ</span>
+        <span class="kpi-value" data-kpi="total">0</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-title">Chờ xác nhận</span>
+        <span class="kpi-value text-warning" data-kpi="pending">0</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-title">Đã xác nhận</span>
+        <span class="kpi-value text-success" data-kpi="confirmed">0</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-title">Đang sử dụng</span>
+        <span class="kpi-value text-info" data-kpi="checkedIn">0</span>
+    </div>
+</section>
+
+<!-- Reservations Table -->
+<section class="content-grid">
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <h3>Danh sách đặt trước</h3>
+            <span class="badge bg-secondary" data-result-count>0 kết quả</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Mã đặt chỗ</th>
+                        <th>Khách hàng</th>
+                        <th>Trạm sạc</th>
+                        <th>Điểm sạc</th>
+                        <th>Thời gian bắt đầu</th>
+                        <th>Thời gian kết thúc</th>
+                        <th>Xe</th>
+                        <th>Trạng thái</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="reservationsTableBody">
+                    <tr>
+                        <td colspan="9" class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Đang tải...</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- Modal Chi tiết Reservation -->
+<div class="modal fade" id="reservationDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Chi tiết đặt trước</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="reservationDetailContent">
+                <!-- Content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Cập nhật Status -->
+<div class="modal fade" id="updateStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cập nhật trạng thái</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="updateStatusForm">
+                    <input type="hidden" id="updateReservationId">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Trạng thái hiện tại</label>
+                        <input type="text" class="form-control" id="currentStatus" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newStatus" class="form-label">Trạng thái mới <span class="text-danger">*</span></label>
+                        <select class="form-select" id="newStatus" required>
+                            <option value="">-- Chọn trạng thái --</option>
+                            <option value="1">Confirmed - Đã xác nhận</option>
+                            <option value="2">CheckedIn - Đã check-in</option>
+                            <option value="3">Completed - Hoàn thành</option>
+                            <option value="4">Cancelled - Đã hủy</option>
+                            <option value="6">NoShow - Không đến</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="statusNotes" class="form-label">Ghi chú</label>
+                        <textarea class="form-control" id="statusNotes" rows="3" placeholder="Nhập ghi chú (tùy chọn)"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" data-action="confirm-update-status">
+                    <i class="bi bi-check-circle"></i> Cập nhật
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/staff-reservations.js" asp-append-version="true"></script>
+}
+

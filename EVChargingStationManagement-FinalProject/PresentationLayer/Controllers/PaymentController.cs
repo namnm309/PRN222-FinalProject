@@ -264,15 +264,28 @@ namespace PresentationLayer.Controllers
         }
 
         [HttpPost("vnpay/callback")]
+        [HttpGet("vnpay/callback")]
         [AllowAnonymous]
         public async Task<IActionResult> VnPayCallback()
         {
+            // VNPay sends callback as GET or POST with query parameters
             var queryParams = Request.Query.ToDictionary(q => q.Key, q => q.Value.ToString());
+            
+            // Log received parameters for debugging
+            Console.WriteLine($"[VNPay Callback] Received {queryParams.Count} parameters");
+            foreach (var param in queryParams)
+            {
+                Console.WriteLine($"[VNPay Callback] {param.Key} = {param.Value}");
+            }
+            
             var callbackResult = _vnPayService.ValidateCallback(queryParams);
 
             if (!callbackResult.Success || string.IsNullOrEmpty(callbackResult.OrderId))
             {
-                return BadRequest(new { message = callbackResult.Message ?? "Invalid callback" });
+                // Log signature verification failure
+                Console.WriteLine($"[VNPay Callback] Signature verification failed: {callbackResult.Message}");
+                // Return error response but still acknowledge receipt to VNPay
+                return BadRequest(new { RspCode = "97", Message = callbackResult.Message ?? "Invalid callback" });
             }
 
             // Parse payment ID from OrderId (which is the payment transaction ID)
