@@ -115,6 +115,11 @@
         
         <!-- Map Info Card (Hidden by default, shown when station selected) -->
         <div class="map-info-card" style="display: none;">
+            <button class="map-info-close-btn" id="btn-close-map-info" onclick="closeMapInfoCard()" aria-label="Đóng">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15 5L5 15M5 5L15 15" stroke="#4A5565" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
             <div class="map-info-header">
                 <div class="map-info-title-section">
                     <h3 class="map-info-title" data-field="title">Trạm sạc</h3>
@@ -177,7 +182,7 @@
                         </svg>
                     </button>
                     <button class="btn-reserve" id="btn-reserve" style="display: none;">
-                        <span>Đặt trước</span>
+                        <span>Đặt lịch</span>
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M8 2V14M8 2L5 5M8 2L11 5M8 14L5 11M8 14L11 11" stroke="white" stroke-width="2" stroke-linecap="round"/>
                         </svg>
@@ -273,6 +278,43 @@
                     </div>
                     
                     <div class="mb-3">
+                        <label class="form-label">Thời gian kết thúc <span class="text-danger">*</span></label>
+                        <input type="datetime-local" class="form-control" id="reservation-end-time" required />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Năng lượng ước tính (kWh)</label>
+                        <input type="number" class="form-control" id="reservation-energy" min="0" step="0.1" placeholder="Nhập năng lượng ước tính" />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Chi phí ước tính</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="reservation-estimated-cost" readonly />
+                            <span class="input-group-text">VND</span>
+                        </div>
+                        <small class="text-muted">Chi phí sẽ được tính tự động dựa trên giá trạm sạc</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Phương thức thanh toán <span class="text-danger">*</span></label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="paymentMethod" id="paymentCash" value="cash" checked>
+                                <label class="form-check-label" for="paymentCash">
+                                    Tiền mặt
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="paymentMethod" id="paymentVNPay" value="vnpay">
+                                <label class="form-check-label" for="paymentVNPay">
+                                    VNPay
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
                         <label class="form-label">Ghi chú</label>
                         <textarea class="form-control" id="reservation-notes" rows="3"></textarea>
                     </div>
@@ -280,7 +322,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button type="button" class="btn btn-primary" id="btn-submit-reservation">Xác nhận đặt trước</button>
+                <button type="button" class="btn btn-primary" id="btn-submit-reservation">Xác nhận đặt lịch</button>
             </div>
         </div>
     </div>
@@ -342,6 +384,34 @@
                     
                     // Refresh danh sách stations trong sidebar để cập nhật thông tin mới nhất
                     refreshStationsListForAvailabilityUpdate(stationId, totalSpots, availableSpots);
+                });
+                
+                // Listen for spot reserved event (real-time locking)
+                signalRConnection.on('SpotReserved', function(spotId, status) {
+                    console.log('SpotReserved received:', spotId, status);
+                    
+                    // Reload spots list if reservation modal is open
+                    var reservationModal = document.getElementById('reservationModal');
+                    if (reservationModal && reservationModal.classList.contains('show')) {
+                        var stationId = document.getElementById('reservation-station-id').value;
+                        if (stationId) {
+                            loadSpotsForReservation(stationId);
+                        }
+                    }
+                });
+                
+                // Listen for spots list updated
+                signalRConnection.on('SpotsListUpdated', function(stationId) {
+                    console.log('SpotsListUpdated received:', stationId);
+                    
+                    // Reload spots list if reservation modal is open for this station
+                    var reservationModal = document.getElementById('reservationModal');
+                    if (reservationModal && reservationModal.classList.contains('show')) {
+                        var currentStationId = document.getElementById('reservation-station-id').value;
+                        if (currentStationId === stationId) {
+                            loadSpotsForReservation(stationId);
+                        }
+                    }
                 });
 
                 await signalRConnection.start();
@@ -571,6 +641,10 @@
         function updateReserveButtonVisibility() {
             var btnReserve = document.getElementById('btn-reserve');
             var btnStartCharging = document.getElementById('btn-start-charging');
+            var btnDirection = document.getElementById('btn-direction');
+            
+            // Kiểm tra xem trạm có dữ liệu từ admin không (có stationId)
+            var hasAdminData = selectedStation && selectedStation.stationId;
             
             // Kiểm tra station status - chỉ hiển thị nút khi station Active
             var isStationActive = selectedStation && 
@@ -578,15 +652,30 @@
             var hasAvailableSpots = selectedStation && selectedStation.availableSpots > 0;
             
             if (btnReserve) {
-                // Chỉ hiển thị nút đặt lịch khi station Active và có available spots
-                btnReserve.style.display = (isUserAuthenticated && selectedStation && selectedStation.stationId && 
-                    isStationActive && hasAvailableSpots) ? 'flex' : 'none';
+                // Chỉ hiển thị nút "Đặt lịch" khi:
+                // 1. User đã đăng nhập
+                // 2. Trạm có dữ liệu từ admin (có stationId) - QUAN TRỌNG: không hiện nếu chỉ có dữ liệu Google Maps
+                // 3. Station Active
+                // 4. Có available spots
+                var shouldShowReserve = isUserAuthenticated && hasAdminData && 
+                    isStationActive && hasAvailableSpots;
+                btnReserve.style.display = shouldShowReserve ? 'flex' : 'none';
             }
             
             if (btnStartCharging) {
-                // Chỉ hiển thị nút "Bắt đầu sạc" khi station Active và có cổng sạc trống
-                btnStartCharging.style.display = (isUserAuthenticated && selectedStation && selectedStation.stationId && 
-                    isStationActive && hasAvailableSpots) ? 'flex' : 'none';
+                // Chỉ hiển thị nút "Bắt đầu sạc" khi:
+                // 1. User đã đăng nhập
+                // 2. Trạm có dữ liệu từ admin (có stationId)
+                // 3. Station Active
+                // 4. Có available spots
+                var shouldShowStart = isUserAuthenticated && hasAdminData && 
+                    isStationActive && hasAvailableSpots;
+                btnStartCharging.style.display = shouldShowStart ? 'flex' : 'none';
+            }
+            
+            // Nút "Chỉ đường" luôn hiển thị nếu có selectedStation (có thể là từ Google Maps hoặc admin)
+            if (btnDirection) {
+                btnDirection.style.display = selectedStation ? 'flex' : 'none';
             }
         }
 
@@ -723,6 +812,10 @@
             mapInfoFields[field].textContent = value || '--';
         }
 
+        function closeMapInfoCard() {
+            resetStationDetails();
+        }
+
         async function resetStationDetails() {
             // Unsubscribe from SignalR if subscribed
             if (signalRConnection && subscribedStationId) {
@@ -752,12 +845,27 @@
         }
 
         async function showStationDetails(station) {
-            if (!mapInfoCard || !station) return;
+            if (!station) {
+                console.log('showStationDetails: station is null/undefined');
+                return;
+            }
+            
+            // Re-query mapInfoCard in case it wasn't found initially
+            if (!mapInfoCard) {
+                mapInfoCard = document.querySelector('.map-info-card');
+            }
+            
+            if (!mapInfoCard) {
+                console.error('mapInfoCard not found');
+                return;
+            }
 
+            console.log('showStationDetails: displaying card for station:', station);
             // Làm giàu thông tin với dữ liệu từ database
             station = await enrichStationWithDbData(station);
             selectedStation = station;
             mapInfoCard.style.display = 'block';
+            console.log('showStationDetails: card display set to block');
 
             // Subscribe to SignalR updates for this station
             if (station.stationId) {
@@ -1161,6 +1269,7 @@
                             connectorsText: '--',
                             distanceText: '--'
                         };
+                        console.log('Marker clicked, showing station details:', data);
                         showStationDetails(data);
                     });
                         serpMarkers.push(m);
@@ -1587,20 +1696,71 @@
             if (!selectedStation || !selectedStation.stationId) return;
 
             var modal = new bootstrap.Modal(document.getElementById('reservationModal'));
-            document.getElementById('reservation-station-id').value = selectedStation.stationId;
+            var stationId = selectedStation.stationId;
+            document.getElementById('reservation-station-id').value = stationId;
             document.getElementById('reservation-station-name').value = selectedStation.title || selectedStation.name || '';
 
+            // Subscribe to station for real-time updates
+            if (signalRConnection) {
+                await subscribeStationSignalR(stationId);
+            }
+
             // Load danh sách spots
-            await loadSpotsForReservation(selectedStation.stationId);
+            await loadSpotsForReservation(stationId);
 
             // Load danh sách vehicles
             await loadVehiclesForReservation();
 
-            // Set thời gian mặc định (1 giờ sau)
+            // Set thời gian mặc định (1 giờ sau, kết thúc sau 2 giờ)
             var now = new Date();
-            now.setHours(now.getHours() + 1);
+            var startTime = new Date(now);
+            startTime.setHours(startTime.getHours() + 1);
+            var endTime = new Date(startTime);
+            endTime.setHours(endTime.getHours() + 2);
 
-            document.getElementById('reservation-start-time').value = formatDateTimeLocal(now);
+            document.getElementById('reservation-start-time').value = formatDateTimeLocal(startTime);
+            document.getElementById('reservation-end-time').value = formatDateTimeLocal(endTime);
+            
+            // Reset payment method to cash
+            document.getElementById('paymentCash').checked = true;
+            document.getElementById('reservation-estimated-cost').value = '0';
+
+            // Add event listeners for cost calculation
+            var spotSelect = document.getElementById('reservation-spot-select');
+            var startTimeInput = document.getElementById('reservation-start-time');
+            var endTimeInput = document.getElementById('reservation-end-time');
+            var energyInput = document.getElementById('reservation-energy');
+            
+            function calculateEstimatedCost() {
+                var spotId = spotSelect.value;
+                var startTime = startTimeInput.value;
+                var endTime = endTimeInput.value;
+                var energy = parseFloat(energyInput.value) || 0;
+                
+                if (!spotId || !startTime || !endTime) {
+                    document.getElementById('reservation-estimated-cost').value = '0';
+                    return;
+                }
+                
+                // Get selected spot price
+                var selectedOption = spotSelect.options[spotSelect.selectedIndex];
+                if (selectedOption && selectedOption.dataset.price) {
+                    var pricePerKwh = parseFloat(selectedOption.dataset.price);
+                    if (!isNaN(pricePerKwh) && energy > 0) {
+                        var estimatedCost = pricePerKwh * energy;
+                        document.getElementById('reservation-estimated-cost').value = Math.round(estimatedCost).toLocaleString('vi-VN');
+                    } else {
+                        document.getElementById('reservation-estimated-cost').value = '0';
+                    }
+                } else {
+                    document.getElementById('reservation-estimated-cost').value = '0';
+                }
+            }
+            
+            spotSelect.addEventListener('change', calculateEstimatedCost);
+            startTimeInput.addEventListener('change', calculateEstimatedCost);
+            endTimeInput.addEventListener('change', calculateEstimatedCost);
+            energyInput.addEventListener('input', calculateEstimatedCost);
 
             modal.show();
         }
@@ -1618,7 +1778,8 @@
             select.innerHTML = '<option value="">-- Đang tải --</option>';
 
             try {
-                var response = await fetch('/api/ChargingSpot/station/' + stationId + '/available', {
+                // Load all spots with reservation info (not just available)
+                var response = await fetch('/api/ChargingSpot/station/' + stationId + '/all', {
                     credentials: 'include'
                 });
                 if (response.ok) {
@@ -1627,7 +1788,23 @@
                     spots.forEach(function(spot) {
                         var option = document.createElement('option');
                         option.value = spot.id;
-                        option.textContent = 'Cổng ' + spot.spotNumber + ' - ' + (spot.connectorType || 'N/A') + ' (' + (spot.powerOutput || 'N/A') + 'kW)';
+                        var spotText = 'Cổng ' + spot.spotNumber + ' - ' + (spot.connectorType || 'N/A') + ' (' + (spot.powerOutputKw || spot.powerOutput || 'N/A') + 'kW)';
+                        
+                        // If spot is reserved or not available, mark it
+                        if (spot.isReserved || !spot.isAvailable) {
+                            spotText += ' (Đã được đặt)';
+                            option.disabled = true;
+                            option.classList.add('text-muted');
+                            option.style.color = '#9ca3af'; // Gray color
+                            option.style.backgroundColor = '#f3f4f6';
+                        }
+                        
+                        option.textContent = spotText;
+                        if (spot.pricePerKwh) {
+                            option.dataset.price = spot.pricePerKwh;
+                        }
+                        option.dataset.isReserved = spot.isReserved || false;
+                        option.dataset.isAvailable = spot.isAvailable || false;
                         select.appendChild(option);
                     });
                 } else {
@@ -1719,10 +1896,42 @@
                     var spotId = document.getElementById('reservation-spot-select').value;
                     var vehicleId = document.getElementById('reservation-vehicle-select').value;
                     var startTime = document.getElementById('reservation-start-time').value;
+                    var endTime = document.getElementById('reservation-end-time').value;
+                    var energy = document.getElementById('reservation-energy').value;
+                    var estimatedCostStr = document.getElementById('reservation-estimated-cost').value.replace(/,/g, '').trim();
+                    var paymentMethodRadio = document.querySelector('input[name="paymentMethod"]:checked');
                     var notes = document.getElementById('reservation-notes').value;
 
-                    if (!spotId || !vehicleId || !startTime) {
+                    if (!spotId || !vehicleId || !startTime || !endTime) {
                         alert('Vui lòng điền đầy đủ thông tin bắt buộc.');
+                        return;
+                    }
+                    
+                    if (!paymentMethodRadio) {
+                        alert('Vui lòng chọn phương thức thanh toán.');
+                        return;
+                    }
+                    
+                    var paymentMethod = paymentMethodRadio.value;
+                    
+                    var startDate = new Date(startTime);
+                    var endDate = new Date(endTime);
+                    if (endDate <= startDate) {
+                        alert('Thời gian kết thúc phải sau thời gian bắt đầu.');
+                        return;
+                    }
+                    
+                    // Validate estimated cost if VNPay is selected
+                    var estimatedCost = null;
+                    if (estimatedCostStr && estimatedCostStr !== '0' && estimatedCostStr !== '') {
+                        estimatedCost = parseFloat(estimatedCostStr);
+                        if (isNaN(estimatedCost) || estimatedCost <= 0) {
+                            estimatedCost = null;
+                        }
+                    }
+                    
+                    if (paymentMethod === 'vnpay' && (!estimatedCost || estimatedCost <= 0)) {
+                        alert('Vui lòng nhập năng lượng ước tính để tính chi phí thanh toán.');
                         return;
                     }
 
@@ -1733,9 +1942,18 @@
                         var requestBody = {
                             chargingSpotId: spotId,
                             vehicleId: vehicleId,
-                            scheduledStartTime: new Date(startTime).toISOString(),
-                            notes: notes || null
+                            scheduledStartTime: startDate.toISOString(),
+                            scheduledEndTime: endDate.toISOString(),
+                            estimatedEnergyKwh: energy && energy.trim() !== '' ? parseFloat(energy) : null,
+                            estimatedCost: estimatedCost,
+                            isPrepaid: paymentMethod === 'vnpay',
+                            notes: notes && notes.trim() !== '' ? notes.trim() : null
                         };
+                        
+                        // Validate parsed values
+                        if (requestBody.estimatedEnergyKwh !== null && (isNaN(requestBody.estimatedEnergyKwh) || requestBody.estimatedEnergyKwh < 0)) {
+                            requestBody.estimatedEnergyKwh = null;
+                        }
 
                         var response = await fetch('/api/Reservation', {
                             method: 'POST',
@@ -1751,8 +1969,44 @@
                             bootstrap.Modal.getInstance(document.getElementById('reservationModal')).hide();
                             form.reset();
                             
-                            var message = 'Đặt trước thành công! Mã xác nhận: ' + result.confirmationCode;
-                            alert(message);
+                            if (paymentMethod === 'vnpay' && result.id && estimatedCost && estimatedCost > 0) {
+                                // Redirect to VNPay payment
+                                try {
+                                    var paymentResponse = await fetch('/api/Payment/vnpay/create', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json'
+                                        },
+                                        credentials: 'include',
+                                        body: JSON.stringify({
+                                            reservationId: result.id,
+                                            amount: estimatedCost,
+                                            returnUrl: window.location.origin + '/Driver/Payment/VnPayReturn?reservationId=' + result.id
+                                        })
+                                    });
+                                    
+                                    if (paymentResponse.ok) {
+                                        var paymentData = await paymentResponse.json();
+                                        if (paymentData.paymentUrl) {
+                                            window.location.href = paymentData.paymentUrl;
+                                            return;
+                                        } else {
+                                            console.error('Payment URL not found in response:', paymentData);
+                                            alert('Đặt lịch thành công nhưng không thể tạo thanh toán VNPay. Mã xác nhận: ' + result.confirmationCode);
+                                        }
+                                    } else {
+                                        const errorData = await paymentResponse.json().catch(() => ({}));
+                                        console.error('Payment creation failed:', errorData);
+                                        alert('Đặt lịch thành công nhưng không thể tạo thanh toán VNPay: ' + (errorData.message || 'Lỗi không xác định') + '. Mã xác nhận: ' + result.confirmationCode);
+                                    }
+                                } catch (paymentErr) {
+                                    console.error('Error creating VNPay payment:', paymentErr);
+                                    alert('Đặt lịch thành công nhưng không thể tạo thanh toán VNPay. Mã xác nhận: ' + result.confirmationCode);
+                                }
+                            } else {
+                                var message = 'Đặt lịch thành công! Mã xác nhận: ' + (result.confirmationCode || result.id);
+                                alert(message);
+                            }
                             
                             // Chuyển đến trang đặt chỗ của tôi
                             window.location.href = '/Driver/Reservations';
@@ -1782,10 +2036,10 @@
                         }
                     } catch (err) {
                         console.error('Error submitting reservation:', err);
-                        alert('Có lỗi xảy ra. Vui lòng thử lại sau.');
+                        alert('Có lỗi xảy ra khi đặt lịch: ' + (err.message || 'Vui lòng thử lại sau.'));
                     } finally {
                         btnSubmitReservation.disabled = false;
-                        btnSubmitReservation.textContent = 'Xác nhận đặt trước';
+                        btnSubmitReservation.textContent = 'Xác nhận đặt lịch';
                     }
                 });
             }
