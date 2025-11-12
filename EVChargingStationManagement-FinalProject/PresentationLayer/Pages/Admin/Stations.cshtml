@@ -1,0 +1,213 @@
+@page 
+@{
+    Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
+    ViewData["Title"] = "Admin • Trạm sạc";
+}
+
+<section class="page-header">
+    <h2>@ViewData["Title"]</h2>
+    <a href="/Admin/Stations/AddStation" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Thêm trạm sạc
+    </a>
+</section>
+
+<section class="filters">
+    <div class="filter-group">
+        <label for="StationStatusFilter">Trạng thái</label>
+        <select id="StationStatusFilter" class="form-select">
+            <option value="">Tất cả</option>
+            <option value="0">Active</option>
+            <option value="1">Inactive</option>
+            <option value="2">Maintenance</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="StationSearch">Tìm kiếm</label>
+        <input type="text" id="StationSearch" class="form-control" placeholder="Tên, địa chỉ...">
+    </div>
+    <div class="filter-group">
+        <button class="btn btn-outline-primary" data-action="refresh-stations">
+            <i class="bi bi-arrow-clockwise"></i> Làm mới
+        </button>
+    </div>
+</section>
+
+<section class="content-grid">
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Tên trạm</th>
+                    <th>Địa chỉ</th>
+                    <th>Tổng điểm</th>
+                    <th>Trống</th>
+                    <th>Trạng thái</th>
+                    <th>SerpApi</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody id="stationsTableBody">
+                <tr>
+                    <td colspan="7" class="text-center">Đang tải dữ liệu...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Modal Create/Edit Station -->
+<div class="modal fade" id="stationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="stationModalTitle">Thêm trạm sạc</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="stationForm">
+                    <input type="hidden" id="stationId" name="id">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="stationName" class="form-label">Tên trạm <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="stationName" name="name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="stationStatus" class="form-label">Trạng thái <span class="text-danger">*</span></label>
+                            <select class="form-select" id="stationStatus" name="status" required>
+                                <option value="0">Active</option>
+                                <option value="1">Inactive</option>
+                                <option value="2">Maintenance</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="stationAddress" class="form-label">Địa chỉ <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="stationAddress" name="address" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="stationCity" class="form-label">Thành phố</label>
+                            <input type="text" class="form-control" id="stationCity" name="city">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="stationProvince" class="form-label">Tỉnh/Thành</label>
+                            <input type="text" class="form-control" id="stationProvince" name="province">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="stationPostalCode" class="form-label">Mã bưu điện</label>
+                            <input type="text" class="form-control" id="stationPostalCode" name="postalCode">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="stationLatitude" class="form-label">Vĩ độ</label>
+                            <input type="number" step="any" min="-90" max="90" class="form-control" id="stationLatitude" name="latitude">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="stationLongitude" class="form-label">Kinh độ</label>
+                            <input type="number" step="any" min="-180" max="180" class="form-control" id="stationLongitude" name="longitude">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="stationPhone" class="form-label">Số điện thoại</label>
+                            <input type="tel" class="form-control" id="stationPhone" name="phone">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="stationEmail" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="stationEmail" name="email">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="stationOpeningTime" class="form-label">Giờ mở cửa</label>
+                            <input type="time" class="form-control" id="stationOpeningTime" name="openingTime">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="stationClosingTime" class="form-label">Giờ đóng cửa</label>
+                            <input type="time" class="form-control" id="stationClosingTime" name="closingTime">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="stationIs24Hours" name="is24Hours">
+                                <label class="form-check-label" for="stationIs24Hours">
+                                    24/7
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="stationDescription" class="form-label">Mô tả</label>
+                        <textarea class="form-control" id="stationDescription" name="description" rows="3"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Thông tin SerpApi</label>
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <input type="text" class="form-control" id="stationSerpApiPlaceId" name="serpApiPlaceId" placeholder="Place ID">
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <input type="number" step="0.1" class="form-control" id="stationExternalRating" name="externalRating" placeholder="Rating">
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <input type="number" class="form-control" id="stationExternalReviewCount" name="externalReviewCount" placeholder="Reviews">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" id="saveStationBtn">Lưu</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-toggle-status:hover {
+        background-color: #198754;
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(25, 135, 84, 0.3);
+    }
+    
+    .btn-edit-station:hover {
+        background-color: #0d6efd;
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(13, 110, 253, 0.3);
+    }
+    
+    .btn-delete-station:hover {
+        background-color: #dc3545;
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+    }
+    
+    .btn-toggle-status:active,
+    .btn-edit-station:active,
+    .btn-delete-station:active {
+        transform: translateY(0);
+    }
+    
+    .btn-toggle-status i,
+    .btn-edit-station i,
+    .btn-delete-station i {
+        font-size: 16px;
+        line-height: 1;
+    }
+</style>
+
+@section Scripts {
+    <script src="~/js/admin-stations.js" asp-append-version="true"></script>
+}

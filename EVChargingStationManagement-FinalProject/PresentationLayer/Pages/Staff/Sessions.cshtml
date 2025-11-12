@@ -1,0 +1,178 @@
+@page 
+@{
+    Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
+    ViewData["Title"] = "Staff • Phiên sạc";
+}
+
+<section class="page-header">
+    <h2>@ViewData["Title"]</h2>
+</section>
+
+<section class="filters dashboard-filters">
+    <div class="filter-group">
+        <label for="SessionStationFilter">Trạm sạc</label>
+        <select id="SessionStationFilter" class="form-select" data-station-filter>
+            <option value="">Tất cả trạm</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="SessionStatusFilter">Trạng thái</label>
+        <select id="SessionStatusFilter" class="form-select" data-status-filter>
+            <option value="">Tất cả</option>
+            <option value="0">Scheduled</option>
+            <option value="1">InProgress</option>
+            <option value="2">Completed</option>
+            <option value="3">Cancelled</option>
+            <option value="4">Failed</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <button class="btn btn-primary" data-action="apply-filters">
+            <i class="bi bi-funnel"></i> Lọc
+        </button>
+        <button class="btn btn-outline-secondary" data-action="reset-filters">
+            <i class="bi bi-arrow-counterclockwise"></i> Đặt lại
+        </button>
+    </div>
+</section>
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="active-tab" data-bs-toggle="tab" data-bs-target="#active-pane" type="button" role="tab">
+            <i class="bi bi-lightning-charge"></i> Đang hoạt động
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-pane" type="button" role="tab">
+            <i class="bi bi-clock-history"></i> Lịch sử
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- Tab Đang hoạt động -->
+    <div class="tab-pane fade show active" id="active-pane" role="tabpanel">
+        <section class="content-grid">
+            <div class="dashboard-panel">
+                <div class="panel-header">
+                    <h3>Phiên sạc đang hoạt động</h3>
+                    <button class="btn btn-sm btn-outline-primary" data-action="refresh-active">
+                        <i class="bi bi-arrow-clockwise"></i> Làm mới
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Thời gian bắt đầu</th>
+                                <th>Trạm/Điểm</th>
+                                <th>Khách hàng</th>
+                                <th>Xe</th>
+                                <th>Năng lượng (kWh)</th>
+                                <th>Thời gian</th>
+                                <th>Trạng thái</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activeSessionsTableBody">
+                            <tr>
+                                <td colspan="8" class="text-center">Đang tải dữ liệu...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Tab Lịch sử -->
+    <div class="tab-pane fade" id="history-pane" role="tabpanel">
+        <section class="content-grid">
+            <div class="dashboard-panel">
+                <div class="panel-header">
+                    <h3>Lịch sử phiên sạc</h3>
+                    <button class="btn btn-sm btn-outline-primary" data-action="refresh-history">
+                        <i class="bi bi-arrow-clockwise"></i> Làm mới
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Thời gian</th>
+                                <th>Trạm/Điểm</th>
+                                <th>Khách hàng</th>
+                                <th>Xe</th>
+                                <th>Năng lượng (kWh)</th>
+                                <th>Chi phí (VND)</th>
+                                <th>Thời gian</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historySessionsTableBody">
+                            <tr>
+                                <td colspan="8" class="text-center">Đang tải dữ liệu...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="panel-footer d-flex justify-content-between align-items-center">
+                    <div>
+                        <span id="historyPaginationInfo" class="text-muted">Hiển thị 0 - 0 của 0</span>
+                    </div>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0" id="historyPagination">
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- Modal Thanh toán tại chỗ -->
+<div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Thanh toán tại chỗ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="paymentForm">
+                    <input type="hidden" id="paymentSessionId" name="sessionId">
+                    
+                    <div class="mb-3">
+                        <label for="paymentAmount" class="form-label">Số tiền (VND) <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="paymentAmount" name="amount" min="0" step="1000" required>
+                        <small class="form-text text-muted">Số tiền từ phiên sạc: <span id="sessionCost">0</span> VND</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="paymentMethod" class="form-label">Phương thức thanh toán <span class="text-danger">*</span></label>
+                        <select class="form-select" id="paymentMethod" name="method" required>
+                            <option value="5">Tiền mặt</option>
+                            <option value="2">Thẻ tín dụng</option>
+                            <option value="3">Thẻ ghi nợ</option>
+                            <option value="1">Ví điện tử</option>
+                            <option value="6">Chuyển khoản</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="paymentNotes" class="form-label">Ghi chú</label>
+                        <textarea class="form-control" id="paymentNotes" name="notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" id="savePaymentBtn">Xác nhận thanh toán</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/staff-sessions.js" asp-append-version="true"></script>
+}

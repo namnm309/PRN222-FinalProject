@@ -1,0 +1,110 @@
+@page 
+@{
+    Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
+    ViewData["Title"] = "Staff • Tổng quan";
+}
+
+<section class="page-header">
+    <h2>@ViewData["Title"]</h2>
+</section>
+
+<section class="filters dashboard-filters">
+    <div class="filter-group">
+        <label for="StaffStationFilter">Trạm sạc</label>
+        <select id="StaffStationFilter" class="form-select" data-station-filter>
+            <option value="">Tất cả trạm</option>
+        </select>
+    </div>
+</section>
+
+<section class="kpis dashboard-kpis">
+    <div class="kpi-card">
+        <span class="kpi-title">Tổng trạm sạc</span>
+        <span class="kpi-value text-primary" data-kpi="total-stations">--</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-title">Điểm sạc hoạt động</span>
+        <span class="kpi-value text-success" data-kpi="available-spots">--</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-title">Đặt chỗ hôm nay</span>
+        <span class="kpi-value text-warning" data-kpi="reservations-today">--</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-title">Phiên đang sạc</span>
+        <span class="kpi-value text-info" data-kpi="active-sessions">--</span>
+    </div>
+</section>
+
+<section class="content-grid">
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <h3>Phiên đang hoạt động</h3>
+            <button class="btn btn-sm btn-outline-primary" data-refresh-sessions>Tải lại</button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Thời gian bắt đầu</th>
+                        <th>Điểm sạc</th>
+                        <th>Khách hàng</th>
+                        <th>Năng lượng yêu cầu</th>
+                        <th>Ghi chú</th>
+                    </tr>
+                </thead>
+                <tbody data-session-list>
+                    <tr>
+                        <td colspan="5" class="text-center">Đang tải dữ liệu...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <h3>Đặt chỗ sắp tới</h3>
+            <button class="btn btn-sm btn-outline-primary" data-refresh-reservations>Tải lại</button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Bắt đầu</th>
+                        <th>Khách hàng</th>
+                        <th>Điểm sạc</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody data-reservation-list>
+                    <tr>
+                        <td colspan="4" class="text-center">Đang tải dữ liệu...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<section class="content-grid">
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <h3>Sự cố mới nhất</h3>
+        </div>
+        <ul class="notification-list" data-error-list>
+            <li class="notification-item muted">Đang tải dữ liệu...</li>
+        </ul>
+    </div>
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <h3>Công việc bảo trì</h3>
+        </div>
+        <ul class="notification-list" data-maintenance-list>
+            <li class="notification-item muted">Đang tải dữ liệu...</li>
+        </ul>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="~/js/staff-dashboard.js" asp-append-version="true"></script>
+}
