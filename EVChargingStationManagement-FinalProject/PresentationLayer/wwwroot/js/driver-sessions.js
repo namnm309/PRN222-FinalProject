@@ -1,7 +1,16 @@
 // Driver Sessions JavaScript
 
+let progressRefreshInterval = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     loadSessions();
+});
+
+// Clean up interval when page unloads
+window.addEventListener('beforeunload', function() {
+    if (progressRefreshInterval) {
+        clearInterval(progressRefreshInterval);
+    }
 });
 
 async function loadSessions() {
@@ -79,7 +88,8 @@ async function displaySessions(sessions) {
         
         // Calculate charging progress percentage
         let progressGauge = '-';
-        if (s.status === 'InProgress' && s.progress) {
+        if (s.status === 'InProgress') {
+            // Try to calculate progress even if progress API data is not available
             const progress = calculateChargingProgress(s);
             progressGauge = createCircularGauge(progress.percentage, progressGaugeId(s.id));
         } else if (s.status === 'Completed') {
@@ -104,11 +114,54 @@ async function displaySessions(sessions) {
     
     // Update gauges for active sessions
     sessionsWithProgress.forEach(s => {
-        if (s.status === 'InProgress' && s.progress) {
+        if (s.status === 'InProgress') {
             const progress = calculateChargingProgress(s);
             updateCircularGauge(progressGaugeId(s.id), progress.percentage);
         }
     });
+    
+    // Clear existing interval if any
+    if (progressRefreshInterval) {
+        clearInterval(progressRefreshInterval);
+        progressRefreshInterval = null;
+    }
+    
+    // Set up auto-refresh for active sessions every 10 seconds
+    const hasActiveSessions = sessionsWithProgress.some(s => s.status === 'InProgress');
+    if (hasActiveSessions) {
+        progressRefreshInterval = setInterval(async () => {
+            // Find all active session gauges in the DOM
+            const activeGauges = document.querySelectorAll('[id^="progress-gauge-"]');
+            activeGauges.forEach(async (gaugeEl) => {
+                const gaugeId = gaugeEl.id;
+                const sessionId = gaugeId.replace('progress-gauge-', '');
+                
+                try {
+                    const progressResponse = await fetch(`/api/ChargingSession/${sessionId}/progress`, {
+                        credentials: 'include'
+                    });
+                    if (progressResponse.ok) {
+                        const progress = await progressResponse.json();
+                        // Create a minimal session object for calculation
+                        const sessionObj = {
+                            progress: progress,
+                            reservationId: null, // Will be fetched if needed
+                            scheduledStartTime: null,
+                            scheduledEndTime: null,
+                            sessionStartTime: null,
+                            sessionEndTime: null,
+                            energyDeliveredKwh: null,
+                            energyRequestedKwh: null
+                        };
+                        const calculatedProgress = calculateChargingProgress(sessionObj);
+                        updateCircularGauge(gaugeId, calculatedProgress.percentage);
+                    }
+                } catch (err) {
+                    console.error(`Error refreshing progress for session ${sessionId}:`, err);
+                }
+            });
+        }, 10000); // Refresh every 10 seconds
+    }
 }
 
 function progressGaugeId(sessionId) {
@@ -116,33 +169,77 @@ function progressGaugeId(sessionId) {
 }
 
 function calculateChargingProgress(session) {
-    if (!session.progress) {
-        return { percentage: 0, label: '0%' };
+    // Priority 1: Calculate based on SOC progress if available
+    if (session.progress) {
+        const initialSoc = session.progress.initialSocPercentage || 0;
+        const currentSoc = session.progress.currentSocPercentage ?? initialSoc;
+        const targetSoc = session.progress.targetSocPercentage || 100;
+        
+        // Calculate percentage based on SOC progress
+        if (targetSoc > initialSoc) {
+            const socProgress = ((currentSoc - initialSoc) / (targetSoc - initialSoc)) * 100;
+            const percentage = Math.max(0, Math.min(100, socProgress));
+            return { percentage: percentage, label: percentage.toFixed(0) + '%' };
+        } else if (targetSoc === initialSoc && currentSoc >= targetSoc) {
+            // Already at target
+            return { percentage: 100, label: '100%' };
+        }
     }
     
-    const initialSoc = session.progress.initialSocPercentage || 0;
-    const currentSoc = session.progress.currentSocPercentage || initialSoc;
-    const targetSoc = session.progress.targetSocPercentage || 100;
-    
-    // Calculate percentage based on SOC progress
-    if (targetSoc > initialSoc) {
-        const socProgress = ((currentSoc - initialSoc) / (targetSoc - initialSoc)) * 100;
-        const percentage = Math.max(0, Math.min(100, socProgress));
-        return { percentage: percentage, label: percentage.toFixed(1) + '%' };
-    }
-    
-    // Fallback: calculate based on time if reservation exists
+    // Priority 2: Calculate based on scheduled time if reservation exists
     if (session.reservationId && session.scheduledStartTime && session.scheduledEndTime) {
         const startTime = new Date(session.scheduledStartTime);
         const endTime = new Date(session.scheduledEndTime);
         const now = new Date();
+        
+        // Ensure times are valid
+        if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+            return { percentage: 0, label: '0%' };
+        }
+        
         const totalDuration = endTime - startTime;
+        if (totalDuration <= 0) {
+            return { percentage: 100, label: '100%' };
+        }
+        
         const elapsed = now - startTime;
         const timeProgress = (elapsed / totalDuration) * 100;
         const percentage = Math.max(0, Math.min(100, timeProgress));
-        return { percentage: percentage, label: percentage.toFixed(1) + '%' };
+        return { percentage: percentage, label: percentage.toFixed(0) + '%' };
     }
     
+    // Priority 3: Calculate based on actual session time if available
+    if (session.sessionStartTime) {
+        const startTime = new Date(session.sessionStartTime);
+        const now = new Date();
+        
+        if (isNaN(startTime.getTime())) {
+            return { percentage: 0, label: '0%' };
+        }
+        
+        // If session has end time, calculate based on that
+        if (session.sessionEndTime) {
+            const endTime = new Date(session.sessionEndTime);
+            if (!isNaN(endTime.getTime())) {
+                const totalDuration = endTime - startTime;
+                if (totalDuration > 0) {
+                    const elapsed = now - startTime;
+                    const timeProgress = (elapsed / totalDuration) * 100;
+                    const percentage = Math.max(0, Math.min(100, timeProgress));
+                    return { percentage: percentage, label: percentage.toFixed(0) + '%' };
+                }
+            }
+        }
+        
+        // If no end time, estimate based on energy delivered vs requested
+        if (session.energyDeliveredKwh != null && session.energyRequestedKwh != null && session.energyRequestedKwh > 0) {
+            const energyProgress = (session.energyDeliveredKwh / session.energyRequestedKwh) * 100;
+            const percentage = Math.max(0, Math.min(100, energyProgress));
+            return { percentage: percentage, label: percentage.toFixed(0) + '%' };
+        }
+    }
+    
+    // Default: no progress data available
     return { percentage: 0, label: '0%' };
 }
 
