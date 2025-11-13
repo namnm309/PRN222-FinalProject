@@ -9,7 +9,8 @@ namespace DataAccessLayer.Enums
         QrCode = 4,
         Cash = 5,
         BankTransfer = 6,
-        VNPay = 7
+        VNPay = 7,
+        MoMo = 8
     }
 }
 

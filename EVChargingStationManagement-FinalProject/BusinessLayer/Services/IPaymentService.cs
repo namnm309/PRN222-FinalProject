@@ -10,6 +10,17 @@ namespace BusinessLayer.Services
         Task<PaymentTransaction?> GetPaymentByIdAsync(Guid id);
         Task<PaymentTransaction> CreatePaymentAsync(Guid userId, CreatePaymentRequest request);
         Task<PaymentTransaction?> UpdatePaymentStatusAsync(Guid paymentId, PaymentStatus status, string? providerTransactionId = null);
+        Task<PaymentTransaction?> UpdatePaymentMetadataAsync(Guid paymentId, string metadata);
+        
+        // Method to prepare payment for MoMo/VNPay gateway
+        Task<MoMoPaymentRequest> PrepareMoMoPaymentAsync(Guid userId, CreateMoMoPaymentRequest request);
+    }
+    
+    public class MoMoPaymentRequest
+    {
+        public string OrderId { get; set; } = string.Empty;
+        public long Amount { get; set; }
+        public string OrderInfo { get; set; } = string.Empty;
     }
 }
 

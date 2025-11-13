@@ -15,6 +15,10 @@ namespace BusinessLayer.DTOs
         public string? ProviderTransactionId { get; set; }
         public DateTime? ProcessedAt { get; set; }
         public string? Description { get; set; }
+        public string? Metadata { get; set; }
+        // Extracted from Metadata for easy access
+        public string? ResponseCode { get; set; }
+        public string? ResponseMessage { get; set; }
     }
 }
 

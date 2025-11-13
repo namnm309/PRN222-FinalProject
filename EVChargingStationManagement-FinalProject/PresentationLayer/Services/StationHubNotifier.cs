@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using BusinessLayer.DTOs;
 using BusinessLayer.Services;
-using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.SignalR;
 using PresentationLayer.Hubs;
@@ -20,7 +19,7 @@ namespace PresentationLayer.Services
             _stationService = stationService;
         }
 
-        public Task NotifyReservationChangedAsync(Reservation reservation)
+        public Task NotifyReservationChangedAsync(DataAccessLayer.Entities.Reservation reservation)
         {
             var stationId = reservation.ChargingSpot?.ChargingStationId ?? Guid.Empty;
             var spotId = reservation.ChargingSpotId;
@@ -46,7 +45,7 @@ namespace PresentationLayer.Services
             return Task.WhenAll(tasks);
         }
 
-        public Task NotifySessionChangedAsync(ChargingSession session)
+        public Task NotifySessionChangedAsync(DataAccessLayer.Entities.ChargingSession session)
         {
             var stationId = session.ChargingSpot?.ChargingStationId ?? Guid.Empty;
             var tasks = new List<Task>
@@ -64,14 +63,14 @@ namespace PresentationLayer.Services
             return Task.WhenAll(tasks);
         }
 
-        public Task NotifySpotStatusChangedAsync(ChargingSpot spot)
+        public Task NotifySpotStatusChangedAsync(DataAccessLayer.Entities.ChargingSpot spot)
         {
             var stationId = spot.ChargingStationId;
             return _hubContext.Clients.Group($"station-{stationId}")
                 .SendAsync("SpotStatusUpdated", spot.Id, spot.Status.ToString());
         }
 
-        public Task NotifyNotificationReceivedAsync(Notification notification)
+        public Task NotifyNotificationReceivedAsync(DataAccessLayer.Entities.Notification notification)
         {
             return _hubContext.Clients.Group($"user-{notification.UserId}")
                 .SendAsync("NotificationReceived", notification.Id);
@@ -111,7 +110,7 @@ namespace PresentationLayer.Services
             if (station == null)
                 return (0, 0);
 
-            var spots = station.ChargingSpots?.ToList() ?? new List<ChargingSpot>();
+            var spots = station.ChargingSpots?.ToList() ?? new List<DataAccessLayer.Entities.ChargingSpot>();
             var totalSpots = spots.Count;
             var availableSpots = spots.Count(s => s.Status == SpotStatus.Available);
             return (totalSpots, availableSpots);

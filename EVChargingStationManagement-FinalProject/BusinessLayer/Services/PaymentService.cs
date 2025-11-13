@@ -10,10 +10,14 @@ namespace BusinessLayer.Services
     public class PaymentService : IPaymentService
     {
         private readonly EVDbContext _context;
+        private readonly IChargingSessionService _sessionService;
+        private readonly IReservationService _reservationService;
 
-        public PaymentService(EVDbContext context)
+        public PaymentService(EVDbContext context, IChargingSessionService sessionService, IReservationService reservationService)
         {
             _context = context;
+            _sessionService = sessionService;
+            _reservationService = reservationService;
         }
 
         public async Task<IEnumerable<PaymentTransaction>> GetPaymentsForUserAsync(Guid userId, int limit = 20)
@@ -98,6 +102,80 @@ namespace BusinessLayer.Services
 
             await _context.SaveChangesAsync();
             return payment;
+        }
+
+        public async Task<PaymentTransaction?> UpdatePaymentMetadataAsync(Guid paymentId, string metadata)
+        {
+            var payment = await _context.PaymentTransactions.FindAsync(paymentId);
+            if (payment == null)
+            {
+                return null;
+            }
+
+            payment.Metadata = metadata;
+            payment.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return payment;
+        }
+
+        public async Task<MoMoPaymentRequest> PrepareMoMoPaymentAsync(Guid userId, CreateMoMoPaymentRequest request)
+        {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            if (request.SessionId == Guid.Empty)
+                throw new ArgumentException("SessionId must be provided", nameof(request));
+
+            // Get session
+            var session = await _sessionService.GetSessionByIdAsync(request.SessionId);
+            if (session == null)
+                throw new InvalidOperationException("Charging session not found");
+
+            if (session.UserId != userId)
+                throw new UnauthorizedAccessException("You don't have permission to access this session");
+
+            // Check if session is completed
+            if (session.Status != ChargingSessionStatus.Completed)
+                throw new InvalidOperationException("Session must be completed before payment");
+
+            // Calculate amount
+            decimal amount = request.Amount > 0 ? request.Amount : (session.Cost ?? 0);
+            
+            if (amount <= 0)
+                throw new ArgumentException("Amount must be greater than 0. Please provide amount or ensure session has cost.");
+
+            string description = $"Thanh toán cho phiên sạc {session.Id}";
+
+            // Check if payment already exists
+            var existingPayments = await GetPaymentsForUserAsync(userId, 100);
+            var existingPayment = existingPayments.FirstOrDefault(p => p.ChargingSessionId == request.SessionId);
+            
+            PaymentTransaction payment = existingPayment ?? await CreatePaymentAsync(userId, new CreatePaymentRequest
+            {
+                ChargingSessionId = request.SessionId,
+                Amount = amount,
+                Currency = "VND",
+                Method = PaymentMethod.MoMo,
+                Description = description
+            });
+
+            if (payment == null)
+                throw new InvalidOperationException("Failed to create payment transaction");
+
+            if (payment.Amount <= 0)
+                throw new ArgumentException($"Invalid payment amount: {payment.Amount}. Amount must be greater than 0.");
+
+            // Prepare MoMo payment request
+            var orderId = payment.Id.ToString("N"); // Format Guid without dashes
+            var orderInfo = description;
+            var amountLong = (long)Math.Round(payment.Amount, 0);
+
+            return new MoMoPaymentRequest
+            {
+                OrderId = orderId,
+                Amount = amountLong,
+                OrderInfo = orderInfo
+            };
         }
     }
 }
