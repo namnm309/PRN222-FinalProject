@@ -1,3 +1,4 @@
+using BusinessLayer.DTOs;
 using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
@@ -97,14 +98,36 @@ namespace BusinessLayer.Services
             return degrees * Math.PI / 180.0;
         }
 
-        public async Task<ChargingStation> CreateStationAsync(ChargingStation station)
+        public async Task<ChargingStation> CreateStationAsync(CreateChargingStationRequest request)
         {
-            if (station == null)
-                throw new ArgumentNullException(nameof(station));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
 
-            station.Id = Guid.NewGuid();
-            station.CreatedAt = DateTime.UtcNow;
-            station.UpdatedAt = DateTime.UtcNow;
+            var station = new ChargingStation
+            {
+                Id = Guid.NewGuid(),
+                Name = request.Name,
+                Address = request.Address,
+                City = request.City,
+                Province = request.Province,
+                PostalCode = request.PostalCode,
+                Latitude = request.Latitude,
+                Longitude = request.Longitude,
+                Phone = request.Phone,
+                Email = request.Email,
+                Status = request.Status,
+                Description = request.Description,
+                OpeningTime = request.OpeningTime,
+                ClosingTime = request.ClosingTime,
+                Is24Hours = request.Is24Hours,
+                SerpApiPlaceId = request.SerpApiPlaceId,
+                ExternalRating = request.ExternalRating,
+                ExternalReviewCount = request.ExternalReviewCount,
+                IsFromSerpApi = !string.IsNullOrWhiteSpace(request.SerpApiPlaceId),
+                SerpApiLastSynced = !string.IsNullOrWhiteSpace(request.SerpApiPlaceId) ? DateTime.UtcNow : null,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
             _context.ChargingStations.Add(station);
             await _context.SaveChangesAsync();
@@ -112,34 +135,44 @@ namespace BusinessLayer.Services
             return station;
         }
 
-        public async Task<ChargingStation?> UpdateStationAsync(Guid id, ChargingStation station)
+        public async Task<ChargingStation?> UpdateStationAsync(Guid id, UpdateChargingStationRequest request)
         {
-            if (station == null)
-                throw new ArgumentNullException(nameof(station));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
 
             var existingStation = await _context.ChargingStations.FindAsync(id);
             if (existingStation == null)
                 return null;
 
-            existingStation.Name = station.Name;
-            existingStation.Address = station.Address;
-            existingStation.City = station.City;
-            existingStation.Province = station.Province;
-            existingStation.PostalCode = station.PostalCode;
-            existingStation.Latitude = station.Latitude;
-            existingStation.Longitude = station.Longitude;
-            existingStation.Phone = station.Phone;
-            existingStation.Email = station.Email;
-            existingStation.Status = station.Status;
-            existingStation.Description = station.Description;
-            existingStation.OpeningTime = station.OpeningTime;
-            existingStation.ClosingTime = station.ClosingTime;
-            existingStation.Is24Hours = station.Is24Hours;
-            existingStation.SerpApiPlaceId = station.SerpApiPlaceId;
-            existingStation.ExternalRating = station.ExternalRating;
-            existingStation.ExternalReviewCount = station.ExternalReviewCount;
-            existingStation.IsFromSerpApi = !string.IsNullOrWhiteSpace(station.SerpApiPlaceId);
-            existingStation.SerpApiLastSynced = !string.IsNullOrWhiteSpace(station.SerpApiPlaceId) ? DateTime.UtcNow : existingStation.SerpApiLastSynced;
+            existingStation.Name = request.Name;
+            existingStation.Address = request.Address;
+            existingStation.City = request.City;
+            existingStation.Province = request.Province;
+            existingStation.PostalCode = request.PostalCode;
+            existingStation.Latitude = request.Latitude;
+            existingStation.Longitude = request.Longitude;
+            existingStation.Phone = request.Phone;
+            existingStation.Email = request.Email;
+            existingStation.Status = request.Status;
+            existingStation.Description = request.Description;
+            existingStation.OpeningTime = request.OpeningTime;
+            existingStation.ClosingTime = request.ClosingTime;
+            existingStation.Is24Hours = request.Is24Hours;
+            
+            // Only update SerpApi fields if provided
+            if (request.SerpApiPlaceId != null)
+            {
+                existingStation.SerpApiPlaceId = request.SerpApiPlaceId;
+                existingStation.IsFromSerpApi = !string.IsNullOrWhiteSpace(request.SerpApiPlaceId);
+                existingStation.SerpApiLastSynced = !string.IsNullOrWhiteSpace(request.SerpApiPlaceId) ? DateTime.UtcNow : existingStation.SerpApiLastSynced;
+            }
+            
+            if (request.ExternalRating.HasValue)
+                existingStation.ExternalRating = request.ExternalRating;
+            
+            if (request.ExternalReviewCount.HasValue)
+                existingStation.ExternalReviewCount = request.ExternalReviewCount;
+            
             existingStation.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();

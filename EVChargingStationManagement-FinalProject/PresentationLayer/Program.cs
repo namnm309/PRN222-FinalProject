@@ -94,6 +94,7 @@ namespace PresentationLayer
             builder.Services.AddScoped<IRealtimeNotifier, StationHubNotifier>();
             builder.Services.AddScoped<IStationDataMergeService, StationDataMergeService>();
             builder.Services.AddScoped<IQrCodeService, QrCodeService>();
+            builder.Services.AddScoped<IDashboardService, DashboardService>();
             builder.Services.AddScoped<IChargingProgressService>(sp =>
             {
                 var context = sp.GetRequiredService<EVDbContext>();

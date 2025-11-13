@@ -1,6 +1,4 @@
 using BusinessLayer.Services;
-using DataAccessLayer.Entities;
-using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using BusinessLayer.DTOs;
@@ -54,7 +52,7 @@ namespace PresentationLayer.Controllers
         }
 
         [HttpGet("status/{status}")]
-        public async Task<IActionResult> GetMaintenancesByStatus(MaintenanceStatus status)
+        public async Task<IActionResult> GetMaintenancesByStatus(DataAccessLayer.Enums.MaintenanceStatus status)
         {
             var maintenances = await _maintenanceService.GetMaintenancesByStatusAsync(status);
             var maintenanceDTOs = maintenances.Select(m => MapToDTO(m)).ToList();
@@ -78,20 +76,7 @@ namespace PresentationLayer.Controllers
 
             try
             {
-                var maintenance = new StationMaintenance
-                {
-                    ChargingStationId = request.ChargingStationId,
-                    ChargingSpotId = request.ChargingSpotId,
-                    ReportedByUserId = request.ReportedByUserId,
-                    AssignedToUserId = request.AssignedToUserId,
-                    ScheduledDate = request.ScheduledDate,
-                    Status = request.Status,
-                    Title = request.Title,
-                    Description = request.Description,
-                    Notes = request.Notes
-                };
-
-                var createdMaintenance = await _maintenanceService.CreateMaintenanceAsync(maintenance);
+                var createdMaintenance = await _maintenanceService.CreateMaintenanceAsync(request);
                 return CreatedAtAction(nameof(GetMaintenanceById), new { id = createdMaintenance.Id }, MapToDTO(createdMaintenance));
             }
             catch (InvalidOperationException ex)
@@ -111,20 +96,33 @@ namespace PresentationLayer.Controllers
             if (existingMaintenance == null)
                 return NotFound(new { message = "Maintenance record not found" });
 
-            var maintenance = new StationMaintenance
+            // Set default values from existing maintenance if not provided in request
+            if (!request.ChargingSpotId.HasValue && existingMaintenance.ChargingSpotId.HasValue)
             {
-                ChargingSpotId = request.ChargingSpotId ?? existingMaintenance.ChargingSpotId,
-                AssignedToUserId = request.AssignedToUserId ?? existingMaintenance.AssignedToUserId,
-                ScheduledDate = request.ScheduledDate ?? existingMaintenance.ScheduledDate,
-                StartDate = request.StartDate ?? existingMaintenance.StartDate,
-                EndDate = request.EndDate ?? existingMaintenance.EndDate,
-                Status = request.Status,
-                Title = request.Title,
-                Description = request.Description,
-                Notes = request.Notes
-            };
+                request.ChargingSpotId = existingMaintenance.ChargingSpotId;
+            }
+            if (!request.AssignedToUserId.HasValue && existingMaintenance.AssignedToUserId.HasValue)
+            {
+                request.AssignedToUserId = existingMaintenance.AssignedToUserId;
+            }
+            if (!request.ScheduledDate.HasValue)
+            {
+                request.ScheduledDate = existingMaintenance.ScheduledDate;
+            }
+            if (!request.StartDate.HasValue && existingMaintenance.StartDate.HasValue)
+            {
+                request.StartDate = existingMaintenance.StartDate;
+            }
+            if (!request.EndDate.HasValue && existingMaintenance.EndDate.HasValue)
+            {
+                request.EndDate = existingMaintenance.EndDate;
+            }
+            if (request.Notes == null && existingMaintenance.Notes != null)
+            {
+                request.Notes = existingMaintenance.Notes;
+            }
 
-            var updatedMaintenance = await _maintenanceService.UpdateMaintenanceAsync(id, maintenance);
+            var updatedMaintenance = await _maintenanceService.UpdateMaintenanceAsync(id, request);
             if (updatedMaintenance == null)
                 return NotFound(new { message = "Maintenance record not found" });
 
@@ -142,7 +140,7 @@ namespace PresentationLayer.Controllers
             return Ok(new { message = "Maintenance record deleted successfully" });
         }
 
-        private StationMaintenanceDTO MapToDTO(StationMaintenance maintenance)
+        private StationMaintenanceDTO MapToDTO(DataAccessLayer.Entities.StationMaintenance maintenance)
         {
             return new StationMaintenanceDTO
             {

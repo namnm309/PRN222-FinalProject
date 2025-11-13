@@ -1,4 +1,5 @@
 using System.Linq;
+using BusinessLayer.DTOs;
 using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -42,20 +43,35 @@ namespace BusinessLayer.Services
                 .FirstOrDefaultAsync(v => v.Id == vehicleId);
         }
 
-        public async Task<Vehicle> CreateVehicleAsync(Guid userId, Vehicle vehicle, bool isPrimary, string? nickname, string? chargePortLocation)
+        public async Task<Vehicle> CreateVehicleAsync(Guid userId, CreateVehicleRequest request)
         {
-            vehicle.Id = Guid.NewGuid();
-            vehicle.CreatedAt = DateTime.UtcNow;
-            vehicle.UpdatedAt = DateTime.UtcNow;
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            var vehicle = new Vehicle
+            {
+                Id = Guid.NewGuid(),
+                Make = request.Make,
+                Model = request.Model,
+                ModelYear = request.ModelYear,
+                LicensePlate = request.LicensePlate,
+                VehicleType = request.VehicleType,
+                BatteryCapacityKwh = request.BatteryCapacityKwh,
+                MaxChargingPowerKw = request.MaxChargingPowerKw,
+                Color = request.Color,
+                Notes = request.Notes,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
             var userVehicle = new UserVehicle
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 VehicleId = vehicle.Id,
-                IsPrimary = isPrimary,
-                Nickname = nickname,
-                ChargePortLocation = chargePortLocation,
+                IsPrimary = request.IsPrimary,
+                Nickname = request.Nickname,
+                ChargePortLocation = request.ChargePortLocation,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -63,7 +79,7 @@ namespace BusinessLayer.Services
             _context.Vehicles.Add(vehicle);
             _context.UserVehicles.Add(userVehicle);
 
-            if (isPrimary)
+            if (request.IsPrimary)
             {
                 await ResetPrimaryVehicleAsync(userId, vehicle.Id);
             }
@@ -72,8 +88,11 @@ namespace BusinessLayer.Services
             return vehicle;
         }
 
-        public async Task<Vehicle?> UpdateVehicleAsync(Guid vehicleId, Vehicle vehicle, bool isPrimary, string? nickname, string? chargePortLocation)
+        public async Task<Vehicle?> UpdateVehicleAsync(Guid vehicleId, UpdateVehicleRequest request)
         {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
             var existingVehicle = await _context.Vehicles
                 .Include(v => v.UserVehicles)
                 .FirstOrDefaultAsync(v => v.Id == vehicleId);
@@ -83,26 +102,26 @@ namespace BusinessLayer.Services
                 return null;
             }
 
-            existingVehicle.Make = vehicle.Make;
-            existingVehicle.Model = vehicle.Model;
-            existingVehicle.ModelYear = vehicle.ModelYear;
-            existingVehicle.LicensePlate = vehicle.LicensePlate;
-            existingVehicle.VehicleType = vehicle.VehicleType;
-            existingVehicle.BatteryCapacityKwh = vehicle.BatteryCapacityKwh;
-            existingVehicle.MaxChargingPowerKw = vehicle.MaxChargingPowerKw;
-            existingVehicle.Color = vehicle.Color;
-            existingVehicle.Notes = vehicle.Notes;
+            existingVehicle.Make = request.Make;
+            existingVehicle.Model = request.Model;
+            existingVehicle.ModelYear = request.ModelYear;
+            existingVehicle.LicensePlate = request.LicensePlate;
+            existingVehicle.VehicleType = request.VehicleType;
+            existingVehicle.BatteryCapacityKwh = request.BatteryCapacityKwh;
+            existingVehicle.MaxChargingPowerKw = request.MaxChargingPowerKw;
+            existingVehicle.Color = request.Color;
+            existingVehicle.Notes = request.Notes;
             existingVehicle.UpdatedAt = DateTime.UtcNow;
 
             var userVehicle = existingVehicle.UserVehicles.FirstOrDefault();
             if (userVehicle != null)
             {
-                userVehicle.IsPrimary = isPrimary;
-                userVehicle.Nickname = nickname;
-                userVehicle.ChargePortLocation = chargePortLocation;
+                userVehicle.IsPrimary = request.IsPrimary;
+                userVehicle.Nickname = request.Nickname;
+                userVehicle.ChargePortLocation = request.ChargePortLocation;
                 userVehicle.UpdatedAt = DateTime.UtcNow;
 
-                if (isPrimary)
+                if (request.IsPrimary)
                 {
                     await ResetPrimaryVehicleAsync(userVehicle.UserId, existingVehicle.Id);
                 }

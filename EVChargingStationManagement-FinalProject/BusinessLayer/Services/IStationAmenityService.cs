@@ -1,3 +1,4 @@
+using BusinessLayer.DTOs;
 using DataAccessLayer.Entities;
 
 namespace BusinessLayer.Services
@@ -6,8 +7,8 @@ namespace BusinessLayer.Services
     {
         Task<IEnumerable<StationAmenity>> GetAmenitiesByStationAsync(Guid stationId);
         Task<StationAmenity?> GetAmenityByIdAsync(Guid id);
-        Task<StationAmenity> CreateAmenityAsync(StationAmenity amenity);
-        Task<StationAmenity?> UpdateAmenityAsync(Guid id, StationAmenity amenity);
+        Task<StationAmenity> CreateAmenityAsync(CreateStationAmenityRequest request);
+        Task<StationAmenity?> UpdateAmenityAsync(Guid id, UpdateStationAmenityRequest request);
         Task<bool> DeleteAmenityAsync(Guid id);
     }
 }

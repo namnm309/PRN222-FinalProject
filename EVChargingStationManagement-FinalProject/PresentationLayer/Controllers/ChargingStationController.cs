@@ -1,6 +1,5 @@
 using System.Linq;
 using BusinessLayer.Services;
-using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -123,30 +122,7 @@ namespace PresentationLayer.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var station = new ChargingStation
-            {
-                Name = request.Name,
-                Address = request.Address,
-                City = request.City,
-                Province = request.Province,
-                PostalCode = request.PostalCode,
-                Latitude = request.Latitude,
-                Longitude = request.Longitude,
-                Phone = request.Phone,
-                Email = request.Email,
-                Status = request.Status,
-                Description = request.Description,
-                OpeningTime = request.OpeningTime,
-                ClosingTime = request.ClosingTime,
-                Is24Hours = request.Is24Hours,
-                SerpApiPlaceId = request.SerpApiPlaceId,
-                ExternalRating = request.ExternalRating,
-                ExternalReviewCount = request.ExternalReviewCount,
-                IsFromSerpApi = !string.IsNullOrWhiteSpace(request.SerpApiPlaceId),
-                SerpApiLastSynced = !string.IsNullOrWhiteSpace(request.SerpApiPlaceId) ? DateTime.UtcNow : null
-            };
-
-            var createdStation = await _stationService.CreateStationAsync(station);
+            var createdStation = await _stationService.CreateStationAsync(request);
 
             // Tạo spots từ mảng chi tiết (nếu có) hoặc từ TotalSpots
             if (request.Spots != null && request.Spots.Count > 0)
@@ -154,7 +130,7 @@ namespace PresentationLayer.Controllers
                 // Tạo từng spot chi tiết từ form admin
                 foreach (var spotItem in request.Spots)
                 {
-                    var spot = new ChargingSpot
+                    var spotRequest = new CreateChargingSpotRequest
                     {
                         SpotNumber = spotItem.SpotNumber,
                         ChargingStationId = createdStation.Id,
@@ -162,13 +138,12 @@ namespace PresentationLayer.Controllers
                         ConnectorType = spotItem.ConnectorType,
                         PowerOutput = spotItem.PowerOutput,
                         PricePerKwh = spotItem.PricePerKwh,
-                        Description = $"Spot {spotItem.SpotNumber}",
-                        IsOnline = true
+                        Description = $"Spot {spotItem.SpotNumber}"
                     };
 
                     try
                     {
-                        await _spotService.CreateSpotAsync(spot);
+                        await _spotService.CreateSpotAsync(spotRequest);
                     }
                     catch (Exception ex)
                     {
@@ -184,7 +159,7 @@ namespace PresentationLayer.Controllers
                 // Tạo tự động với giá trị mặc định (backward compatible)
                 for (int i = 1; i <= request.TotalSpots; i++)
                 {
-                    var spot = new ChargingSpot
+                    var spotRequest = new CreateChargingSpotRequest
                     {
                         SpotNumber = i.ToString("D2"), // Format: 01, 02, 03, ...
                         ChargingStationId = createdStation.Id,
@@ -192,13 +167,12 @@ namespace PresentationLayer.Controllers
                         ConnectorType = request.DefaultConnectorType,
                         PowerOutput = request.DefaultPowerOutput,
                         PricePerKwh = request.DefaultPricePerKwh,
-                        Description = $"Spot {i}",
-                        IsOnline = true
+                        Description = $"Spot {i}"
                     };
 
                     try
                     {
-                        await _spotService.CreateSpotAsync(spot);
+                        await _spotService.CreateSpotAsync(spotRequest);
                     }
                     catch (Exception ex)
                     {
@@ -221,28 +195,7 @@ namespace PresentationLayer.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var station = new ChargingStation
-            {
-                Name = request.Name,
-                Address = request.Address,
-                City = request.City,
-                Province = request.Province,
-                PostalCode = request.PostalCode,
-                Latitude = request.Latitude,
-                Longitude = request.Longitude,
-                Phone = request.Phone,
-                Email = request.Email,
-                Status = request.Status,
-                Description = request.Description,
-                OpeningTime = request.OpeningTime,
-                ClosingTime = request.ClosingTime,
-                Is24Hours = request.Is24Hours,
-                SerpApiPlaceId = request.SerpApiPlaceId,
-                ExternalRating = request.ExternalRating,
-                ExternalReviewCount = request.ExternalReviewCount
-            };
-
-            var updatedStation = await _stationService.UpdateStationAsync(id, station);
+            var updatedStation = await _stationService.UpdateStationAsync(id, request);
             if (updatedStation == null)
                 return NotFound(new { message = "Charging station not found" });
 
@@ -253,16 +206,19 @@ namespace PresentationLayer.Controllers
                 var existingSpots = await _spotService.GetSpotsByStationIdAsync(id);
                 foreach (var spot in existingSpots)
                 {
-                    if (request.DefaultConnectorType != null)
-                        spot.ConnectorType = request.DefaultConnectorType;
-                    if (request.DefaultPowerOutput.HasValue)
-                        spot.PowerOutput = request.DefaultPowerOutput.Value;
-                    if (request.DefaultPricePerKwh.HasValue)
-                        spot.PricePerKwh = request.DefaultPricePerKwh.Value;
+                    var updateSpotRequest = new UpdateChargingSpotRequest
+                    {
+                        SpotNumber = spot.SpotNumber,
+                        Status = spot.Status,
+                        ConnectorType = request.DefaultConnectorType ?? spot.ConnectorType,
+                        PowerOutput = request.DefaultPowerOutput ?? spot.PowerOutput,
+                        PricePerKwh = request.DefaultPricePerKwh ?? spot.PricePerKwh,
+                        Description = spot.Description
+                    };
 
                     try
                     {
-                        await _spotService.UpdateSpotAsync(spot.Id, spot);
+                        await _spotService.UpdateSpotAsync(spot.Id, updateSpotRequest);
                     }
                     catch (Exception ex)
                     {
@@ -300,22 +256,22 @@ namespace PresentationLayer.Controllers
                         if (spotItem.Id.HasValue && existingSpotIds.Contains(spotItem.Id.Value))
                         {
                             // Cập nhật spot hiện có
-                            var existingSpot = existingSpots.FirstOrDefault(s => s.Id == spotItem.Id.Value);
-                            if (existingSpot != null)
+                            var updateSpotRequest = new UpdateChargingSpotRequest
                             {
-                                existingSpot.SpotNumber = spotItem.SpotNumber;
-                                existingSpot.ConnectorType = spotItem.ConnectorType;
-                                existingSpot.PowerOutput = spotItem.PowerOutput;
-                                existingSpot.PricePerKwh = spotItem.PricePerKwh;
-                                existingSpot.Status = spotItem.Status;
-                                
-                                await _spotService.UpdateSpotAsync(existingSpot.Id, existingSpot);
-                            }
+                                SpotNumber = spotItem.SpotNumber,
+                                Status = spotItem.Status,
+                                ConnectorType = spotItem.ConnectorType,
+                                PowerOutput = spotItem.PowerOutput,
+                                PricePerKwh = spotItem.PricePerKwh,
+                                Description = $"Spot {spotItem.SpotNumber}"
+                            };
+                            
+                            await _spotService.UpdateSpotAsync(spotItem.Id.Value, updateSpotRequest);
                         }
                         else
                         {
                             // Tạo spot mới
-                            var newSpot = new ChargingSpot
+                            var newSpotRequest = new CreateChargingSpotRequest
                             {
                                 SpotNumber = spotItem.SpotNumber,
                                 ChargingStationId = id,
@@ -323,11 +279,10 @@ namespace PresentationLayer.Controllers
                                 ConnectorType = spotItem.ConnectorType,
                                 PowerOutput = spotItem.PowerOutput,
                                 PricePerKwh = spotItem.PricePerKwh,
-                                Description = $"Spot {spotItem.SpotNumber}",
-                                IsOnline = true
+                                Description = $"Spot {spotItem.SpotNumber}"
                             };
                             
-                            await _spotService.CreateSpotAsync(newSpot);
+                            await _spotService.CreateSpotAsync(newSpotRequest);
                         }
                     }
                     catch (Exception ex)
@@ -355,7 +310,7 @@ namespace PresentationLayer.Controllers
 
                     for (int i = currentCount + 1; i <= targetCount; i++)
                     {
-                        var newSpot = new ChargingSpot
+                        var newSpotRequest = new CreateChargingSpotRequest
                         {
                             SpotNumber = i.ToString("D2"),
                             ChargingStationId = id,
@@ -363,13 +318,12 @@ namespace PresentationLayer.Controllers
                             ConnectorType = connectorType,
                             PowerOutput = powerOutput,
                             PricePerKwh = pricePerKwh,
-                            Description = $"Spot {i}",
-                            IsOnline = true
+                            Description = $"Spot {i}"
                         };
 
                         try
                         {
-                            await _spotService.CreateSpotAsync(newSpot);
+                            await _spotService.CreateSpotAsync(newSpotRequest);
                         }
                         catch (Exception ex)
                         {
@@ -431,12 +385,32 @@ namespace PresentationLayer.Controllers
                 return NotFound(new { message = "Charging station not found" });
 
             // Toggle giữa Active và Inactive
-            var oldStatus = station.Status;
-            station.Status = station.Status == StationStatus.Active 
+            var newStatus = station.Status == StationStatus.Active 
                 ? StationStatus.Inactive 
                 : StationStatus.Active;
 
-            var updatedStation = await _stationService.UpdateStationAsync(id, station);
+            var updateRequest = new UpdateChargingStationRequest
+            {
+                Name = station.Name,
+                Address = station.Address,
+                City = station.City,
+                Province = station.Province,
+                PostalCode = station.PostalCode,
+                Latitude = station.Latitude,
+                Longitude = station.Longitude,
+                Phone = station.Phone,
+                Email = station.Email,
+                Status = newStatus,
+                Description = station.Description,
+                OpeningTime = station.OpeningTime,
+                ClosingTime = station.ClosingTime,
+                Is24Hours = station.Is24Hours,
+                SerpApiPlaceId = station.SerpApiPlaceId,
+                ExternalRating = station.ExternalRating,
+                ExternalReviewCount = station.ExternalReviewCount
+            };
+
+            var updatedStation = await _stationService.UpdateStationAsync(id, updateRequest);
             if (updatedStation == null)
                 return NotFound(new { message = "Charging station not found" });
 
@@ -457,21 +431,19 @@ namespace PresentationLayer.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var station = new ChargingStation
+            var createRequest = new CreateChargingStationRequest
             {
                 Name = serpPlace.Title,
-                Address = serpPlace.Address,
+                Address = serpPlace.Address ?? string.Empty,
                 Latitude = (decimal)serpPlace.Latitude,
                 Longitude = (decimal)serpPlace.Longitude,
                 SerpApiPlaceId = serpPlace.PlaceId,
                 ExternalRating = serpPlace.Rating.HasValue ? (decimal)serpPlace.Rating.Value : null,
                 ExternalReviewCount = serpPlace.Reviews,
-                IsFromSerpApi = true,
-                SerpApiLastSynced = DateTime.UtcNow,
                 Status = StationStatus.Active
             };
 
-            var created = await _stationService.CreateStationAsync(station);
+            var created = await _stationService.CreateStationAsync(createRequest);
             return CreatedAtAction(nameof(GetStationById), new { id = created.Id }, MapToDTO(created));
         }
 
@@ -568,21 +540,37 @@ namespace PresentationLayer.Controllers
             if (station == null)
                 return NotFound(new { message = "Station not found" });
 
-            station.SerpApiPlaceId = serpPlace.PlaceId;
-            station.ExternalRating = serpPlace.Rating.HasValue ? (decimal)serpPlace.Rating.Value : null;
-            station.ExternalReviewCount = serpPlace.Reviews;
-            station.SerpApiLastSynced = DateTime.UtcNow;
+            var updateRequest = new UpdateChargingStationRequest
+            {
+                Name = station.Name,
+                Address = station.Address,
+                City = station.City,
+                Province = station.Province,
+                PostalCode = station.PostalCode,
+                Latitude = station.Latitude,
+                Longitude = station.Longitude,
+                Phone = station.Phone,
+                Email = station.Email,
+                Status = station.Status,
+                Description = station.Description,
+                OpeningTime = station.OpeningTime,
+                ClosingTime = station.ClosingTime,
+                Is24Hours = station.Is24Hours,
+                SerpApiPlaceId = serpPlace.PlaceId,
+                ExternalRating = serpPlace.Rating.HasValue ? (decimal)serpPlace.Rating.Value : null,
+                ExternalReviewCount = serpPlace.Reviews
+            };
 
-            var updated = await _stationService.UpdateStationAsync(id, station);
+            var updated = await _stationService.UpdateStationAsync(id, updateRequest);
             if (updated == null)
                 return NotFound();
 
             return Ok(MapToDTO(updated));
         }
 
-        private ChargingStationDTO MapToDTO(ChargingStation station)
+        private ChargingStationDTO MapToDTO(DataAccessLayer.Entities.ChargingStation station)
         {
-            var spots = station.ChargingSpots?.ToList() ?? new List<ChargingSpot>();
+            var spots = station.ChargingSpots?.ToList() ?? new List<DataAccessLayer.Entities.ChargingSpot>();
             // Lấy thông tin từ spot đầu tiên (hoặc spot có sẵn đầu tiên)
             var firstSpot = spots.FirstOrDefault(s => s.Status == SpotStatus.Available) ?? spots.FirstOrDefault();
             

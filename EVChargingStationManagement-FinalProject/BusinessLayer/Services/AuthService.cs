@@ -362,6 +362,23 @@ namespace BusinessLayer.Services
             return trackedUser;
         }
 
+        public async Task<bool> CheckUsernameExistsAsync(string username)
+        {
+            return await _context.Users.AnyAsync(u => u.Username == username);
+        }
+
+        public async Task<bool> CheckEmailExistsAsync(string email)
+        {
+            return await _context.Users.AnyAsync(u => u.Email == email);
+        }
+
+        public async Task<RefreshToken?> GetRefreshTokenWithUserAsync(string token)
+        {
+            return await _context.RefreshTokens
+                .Include(rt => rt.User)
+                .FirstOrDefaultAsync(rt => rt.Token == token);
+        }
+
         #endregion
     }
 }
