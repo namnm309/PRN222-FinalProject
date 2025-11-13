@@ -5,6 +5,7 @@ using BusinessLayer.Services;
 using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 
 namespace PresentationLayer.Controllers
@@ -200,32 +201,34 @@ namespace PresentationLayer.Controllers
         [Authorize(Roles = "EVDriver,Admin")]
         public async Task<IActionResult> CreateVnPayPayment([FromBody] CreateVnPayPaymentRequest request)
         {
-            if (!ModelState.IsValid)
+            try
             {
-                return BadRequest(ModelState);
-            }
-
-            var userId = GetUserId();
-            PaymentTransaction payment;
-            decimal amount = request.Amount;
-            string description = "";
-
-            // Handle reservation payment
-            if (request.ReservationId.HasValue)
-            {
-                var reservation = await _reservationService.GetReservationByIdAsync(request.ReservationId.Value);
-                if (reservation == null)
+                if (!ModelState.IsValid)
                 {
-                    return NotFound(new { message = "Reservation not found" });
+                    return BadRequest(new { message = "Invalid request data", errors = ModelState });
                 }
 
-                if (reservation.UserId != userId)
-                {
-                    return Forbid();
-                }
+                var userId = GetUserId();
+                PaymentTransaction payment;
+                decimal amount = request.Amount;
+                string description = "";
 
-                amount = request.Amount > 0 ? request.Amount : (reservation.EstimatedCost ?? 0);
-                description = $"Thanh toán cho đặt lịch {reservation.Id}";
+                // Handle reservation payment
+                if (request.ReservationId.HasValue)
+                {
+                    var reservation = await _reservationService.GetReservationByIdAsync(request.ReservationId.Value);
+                    if (reservation == null)
+                    {
+                        return NotFound(new { message = "Reservation not found" });
+                    }
+
+                    if (reservation.UserId != userId)
+                    {
+                        return Forbid();
+                    }
+
+                    amount = request.Amount > 0 ? request.Amount : (reservation.EstimatedCost ?? 0);
+                    description = $"Thanh toán cho đặt lịch {reservation.Id}";
 
                 // Check if payment already exists
                 var existingPayments = await _paymentService.GetPaymentsForUserAsync(userId, 100);
@@ -238,16 +241,17 @@ namespace PresentationLayer.Controllers
                 else
                 {
                     // Create new payment transaction
-                    var paymentRequest = new CreatePaymentRequest
+                    payment = new PaymentTransaction
                     {
                         ReservationId = request.ReservationId.Value,
                         Amount = amount,
                         Currency = "VND",
                         Method = PaymentMethod.VNPay,
-                        Description = description
+                        Description = description,
+                        Status = PaymentStatus.Pending
                     };
 
-                    payment = await _paymentService.CreatePaymentAsync(userId, paymentRequest);
+                    payment = await _paymentService.CreatePaymentAsync(userId, payment);
                 }
             }
             // Handle session payment
@@ -259,19 +263,19 @@ namespace PresentationLayer.Controllers
                     return NotFound(new { message = "Charging session not found" });
                 }
 
-                if (session.UserId != userId)
-                {
-                    return Forbid();
-                }
+                    if (session.UserId != userId)
+                    {
+                        return Forbid();
+                    }
 
-                // Check if session is completed
-                if (session.Status != DataAccessLayer.Enums.ChargingSessionStatus.Completed)
-                {
-                    return BadRequest(new { message = "Session must be completed before payment" });
-                }
+                    // Check if session is completed
+                    if (session.Status != DataAccessLayer.Enums.ChargingSessionStatus.Completed)
+                    {
+                        return BadRequest(new { message = "Session must be completed before payment" });
+                    }
 
-                amount = request.Amount > 0 ? request.Amount : (session.Cost ?? 0);
-                description = $"Thanh toán cho phiên sạc {session.Id}";
+                    amount = request.Amount > 0 ? request.Amount : (session.Cost ?? 0);
+                    description = $"Thanh toán cho phiên sạc {session.Id}";
 
                 // Check if payment already exists
                 var existingPayments = await _paymentService.GetPaymentsForUserAsync(userId, 100);
@@ -284,16 +288,17 @@ namespace PresentationLayer.Controllers
                 else
                 {
                     // Create new payment transaction
-                    var paymentRequest = new CreatePaymentRequest
+                    payment = new PaymentTransaction
                     {
                         ChargingSessionId = request.SessionId.Value,
                         Amount = amount,
                         Currency = "VND",
                         Method = PaymentMethod.VNPay,
-                        Description = description
+                        Description = description,
+                        Status = PaymentStatus.Pending
                     };
 
-                    payment = await _paymentService.CreatePaymentAsync(userId, paymentRequest);
+                    payment = await _paymentService.CreatePaymentAsync(userId, payment);
                 }
             }
             else
@@ -301,20 +306,55 @@ namespace PresentationLayer.Controllers
                 return BadRequest(new { message = "Either SessionId or ReservationId must be provided" });
             }
 
-            // Get client IP
-            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
-            if (ipAddress == "::1")
-            {
-                ipAddress = "127.0.0.1";
+                // Get client IP
+                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+                if (ipAddress == "::1")
+                {
+                    ipAddress = "127.0.0.1";
+                }
+
+                // Get ReturnUrl from appsettings.json - Simple approach for demo
+                var returnUrl = _vnPayService.GetConfiguredReturnUrl();
+                
+                // If not configured, use default localhost URL
+                if (string.IsNullOrWhiteSpace(returnUrl))
+                {
+                    returnUrl = $"{Request.Scheme}://{Request.Host}/Driver/Payment/VnPayReturn";
+                }
+                
+                // Add paymentId to returnUrl
+                if (!returnUrl.Contains("paymentId="))
+                {
+                    returnUrl += (returnUrl.Contains("?") ? "&" : "?") + $"paymentId={payment.Id}";
+                }
+                
+                Console.WriteLine($"[VNPay] Creating payment URL with ReturnUrl: {returnUrl}");
+
+                // Create VNPay payment URL
+                string paymentUrl;
+                try
+                {
+                    paymentUrl = _vnPayService.CreatePaymentUrl(payment, returnUrl, ipAddress);
+                }
+                catch (Exception ex)
+                {
+                    // Log the exception for debugging
+                    Console.WriteLine($"[VNPay Create] Error creating payment URL: {ex.Message}");
+                    Console.WriteLine($"[VNPay Create] Stack trace: {ex.StackTrace}");
+                    return StatusCode(500, new { message = "Lỗi khi tạo URL thanh toán VNPay. Vui lòng kiểm tra cấu hình VNPay.", error = ex.Message });
+                }
+
+                return Ok(new { 
+                    paymentUrl = paymentUrl
+                });
             }
-
-            // Use provided return URL or default
-            var returnUrl = request.ReturnUrl ?? $"{Request.Scheme}://{Request.Host}/Driver/Payment/VnPayReturn?paymentId={payment.Id}";
-
-            // Create VNPay payment URL
-            var paymentUrl = _vnPayService.CreatePaymentUrl(payment, returnUrl, ipAddress);
-
-            return Ok(new { PaymentUrl = paymentUrl, PaymentId = payment.Id });
+            catch (Exception ex)
+            {
+                // Log the exception for debugging
+                Console.WriteLine($"[VNPay Create] Unexpected error: {ex.Message}");
+                Console.WriteLine($"[VNPay Create] Stack trace: {ex.StackTrace}");
+                return StatusCode(500, new { message = "Có lỗi xảy ra khi tạo thanh toán VNPay", error = ex.Message });
+            }
         }
 
         [HttpPost("vnpay/callback")]
@@ -343,9 +383,25 @@ namespace PresentationLayer.Controllers
             }
 
             // Parse payment ID from OrderId (which is the payment transaction ID)
-            if (!Guid.TryParse(callbackResult.OrderId, out var paymentId))
+            // VNPay returns TxnRef which is the payment ID (Guid format without dashes)
+            Guid paymentId;
+            if (string.IsNullOrEmpty(callbackResult.OrderId))
             {
-                return BadRequest(new { message = "Invalid payment ID" });
+                return BadRequest(new { message = "Missing order ID in callback" });
+            }
+            
+            // Try parsing as Guid with dashes first, then without dashes
+            if (!Guid.TryParse(callbackResult.OrderId, out paymentId))
+            {
+                // Try parsing as Guid without dashes (format "N")
+                if (callbackResult.OrderId.Length == 32 && Guid.TryParseExact(callbackResult.OrderId, "N", out paymentId))
+                {
+                    // Successfully parsed
+                }
+                else
+                {
+                    return BadRequest(new { message = $"Invalid payment ID format: {callbackResult.OrderId}" });
+                }
             }
 
             // Update payment status
@@ -395,20 +451,28 @@ namespace PresentationLayer.Controllers
                 {
                     return Ok(new
                     {
-                        Success = callbackResult.Success,
-                        Message = callbackResult.Message,
-                        PaymentId = payment.Id,
-                        Amount = payment.Amount,
-                        Status = payment.Status
+                        success = callbackResult.Success,
+                        Success = callbackResult.Success, // Keep for backward compatibility
+                        message = callbackResult.Message,
+                        Message = callbackResult.Message, // Keep for backward compatibility
+                        paymentId = payment.Id,
+                        PaymentId = payment.Id, // Keep for backward compatibility
+                        amount = payment.Amount,
+                        Amount = payment.Amount, // Keep for backward compatibility
+                        status = payment.Status.ToString(),
+                        Status = payment.Status // Keep for backward compatibility
                     });
                 }
             }
 
             return Ok(new
             {
-                Success = callbackResult.Success,
-                Message = callbackResult.Message,
-                TransactionId = callbackResult.TransactionNo
+                success = callbackResult.Success,
+                Success = callbackResult.Success, // Keep for backward compatibility
+                message = callbackResult.Message,
+                Message = callbackResult.Message, // Keep for backward compatibility
+                transactionId = callbackResult.TransactionNo,
+                TransactionId = callbackResult.TransactionNo // Keep for backward compatibility
             });
         }
 

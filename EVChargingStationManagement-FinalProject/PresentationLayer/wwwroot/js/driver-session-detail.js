@@ -8,9 +8,19 @@ let simulatedPowerKw = 0;
 const BASE_FEE = 10000; // Phí cơ bản 10k
 let pricePerKwh = 0;
 let previousStatus = null; // Track previous status to detect changes
+let powerVariationTimer = null; // Timer for power variation effect
+let basePowerKw = 0; // Base power for variation
+
+// ChargingRing component instances
+let powerGauge = null;
+let socGauge = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     const sessionId = document.getElementById('session-id').value;
+    
+    // Initialize ChargingRing components
+    initializeChargingRings();
+    
     loadSession(sessionId);
     loadProgress(sessionId);
     setupSignalR(sessionId);
@@ -29,6 +39,39 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+/**
+ * Initialize ChargingRing components
+ */
+function initializeChargingRings() {
+    // Power gauge
+    const powerContainer = document.getElementById('power-gauge-container');
+    if (powerContainer && typeof ChargingRing !== 'undefined') {
+        powerGauge = new ChargingRing(powerContainer, {
+            value: 0,
+            min: 0,
+            max: 150,
+            unit: 'kW',
+            mainLabel: 'CÔNG SUẤT SẠC',
+            status: 'ĐANG SẠC',
+            type: 'power'
+        });
+    }
+    
+    // SOC gauge
+    const socContainer = document.getElementById('soc-gauge-container');
+    if (socContainer && typeof ChargingRing !== 'undefined') {
+        socGauge = new ChargingRing(socContainer, {
+            value: 0,
+            min: 0,
+            max: 100,
+            unit: '%',
+            mainLabel: 'MỨC PIN',
+            status: 'ĐANG SẠC',
+            type: 'battery'
+        });
+    }
+}
+
 // Function to stop charging simulation
 function stopChargingSimulation() {
     if (chargingTimer) {
@@ -36,6 +79,7 @@ function stopChargingSimulation() {
         chargingTimer = null;
         console.log('Charging simulation stopped');
     }
+    stopPowerVariation();
 }
 
 async function loadSession(sessionId) {
@@ -54,6 +98,11 @@ async function loadSession(sessionId) {
             
             displaySessionInfo(sessionData);
             
+            // Initialize SOC gauge với giá trị ban đầu nếu có
+            if (sessionData.initialSocPercentage !== undefined && socGauge) {
+                socGauge.update(sessionData.initialSocPercentage, 'ĐANG SẠC');
+            }
+            
             // Show buttons based on session status
             const actionsPanel = document.getElementById('session-actions');
             const btnStop = document.getElementById('btn-stop-charging');
@@ -65,7 +114,11 @@ async function loadSession(sessionId) {
                 btnPayment.style.display = 'none';
                 // Bắt đầu simulation
                 startChargingSimulation(sessionId);
+                // Start power variation effect
+                startPowerVariation();
             } else if (sessionData.status === 'Completed') {
+                // Stop power variation
+                stopPowerVariation();
                 // Dừng simulation nếu đang chạy (khi staff dừng session)
                 stopChargingSimulation();
                 
@@ -140,7 +193,10 @@ async function loadProgress(sessionId) {
 
         if (response.ok) {
             const progress = await response.json();
+            console.log('Progress data loaded:', progress); // Debug log
             updateProgressUI(progress);
+        } else {
+            console.warn('Failed to load progress:', response.status);
         }
     } catch (error) {
         console.error('Error loading progress:', error);
@@ -153,14 +209,26 @@ function updateProgressUI(progress) {
     const initialSoc = progress.initialSocPercentage || 0;
     const targetSoc = progress.targetSocPercentage || 100;
 
-    document.getElementById('soc-percentage').textContent = currentSoc.toFixed(1) + '%';
-    document.getElementById('initial-soc').textContent = initialSoc.toFixed(1);
-    document.getElementById('target-soc').textContent = targetSoc.toFixed(1);
-
+    // Update old progress bar elements if they exist (for backward compatibility)
+    const socPercentageEl = document.getElementById('soc-percentage');
+    const initialSocEl = document.getElementById('initial-soc');
+    const targetSocEl = document.getElementById('target-soc');
     const progressBar = document.getElementById('soc-progress-bar');
-    const progressPercent = ((currentSoc - initialSoc) / (targetSoc - initialSoc)) * 100;
-    progressBar.style.width = Math.max(0, Math.min(100, progressPercent)) + '%';
-    progressBar.textContent = currentSoc.toFixed(1) + '%';
+    
+    if (socPercentageEl) {
+        socPercentageEl.textContent = currentSoc.toFixed(1) + '%';
+    }
+    if (initialSocEl) {
+        initialSocEl.textContent = initialSoc.toFixed(1);
+    }
+    if (targetSocEl) {
+        targetSocEl.textContent = targetSoc.toFixed(1);
+    }
+    if (progressBar) {
+        const progressPercent = ((currentSoc - initialSoc) / (targetSoc - initialSoc)) * 100;
+        progressBar.style.width = Math.max(0, Math.min(100, progressPercent)) + '%';
+        progressBar.textContent = currentSoc.toFixed(1) + '%';
+    }
 
     // Update energy
     const energy = progress.energyDeliveredKwh || 0;
@@ -168,7 +236,26 @@ function updateProgressUI(progress) {
 
     // Update power
     const power = progress.currentPowerKw || 0;
-    document.getElementById('current-power').textContent = power.toFixed(2) + ' kW';
+    basePowerKw = power; // Set base power for variation
+    
+    // Update power gauge using ChargingRing
+    if (powerGauge) {
+        const powerStatus = sessionData?.status === 'InProgress' ? 'ĐANG SẠC' : 'ĐÃ HOÀN TẤT';
+        powerGauge.update(power, powerStatus);
+    }
+    
+    // Update SOC gauge using ChargingRing
+    if (socGauge) {
+        let socStatus = 'ĐANG SẠC';
+        if (sessionData?.status === 'Completed') {
+            socStatus = 'ĐÃ HOÀN TẤT';
+        } else if (currentSoc < 20) {
+            socStatus = 'PIN THẤP';
+        } else if (currentSoc >= 100) {
+            socStatus = 'ĐÃ HOÀN TẤT';
+        }
+        socGauge.update(currentSoc, socStatus);
+    }
 
     // Update time remaining
     const timeRemaining = progress.estimatedTimeRemainingMinutes;
@@ -181,6 +268,33 @@ function updateProgressUI(progress) {
         document.getElementById('time-remaining').textContent = '--';
     }
 }
+
+// Old gauge functions removed - now using ChargingRing component
+
+// Power variation effect (random up/down)
+function startPowerVariation() {
+    if (powerVariationTimer) {
+        clearInterval(powerVariationTimer);
+    }
+    
+    powerVariationTimer = setInterval(() => {
+        if (sessionData && sessionData.status === 'InProgress' && basePowerKw > 0 && powerGauge) {
+            // Random variation: ±2 kW around base power
+            const variation = (Math.random() - 0.5) * 4; // -2 to +2 kW
+            const variedPower = Math.max(0, Math.min(150, basePowerKw + variation));
+            powerGauge.update(variedPower, 'ĐANG SẠC');
+        }
+    }, 800); // Update every 800ms for smooth variation
+}
+
+function stopPowerVariation() {
+    if (powerVariationTimer) {
+        clearInterval(powerVariationTimer);
+        powerVariationTimer = null;
+    }
+}
+
+// Old helper functions removed - now handled by ChargingRing component
 
 async function setupSignalR(sessionId) {
     if (!window.signalRManager) {
@@ -256,12 +370,7 @@ function startChargingSimulation(sessionId) {
         // Tính cost = (energy * price) + base fee
         const cost = (energyDeliveredKwh * pricePerKwh) + BASE_FEE;
         
-        // Cập nhật UI
-        document.getElementById('energy-delivered').textContent = energyDeliveredKwh.toFixed(2) + ' kWh';
-        document.getElementById('current-power').textContent = simulatedPowerKw.toFixed(2) + ' kW';
-        document.getElementById('current-cost').textContent = new Intl.NumberFormat('vi-VN').format(Math.round(cost)) + ' VND';
-        
-        // Cập nhật SOC (giả sử tăng đều từ initial đến target)
+        // Tính SOC trước (giả sử tăng đều từ initial đến target)
         const initialSoc = sessionData.initialSocPercentage || 0;
         const targetSoc = sessionData.targetSocPercentage || 100;
         const socRange = targetSoc - initialSoc;
@@ -270,6 +379,27 @@ function startChargingSimulation(sessionId) {
         const estimatedTotalHours = 1; // 1 giờ để sạc đầy
         const socProgress = Math.min(1, elapsedHours / estimatedTotalHours);
         const currentSoc = initialSoc + (socRange * socProgress);
+        
+        // Cập nhật UI
+        document.getElementById('energy-delivered').textContent = energyDeliveredKwh.toFixed(2) + ' kWh';
+        document.getElementById('current-cost').textContent = new Intl.NumberFormat('vi-VN').format(Math.round(cost)) + ' VND';
+        
+        // Update power gauge with simulated power using ChargingRing
+        basePowerKw = simulatedPowerKw; // Update base for variation
+        if (powerGauge) {
+            powerGauge.update(simulatedPowerKw, 'ĐANG SẠC');
+        }
+        
+        // Update SOC gauge với giá trị đã tính toán using ChargingRing
+        if (socGauge) {
+            let socStatus = 'ĐANG SẠC';
+            if (currentSoc >= 100) {
+                socStatus = 'ĐÃ HOÀN TẤT';
+            } else if (currentSoc < 20) {
+                socStatus = 'PIN THẤP';
+            }
+            socGauge.update(currentSoc, socStatus);
+        }
         
         // Cập nhật progress UI
         updateProgressUI({

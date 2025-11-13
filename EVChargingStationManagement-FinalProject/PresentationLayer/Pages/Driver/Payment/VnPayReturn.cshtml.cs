@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace PresentationLayer.Pages.Driver.Payment
 {
-    [Authorize(Roles = "EVDriver,Admin")]
+    // AllowAnonymous: VNPay redirects here from external site, user may not be authenticated
+    // Security: Payment validation is done via VNPay signature in the API endpoint
+    [AllowAnonymous]
     public class VnPayReturnModel : PageModel
     {
         [BindProperty(SupportsGet = true)]
@@ -12,6 +14,9 @@ namespace PresentationLayer.Pages.Driver.Payment
 
         public void OnGet()
         {
+            // Log for debugging
+            Console.WriteLine($"[VnPayReturn] Page accessed. PaymentId: {PaymentId}");
+            Console.WriteLine($"[VnPayReturn] Query string: {Request.QueryString}");
         }
     }
 }
