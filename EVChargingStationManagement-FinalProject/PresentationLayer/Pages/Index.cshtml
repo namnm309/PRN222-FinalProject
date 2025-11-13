@@ -316,6 +316,12 @@
                                     VNPay
                                 </label>
                             </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="paymentMethod" id="paymentMoMo" value="momo">
+                                <label class="form-check-label" for="paymentMoMo">
+                                    MoMo
+                                </label>
+                            </div>
                         </div>
                     </div>
                     
@@ -2915,7 +2921,7 @@
                         }
                     }
                     
-                    if (paymentMethod === 'vnpay' && (!estimatedCost || estimatedCost <= 0)) {
+                    if ((paymentMethod === 'vnpay' || paymentMethod === 'momo') && (!estimatedCost || estimatedCost <= 0)) {
                         alert('Vui lòng nhập năng lượng ước tính để tính chi phí thanh toán.');
                         return;
                     }
@@ -2931,7 +2937,7 @@
                             scheduledEndTime: endDate.toISOString(),
                             estimatedEnergyKwh: energy && energy.trim() !== '' ? parseFloat(energy) : null,
                             estimatedCost: estimatedCost,
-                            isPrepaid: paymentMethod === 'vnpay',
+                            isPrepaid: paymentMethod === 'vnpay' || paymentMethod === 'momo',
                             notes: notes && notes.trim() !== '' ? notes.trim() : null
                         };
                         
@@ -2954,10 +2960,14 @@
                             bootstrap.Modal.getInstance(document.getElementById('reservationModal')).hide();
                             form.reset();
                             
-                            if (paymentMethod === 'vnpay' && result.id && estimatedCost && estimatedCost > 0) {
-                                // Redirect to VNPay payment
+                            if ((paymentMethod === 'vnpay' || paymentMethod === 'momo') && result.id && estimatedCost && estimatedCost > 0) {
+                                // Redirect to payment gateway
                                 try {
-                                    var paymentResponse = await fetch('/api/Payment/vnpay/create', {
+                                    var paymentEndpoint = paymentMethod === 'vnpay' ? '/api/Payment/vnpay/create' : '/api/Payment/momo/create';
+                                    var returnUrlPath = paymentMethod === 'vnpay' ? '/Driver/Payment/VnPayReturn' : '/Driver/Payment/MoMoReturn';
+                                    var paymentGatewayName = paymentMethod === 'vnpay' ? 'VNPay' : 'MoMo';
+                                    
+                                    var paymentResponse = await fetch(paymentEndpoint, {
                                         method: 'POST',
                                         headers: {
                                             'Content-Type': 'application/json'
@@ -2966,7 +2976,7 @@
                                         body: JSON.stringify({
                                             reservationId: result.id,
                                             amount: estimatedCost,
-                                            returnUrl: window.location.origin + '/Driver/Payment/VnPayReturn?reservationId=' + result.id
+                                            returnUrl: window.location.origin + returnUrlPath + '?reservationId=' + result.id
                                         })
                                     });
                                     
@@ -2979,16 +2989,17 @@
                                             return;
                                         } else {
                                             console.error('Payment URL not found in response:', paymentData);
-                                            alert('Đặt lịch thành công nhưng không thể tạo thanh toán VNPay. Mã xác nhận: ' + result.confirmationCode);
+                                            alert('Đặt lịch thành công nhưng không thể tạo thanh toán ' + paymentGatewayName + '. Mã xác nhận: ' + result.confirmationCode);
                                         }
                                     } else {
                                         const errorData = await paymentResponse.json().catch(() => ({}));
                                         console.error('Payment creation failed:', errorData);
-                                        alert('Đặt lịch thành công nhưng không thể tạo thanh toán VNPay: ' + (errorData.message || 'Lỗi không xác định') + '. Mã xác nhận: ' + result.confirmationCode);
+                                        alert('Đặt lịch thành công nhưng không thể tạo thanh toán ' + paymentGatewayName + ': ' + (errorData.message || 'Lỗi không xác định') + '. Mã xác nhận: ' + result.confirmationCode);
                                     }
                                 } catch (paymentErr) {
-                                    console.error('Error creating VNPay payment:', paymentErr);
-                                    alert('Đặt lịch thành công nhưng không thể tạo thanh toán VNPay. Mã xác nhận: ' + result.confirmationCode);
+                                    console.error('Error creating payment:', paymentErr);
+                                    var paymentGatewayName = paymentMethod === 'vnpay' ? 'VNPay' : 'MoMo';
+                                    alert('Đặt lịch thành công nhưng không thể tạo thanh toán ' + paymentGatewayName + '. Mã xác nhận: ' + result.confirmationCode);
                                 }
                             } else {
                                 var message = 'Đặt lịch thành công! Mã xác nhận: ' + (result.confirmationCode || result.id);

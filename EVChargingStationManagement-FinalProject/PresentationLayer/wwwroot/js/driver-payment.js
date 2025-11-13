@@ -102,11 +102,11 @@ function displayPaymentForm(session) {
                     <button class="btn btn-primary btn-lg w-100 mb-2" onclick="payWithVNPay('${session.id}', ${cost})">
                         <i class="bi bi-credit-card"></i> Thanh toán VNPay
                     </button>
+                    <button class="btn btn-warning btn-lg w-100 mb-2" onclick="payWithMoMo('${session.id}', ${cost})" style="background-color: #A50064; border-color: #A50064; color: white;">
+                        <i class="bi bi-wallet2"></i> Thanh toán MoMo
+                    </button>
                     <button class="btn btn-success btn-lg w-100 mb-2" onclick="payWithCash('${session.id}', ${cost})">
                         <i class="bi bi-cash-coin"></i> Thanh toán bằng tiền mặt
-                    </button>
-                    <button class="btn btn-outline-secondary btn-lg w-100" onclick="payWithWallet('${session.id}', ${cost})" disabled>
-                        <i class="bi bi-wallet2"></i> Thanh toán bằng ví (Sắp có)
                     </button>
                 </div>
             </div>
@@ -136,7 +136,7 @@ function displayPaymentInfo(payment) {
                 </div>
                 ${payment.providerTransactionId ? `
                 <div class="detail-row">
-                    <strong>Mã giao dịch VNPay:</strong> ${payment.providerTransactionId}
+                    <strong>Mã giao dịch:</strong> ${payment.providerTransactionId}
                 </div>
                 ` : ''}
             </div>
@@ -165,6 +165,21 @@ async function payWithVNPay(sessionId, amount) {
             // Redirect to VNPay
             const paymentUrl = data.paymentUrl;
             if (paymentUrl) {
+                // Check if using localhost - VNPay will show error 72
+                if (paymentUrl.includes('localhost') || paymentUrl.includes('127.0.0.1')) {
+                    const proceed = confirm(
+                        'Cảnh báo: Bạn đang sử dụng localhost.\n\n' +
+                        'VNPay sẽ từ chối với lỗi 72 (Website not found).\n\n' +
+                        'Để test thanh toán VNPay, bạn cần:\n' +
+                        '1. Sử dụng ngrok để expose localhost\n' +
+                        '2. Hoặc deploy lên server có domain thật\n' +
+                        '3. Đăng ký ReturnUrl trong VNPay merchant portal\n\n' +
+                        'Bạn vẫn muốn tiếp tục? (VNPay sẽ hiển thị trang lỗi)'
+                    );
+                    if (!proceed) {
+                        return;
+                    }
+                }
                 window.location.href = paymentUrl;
             } else {
                 alert('Lỗi: Không nhận được URL thanh toán từ server');
@@ -227,6 +242,61 @@ async function payWithVNPay(sessionId, amount) {
     }
 }
 
+async function payWithMoMo(sessionId, amount) {
+    try {
+        const response = await fetch('/api/Payment/momo/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                sessionId: sessionId,
+                amount: amount
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            // Redirect to MoMo
+            // Handle both camelCase and PascalCase
+            const paymentUrl = data.paymentUrl || data.PaymentUrl;
+            if (paymentUrl) {
+                window.location.href = paymentUrl;
+            } else {
+                alert('Lỗi: Không nhận được URL thanh toán từ server');
+            }
+        } else {
+            // Try to parse as JSON, but handle non-JSON responses
+            let errorMessage = 'Không thể tạo thanh toán MoMo';
+            try {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const error = await response.json();
+                    errorMessage = error.message || error.Message || errorMessage;
+                } else {
+                    const errorText = await response.text();
+                    console.error('Server error response:', errorText);
+                    if (errorText.includes('message')) {
+                        const match = errorText.match(/"message"\s*:\s*"([^"]+)"/);
+                        if (match) {
+                            errorMessage = match[1];
+                        }
+                    }
+                }
+            } catch (parseError) {
+                console.error('Error parsing error response:', parseError);
+                errorMessage = `Lỗi ${response.status}: ${response.statusText}`;
+            }
+            
+            alert('Lỗi: ' + errorMessage);
+        }
+    } catch (error) {
+        console.error('Error creating MoMo payment:', error);
+        alert('Có lỗi xảy ra. Vui lòng thử lại.');
+    }
+}
+
 function payWithWallet(sessionId, amount) {
     alert('Tính năng thanh toán bằng ví sẽ sớm có mặt!');
 }
@@ -281,6 +351,7 @@ function getPaymentStatusBadge(status) {
 function getPaymentMethodText(method) {
     const methods = {
         'VNPay': 'VNPay',
+        'MoMo': 'MoMo',
         'Wallet': 'Ví điện tử',
         'CreditCard': 'Thẻ tín dụng',
         'DebitCard': 'Thẻ ghi nợ',

@@ -39,6 +39,53 @@ namespace BusinessLayer.Services
 
         public string CreatePaymentUrl(PaymentTransaction payment, string returnUrl, string ipAddress)
         {
+            // Validate payment is not null
+            if (payment == null)
+            {
+                throw new ArgumentNullException(nameof(payment), "Payment transaction cannot be null");
+            }
+
+            // Validate payment amount
+            if (payment.Amount <= 0)
+            {
+                throw new ArgumentException($"Payment amount must be greater than 0. Current amount: {payment.Amount}", nameof(payment));
+            }
+            
+            // Validate amount doesn't cause overflow when multiplied by 100
+            // VNPay expects amount in cents, so max is long.MaxValue / 100
+            var maxAmount = 92233720368547758.07m; // long.MaxValue / 100
+            if (payment.Amount > maxAmount)
+            {
+                throw new ArgumentException($"Payment amount too large. Maximum amount: {maxAmount} VND. Current: {payment.Amount}", nameof(payment));
+            }
+            
+            // Validate payment ID is valid Guid
+            if (payment.Id == Guid.Empty)
+            {
+                throw new ArgumentException("Payment ID cannot be empty Guid", nameof(payment));
+            }
+
+            // Validate returnUrl - For UI testing, use a valid domain format (not localhost)
+            // Note: VNPay rejects localhost with error 72, but accepts valid domain format even if domain doesn't exist
+            // This allows UI testing without needing a real domain
+            if (string.IsNullOrWhiteSpace(returnUrl))
+            {
+                // Use a valid domain format for UI testing (VNPay only checks format, not if domain exists)
+                returnUrl = "https://example.com/vnpay/return";
+                Console.WriteLine("[VNPay] ReturnUrl is empty, using valid domain format for UI testing: " + returnUrl);
+            }
+            
+            // Replace localhost with valid domain format for UI testing
+            if (returnUrl.Contains("localhost") || returnUrl.Contains("127.0.0.1") || returnUrl.Contains("::1"))
+            {
+                // Convert localhost to a valid domain format
+                // VNPay checks URL format but doesn't verify if domain actually exists
+                returnUrl = returnUrl.Replace("localhost", "example.com")
+                                   .Replace("127.0.0.1", "example.com")
+                                   .Replace("::1", "example.com");
+                Console.WriteLine("[VNPay] Converted localhost to valid domain format for UI testing: " + returnUrl);
+            }
+
             // Validate configuration
             if (string.IsNullOrWhiteSpace(_tmnCode))
             {
@@ -50,21 +97,62 @@ namespace BusinessLayer.Services
                 throw new InvalidOperationException("VNPay HashSecret is not configured. Please set VNPay:HashSecret in appsettings.json");
             }
 
+            if (string.IsNullOrWhiteSpace(_url))
+            {
+                throw new InvalidOperationException("VNPay Url is not configured. Please set VNPay:Url in appsettings.json");
+            }
+
+            // Calculate amount in cents (VNPay requirement)
+            // Round to avoid precision issues, then multiply by 100
+            var amountInCents = (long)Math.Round(payment.Amount * 100, 0);
+            if (amountInCents <= 0)
+            {
+                throw new ArgumentException($"Invalid amount calculation. Amount: {payment.Amount}, AmountInCents: {amountInCents}", nameof(payment));
+            }
+            
+            // Format TxnRef: Guid without dashes (VNPay requirement)
+            var txnRef = payment.Id.ToString("N");
+            if (string.IsNullOrEmpty(txnRef) || txnRef.Length != 32)
+            {
+                throw new ArgumentException($"Invalid TxnRef format. Expected 32 characters, got: {txnRef?.Length ?? 0}", nameof(payment));
+            }
+            
+            // Format CreateDate: yyyyMMddHHmmss (VNPay requirement)
+            var createDate = DateTime.Now.ToString("yyyyMMddHHmmss");
+            if (createDate.Length != 14)
+            {
+                throw new InvalidOperationException($"Invalid CreateDate format. Expected 14 characters, got: {createDate.Length}");
+            }
+            
+            // Validate IP address format
+            if (string.IsNullOrWhiteSpace(ipAddress))
+            {
+                ipAddress = "127.0.0.1";
+                Console.WriteLine("[VNPay] Warning: IP address is empty, using default: " + ipAddress);
+            }
+            
             var vnpay = new Dictionary<string, string>
             {
                 { "vnp_Version", "2.1.0" },
                 { "vnp_Command", "pay" },
                 { "vnp_TmnCode", _tmnCode },
-                { "vnp_Amount", ((long)Math.Round(payment.Amount * 100, 0)).ToString() }, // VNPay expects amount in cents, round to avoid precision issues
+                { "vnp_Amount", amountInCents.ToString() },
                 { "vnp_CurrCode", "VND" },
-                { "vnp_TxnRef", payment.Id.ToString("N") }, // Format Guid without dashes for VNPay compatibility
+                { "vnp_TxnRef", txnRef },
                 { "vnp_OrderInfo", $"Thanh toan don hang {payment.Id}" },
                 { "vnp_OrderType", "other" },
                 { "vnp_Locale", "vn" },
                 { "vnp_ReturnUrl", returnUrl },
                 { "vnp_IpAddr", ipAddress },
-                { "vnp_CreateDate", DateTime.Now.ToString("yyyyMMddHHmmss") }
+                { "vnp_CreateDate", createDate }
             };
+            
+            // Debug logging for UI testing
+            Console.WriteLine($"[VNPay CreatePaymentUrl] Payment ID: {payment.Id}");
+            Console.WriteLine($"[VNPay CreatePaymentUrl] Amount: {payment.Amount} VND -> {amountInCents} cents");
+            Console.WriteLine($"[VNPay CreatePaymentUrl] TxnRef: {txnRef}");
+            Console.WriteLine($"[VNPay CreatePaymentUrl] ReturnUrl: {returnUrl}");
+            Console.WriteLine($"[VNPay CreatePaymentUrl] IP Address: {ipAddress}");
 
             // Remove empty values and null values before calculating hash (VNPay requirement)
             var filteredDict = vnpay
