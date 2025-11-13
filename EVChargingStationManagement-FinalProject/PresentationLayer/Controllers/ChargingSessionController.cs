@@ -2,7 +2,6 @@ using System.Linq;
 using System.Security.Claims;
 using BusinessLayer.DTOs;
 using BusinessLayer.Services;
-using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -95,18 +94,15 @@ namespace PresentationLayer.Controllers
                 return BadRequest(ModelState);
             }
 
-            var session = new ChargingSession
-            {
-                ChargingSpotId = request.ChargingSpotId,
-                ReservationId = request.ReservationId,
-                VehicleId = request.VehicleId,
-                EnergyRequestedKwh = request.EnergyRequestedKwh,
-                PricePerKwh = request.PricePerKwh,
-                Notes = request.Notes
-            };
-
-            var created = await _sessionService.StartSessionAsync(GetUserId(), session);
+            var created = await _sessionService.StartSessionAsync(GetUserId(), request);
             await _notifier.NotifySessionChangedAsync(created);
+            
+            // Notify spot status change (spot becomes occupied)
+            if (created.ChargingSpot != null)
+            {
+                await _notifier.NotifySpotStatusChangedAsync(created.ChargingSpot);
+                await _notifier.NotifySpotsListUpdatedAsync(created.ChargingSpot.ChargingStationId);
+            }
             
             // Notify station availability change
             var stationId = created.ChargingSpot?.ChargingStationId ?? Guid.Empty;
@@ -198,18 +194,25 @@ namespace PresentationLayer.Controllers
             if (spot.Status != SpotStatus.Available)
                 return BadRequest(new { message = "Charging spot is not available" });
 
-            var session = new ChargingSession
+            var startRequest = new StartChargingSessionRequest
             {
                 ChargingSpotId = spotId.Value,
                 ReservationId = request.ReservationId,
                 VehicleId = request.VehicleId,
                 TargetSocPercentage = request.TargetSocPercentage,
                 EnergyRequestedKwh = request.EnergyRequestedKwh,
-                QrCodeScanned = request.QrCode
+                QrCode = request.QrCode
             };
 
-            var created = await _sessionService.StartSessionAsync(GetUserId(), session);
+            var created = await _sessionService.StartSessionAsync(GetUserId(), startRequest);
             await _notifier.NotifySessionChangedAsync(created);
+            
+            // Notify spot status change (spot becomes occupied)
+            if (created.ChargingSpot != null)
+            {
+                await _notifier.NotifySpotStatusChangedAsync(created.ChargingSpot);
+                await _notifier.NotifySpotsListUpdatedAsync(created.ChargingSpot.ChargingStationId);
+            }
             
             // Notify station availability change
             var stationId = created.ChargingSpot?.ChargingStationId ?? Guid.Empty;
@@ -279,7 +282,7 @@ namespace PresentationLayer.Controllers
             return Ok(history);
         }
 
-        private ChargingSessionDTO MapToDto(ChargingSession session)
+        private ChargingSessionDTO MapToDto(DataAccessLayer.Entities.ChargingSession session)
         {
             return new ChargingSessionDTO
             {
@@ -319,7 +322,7 @@ namespace PresentationLayer.Controllers
             var station = await _stationService.GetStationByIdAsync(stationId);
             if (station != null)
             {
-                var spots = station.ChargingSpots?.ToList() ?? new List<ChargingSpot>();
+                var spots = station.ChargingSpots?.ToList() ?? new List<DataAccessLayer.Entities.ChargingSpot>();
                 var totalSpots = spots.Count;
                 
                 // Nếu station không Active, thì availableSpots = 0

@@ -1,4 +1,5 @@
 using System.Linq;
+using BusinessLayer.DTOs;
 using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
@@ -67,13 +68,16 @@ namespace BusinessLayer.Services
                 .FirstOrDefaultAsync(r => r.Id == id);
         }
 
-        public async Task<Reservation> CreateReservationAsync(Guid userId, Reservation reservation)
+        public async Task<Reservation> CreateReservationAsync(Guid userId, CreateReservationRequest request)
         {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
             // Validate spot availability
             var spot = await _context.ChargingSpots
                 .Include(s => s.Reservations)
                 .Include(s => s.ChargingStation)
-                .FirstOrDefaultAsync(s => s.Id == reservation.ChargingSpotId);
+                .FirstOrDefaultAsync(s => s.Id == request.ChargingSpotId);
 
             if (spot == null)
             {
@@ -86,23 +90,33 @@ namespace BusinessLayer.Services
                 throw new InvalidOperationException("Trạm sạc hiện không khả dụng để đặt lịch.");
             }
 
-            // Tính ScheduledEndTime tự động nếu không được cung cấp (mặc định +2 giờ)
-            if (reservation.ScheduledEndTime == default(DateTime) || reservation.ScheduledEndTime == DateTime.MinValue)
-            {
-                reservation.ScheduledEndTime = reservation.ScheduledStartTime.AddHours(2);
-            }
+            var scheduledStartTime = request.ScheduledStartTime.ToUniversalTime();
+            var scheduledEndTime = request.ScheduledEndTime.HasValue 
+                ? request.ScheduledEndTime.Value.ToUniversalTime() 
+                : scheduledStartTime.AddHours(2);
 
-            if (!IsTimeslotAvailable(spot, reservation.ScheduledStartTime, reservation.ScheduledEndTime))
+            if (!IsTimeslotAvailable(spot, scheduledStartTime, scheduledEndTime))
             {
                 throw new InvalidOperationException("Timeslot is not available.");
             }
 
-            reservation.Id = Guid.NewGuid();
-            reservation.UserId = userId;
-            reservation.Status = ReservationStatus.Pending;
-            reservation.ConfirmationCode = $"RSV-{reservation.Id.ToString()[..8]}";
-            reservation.CreatedAt = DateTime.UtcNow;
-            reservation.UpdatedAt = DateTime.UtcNow;
+            var reservation = new Reservation
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ChargingSpotId = request.ChargingSpotId,
+                VehicleId = request.VehicleId,
+                ScheduledStartTime = scheduledStartTime,
+                ScheduledEndTime = scheduledEndTime,
+                EstimatedEnergyKwh = request.EstimatedEnergyKwh,
+                EstimatedCost = request.EstimatedCost,
+                IsPrepaid = request.IsPrepaid,
+                Notes = request.Notes,
+                Status = ReservationStatus.Pending,
+                ConfirmationCode = $"RSV-{Guid.NewGuid().ToString()[..8]}",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
             _context.Reservations.Add(reservation);
             await _context.SaveChangesAsync();
@@ -156,6 +170,80 @@ namespace BusinessLayer.Services
                 .Where(r => r.UserId == userId && r.ScheduledStartTime >= now)
                 .OrderBy(r => r.ScheduledStartTime)
                 .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Reservation>> GetAllReservationsForStaffAsync(DateTime? from = null, DateTime? to = null)
+        {
+            var query = _context.Reservations
+                .Include(r => r.User)
+                .Include(r => r.ChargingSpot)
+                    .ThenInclude(s => s!.ChargingStation)
+                .Include(r => r.Vehicle)
+                .AsQueryable();
+
+            // Apply date filters if provided
+            if (from.HasValue)
+            {
+                query = query.Where(r => r.ScheduledStartTime >= from.Value.ToUniversalTime());
+            }
+
+            if (to.HasValue)
+            {
+                query = query.Where(r => r.ScheduledStartTime <= to.Value.ToUniversalTime());
+            }
+
+            return await query
+                .OrderByDescending(r => r.ScheduledStartTime)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<ChargingSpotDTO>> GetAvailableSpotsWithReservationInfoAsync(Guid stationId)
+        {
+            var now = DateTime.UtcNow;
+            var spots = await _context.ChargingSpots
+                .Include(s => s.ChargingStation)
+                .Where(s => s.ChargingStationId == stationId)
+                .ToListAsync();
+
+            var spotIds = spots.Select(s => s.Id).ToList();
+            
+            // Get all active reservations for these spots
+            var activeReservations = await _context.Reservations
+                .Where(r => spotIds.Contains(r.ChargingSpotId) &&
+                           (r.Status == ReservationStatus.Pending ||
+                            r.Status == ReservationStatus.Confirmed ||
+                            r.Status == ReservationStatus.CheckedIn) &&
+                           r.ScheduledEndTime > now)
+                .Select(r => r.ChargingSpotId)
+                .Distinct()
+                .ToListAsync();
+            
+            // Get active sessions
+            var activeSessions = await _context.ChargingSessions
+                .Where(cs => spotIds.Contains(cs.ChargingSpotId) && 
+                            cs.Status == ChargingSessionStatus.InProgress)
+                .Select(cs => cs.ChargingSpotId)
+                .Distinct()
+                .ToListAsync();
+            
+            return spots.Select(s => new ChargingSpotDTO
+            {
+                Id = s.Id,
+                SpotNumber = s.SpotNumber,
+                ChargingStationId = s.ChargingStationId,
+                ChargingStationName = s.ChargingStation?.Name,
+                Status = s.Status,
+                ConnectorType = s.ConnectorType,
+                PowerOutput = s.PowerOutput,
+                PricePerKwh = s.PricePerKwh,
+                Description = s.Description,
+                CreatedAt = s.CreatedAt,
+                UpdatedAt = s.UpdatedAt,
+                IsReserved = activeReservations.Contains(s.Id),
+                IsAvailable = s.Status == SpotStatus.Available && 
+                             !activeReservations.Contains(s.Id) && 
+                             !activeSessions.Contains(s.Id)
+            });
         }
 
         private static bool IsTimeslotAvailable(ChargingSpot spot, DateTime start, DateTime end)

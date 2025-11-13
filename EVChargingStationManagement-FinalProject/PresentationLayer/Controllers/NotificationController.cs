@@ -2,7 +2,6 @@ using System.Linq;
 using System.Security.Claims;
 using BusinessLayer.DTOs;
 using BusinessLayer.Services;
-using DataAccessLayer.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -41,7 +40,7 @@ namespace PresentationLayer.Controllers
             return NoContent();
         }
 
-        private NotificationDTO MapToDto(Notification notification)
+        private NotificationDTO MapToDto(DataAccessLayer.Entities.Notification notification)
         {
             return new NotificationDTO
             {

@@ -384,7 +384,10 @@
         }, 500);
     }
 
-    function requestUserLocation() {
+    function requestUserLocation(retryCount) {
+        retryCount = retryCount || 0;
+        var maxRetries = 2;
+        
         if (!navigator.geolocation) {
             console.warn('Geolocation not supported');
             return;
@@ -394,6 +397,15 @@
             function(position) {
                 var lat = position.coords.latitude;
                 var lng = position.coords.longitude;
+                var accuracy = position.coords.accuracy || null;
+                
+                // Kiểm tra độ chính xác và retry nếu cần
+                if (accuracy && accuracy > 1000 && retryCount < maxRetries) {
+                    setTimeout(function() {
+                        requestUserLocation(retryCount + 1);
+                    }, 1000 * (retryCount + 1));
+                    return;
+                }
                 
                 if (mapInstance) {
                     mapInstance.setView([lat, lng], 15);
@@ -401,11 +413,19 @@
             },
             function(error) {
                 console.warn('Geolocation error:', error);
+                
+                // Retry nếu lỗi tạm thời (timeout hoặc unavailable)
+                if ((error.code === 2 || error.code === 3) && retryCount < maxRetries) {
+                    setTimeout(function() {
+                        requestUserLocation(retryCount + 1);
+                    }, 2000 * (retryCount + 1));
+                    return;
+                }
             },
             {
                 enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
+                timeout: 20000, // Tăng timeout lên 20 giây
+                maximumAge: 60000 // Cho phép dùng cache trong 1 phút
             }
         );
     }

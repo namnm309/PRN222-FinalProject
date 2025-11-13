@@ -95,6 +95,16 @@ namespace PresentationLayer.Services
                 .SendAsync("SpotsListUpdated", stationId);
         }
 
+        public async Task NotifyStationStatusChangedAsync(Guid stationId, string status, string stationName)
+        {
+            // Broadcast cho tất cả clients (vì status change là thông tin quan trọng)
+            // và cũng gửi cho group station cụ thể để đảm bảo
+            await Task.WhenAll(
+                _hubContext.Clients.All.SendAsync("StationStatusUpdated", stationId, status, stationName),
+                _hubContext.Clients.Group($"station-{stationId}").SendAsync("StationStatusUpdated", stationId, status, stationName)
+            );
+        }
+
         private async Task<(int totalSpots, int availableSpots)> GetStationAvailabilityAsync(Guid stationId)
         {
             var station = await _stationService.GetStationByIdAsync(stationId);

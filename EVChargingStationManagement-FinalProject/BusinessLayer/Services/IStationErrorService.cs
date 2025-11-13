@@ -1,3 +1,4 @@
+using BusinessLayer.DTOs;
 using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
 
@@ -11,8 +12,8 @@ namespace BusinessLayer.Services
         Task<IEnumerable<StationError>> GetErrorsBySpotIdAsync(Guid spotId);
         Task<IEnumerable<StationError>> GetErrorsByStatusAsync(ErrorStatus status);
         Task<IEnumerable<StationError>> GetErrorsByUserIdAsync(Guid userId);
-        Task<StationError> CreateErrorAsync(StationError error);
-        Task<StationError?> UpdateErrorAsync(Guid id, StationError error);
+        Task<StationError> CreateErrorAsync(CreateStationErrorRequest request);
+        Task<StationError?> UpdateErrorAsync(Guid id, UpdateStationErrorRequest request);
         Task<bool> DeleteErrorAsync(Guid id);
         Task<bool> ErrorExistsAsync(Guid id);
     }

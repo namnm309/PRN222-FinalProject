@@ -1,3 +1,4 @@
+using BusinessLayer.DTOs;
 using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
 
@@ -9,7 +10,7 @@ namespace BusinessLayer.Services
         Task<IEnumerable<ChargingSession>> GetActiveSessionsAsync(Guid? stationId = null);
         Task<ChargingSession?> GetActiveSessionForUserAsync(Guid userId);
         Task<ChargingSession?> GetSessionByIdAsync(Guid id);
-        Task<ChargingSession> StartSessionAsync(Guid userId, ChargingSession session);
+        Task<ChargingSession> StartSessionAsync(Guid userId, StartChargingSessionRequest request);
         Task<ChargingSession?> CompleteSessionAsync(Guid sessionId, decimal energyDeliveredKwh, decimal cost, decimal? pricePerKwh, string? notes);
         Task<ChargingSession?> UpdateSessionStatusAsync(Guid sessionId, ChargingSessionStatus status, string? notes = null);
     }

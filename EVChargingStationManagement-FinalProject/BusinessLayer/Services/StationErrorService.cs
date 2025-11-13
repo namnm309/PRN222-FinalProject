@@ -1,3 +1,4 @@
+using BusinessLayer.DTOs;
 using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
@@ -83,37 +84,44 @@ namespace BusinessLayer.Services
                 .ToListAsync();
         }
 
-        public async Task<StationError> CreateErrorAsync(StationError error)
+        public async Task<StationError> CreateErrorAsync(CreateStationErrorRequest request)
         {
-            if (error == null)
-                throw new ArgumentNullException(nameof(error));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
 
             // Kiểm tra station tồn tại
-            var stationExists = await _context.ChargingStations.AnyAsync(s => s.Id == error.ChargingStationId);
+            var stationExists = await _context.ChargingStations.AnyAsync(s => s.Id == request.ChargingStationId);
             if (!stationExists)
                 throw new InvalidOperationException("Charging station does not exist");
 
             // Kiểm tra spot tồn tại (nếu có)
-            if (error.ChargingSpotId.HasValue)
+            if (request.ChargingSpotId.HasValue)
             {
-                var spotExists = await _context.ChargingSpots.AnyAsync(s => s.Id == error.ChargingSpotId.Value);
+                var spotExists = await _context.ChargingSpots.AnyAsync(s => s.Id == request.ChargingSpotId.Value);
                 if (!spotExists)
                     throw new InvalidOperationException("Charging spot does not exist");
             }
 
             // Kiểm tra user tồn tại
-            var userExists = await _context.Users.AnyAsync(u => u.Id == error.ReportedByUserId);
+            var userExists = await _context.Users.AnyAsync(u => u.Id == request.ReportedByUserId);
             if (!userExists)
                 throw new InvalidOperationException("User does not exist");
 
-            error.Id = Guid.NewGuid();
-            error.CreatedAt = DateTime.UtcNow;
-            error.UpdatedAt = DateTime.UtcNow;
-
-            if (!error.ReportedAt.HasValue)
+            var error = new StationError
             {
-                error.ReportedAt = DateTime.UtcNow;
-            }
+                Id = Guid.NewGuid(),
+                ChargingStationId = request.ChargingStationId,
+                ChargingSpotId = request.ChargingSpotId,
+                ReportedByUserId = request.ReportedByUserId,
+                Status = request.Status,
+                ErrorCode = request.ErrorCode,
+                Title = request.Title,
+                Description = request.Description,
+                Severity = request.Severity,
+                ReportedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
             _context.StationErrors.Add(error);
             await _context.SaveChangesAsync();
@@ -121,24 +129,36 @@ namespace BusinessLayer.Services
             return error;
         }
 
-        public async Task<StationError?> UpdateErrorAsync(Guid id, StationError error)
+        public async Task<StationError?> UpdateErrorAsync(Guid id, UpdateStationErrorRequest request)
         {
-            if (error == null)
-                throw new ArgumentNullException(nameof(error));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
 
             var existingError = await _context.StationErrors.FindAsync(id);
             if (existingError == null)
                 return null;
 
-            existingError.ResolvedByUserId = error.ResolvedByUserId;
-            existingError.Status = error.Status;
-            existingError.ResolvedAt = error.ResolvedAt;
-            existingError.ResolutionNotes = error.ResolutionNotes;
-            existingError.Severity = error.Severity;
+            if (request.ResolvedByUserId.HasValue)
+            {
+                existingError.ResolvedByUserId = request.ResolvedByUserId;
+            }
+            existingError.Status = request.Status;
+            if (request.ResolvedAt.HasValue)
+            {
+                existingError.ResolvedAt = request.ResolvedAt;
+            }
+            if (request.ResolutionNotes != null)
+            {
+                existingError.ResolutionNotes = request.ResolutionNotes;
+            }
+            if (request.Severity != null)
+            {
+                existingError.Severity = request.Severity;
+            }
             existingError.UpdatedAt = DateTime.UtcNow;
 
             // Tự động set ResolvedAt khi status là Resolved hoặc Closed
-            if ((error.Status == ErrorStatus.Resolved || error.Status == ErrorStatus.Closed) && !existingError.ResolvedAt.HasValue)
+            if ((request.Status == ErrorStatus.Resolved || request.Status == ErrorStatus.Closed) && !existingError.ResolvedAt.HasValue)
             {
                 existingError.ResolvedAt = DateTime.UtcNow;
             }
