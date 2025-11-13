@@ -1,4 +1,5 @@
 using System.Linq;
+using BusinessLayer.DTOs;
 using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
@@ -32,13 +33,25 @@ namespace BusinessLayer.Services
                 .FirstOrDefaultAsync(p => p.Id == id);
         }
 
-        public async Task<PaymentTransaction> CreatePaymentAsync(Guid userId, PaymentTransaction payment)
+        public async Task<PaymentTransaction> CreatePaymentAsync(Guid userId, CreatePaymentRequest request)
         {
-            payment.Id = Guid.NewGuid();
-            payment.UserId = userId;
-            payment.Status = PaymentStatus.Pending;
-            payment.CreatedAt = DateTime.UtcNow;
-            payment.UpdatedAt = DateTime.UtcNow;
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            var payment = new PaymentTransaction
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ReservationId = request.ReservationId,
+                ChargingSessionId = request.ChargingSessionId,
+                Amount = request.Amount,
+                Currency = request.Currency,
+                Method = request.Method,
+                Description = request.Description,
+                Status = PaymentStatus.Pending,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
             _context.PaymentTransactions.Add(payment);
             await _context.SaveChangesAsync();

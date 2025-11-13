@@ -1,3 +1,4 @@
+using BusinessLayer.DTOs;
 using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -33,14 +34,25 @@ namespace BusinessLayer.Services
             return await _context.SubscriptionPackages.FindAsync(id);
         }
 
-        public async Task<SubscriptionPackage> CreatePackageAsync(SubscriptionPackage package)
+        public async Task<SubscriptionPackage> CreatePackageAsync(CreateSubscriptionPackageRequest request)
         {
-            if (package == null)
-                throw new ArgumentNullException(nameof(package));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
 
-            package.Id = Guid.NewGuid();
-            package.CreatedAt = DateTime.UtcNow;
-            package.UpdatedAt = DateTime.UtcNow;
+            var package = new SubscriptionPackage
+            {
+                Id = Guid.NewGuid(),
+                Name = request.Name,
+                Description = request.Description,
+                Price = request.Price,
+                DurationDays = request.DurationDays,
+                EnergyKwh = request.EnergyKwh,
+                IsActive = request.IsActive,
+                ValidFrom = request.ValidFrom,
+                ValidTo = request.ValidTo,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
             _context.SubscriptionPackages.Add(package);
             await _context.SaveChangesAsync();
@@ -48,23 +60,23 @@ namespace BusinessLayer.Services
             return package;
         }
 
-        public async Task<SubscriptionPackage?> UpdatePackageAsync(Guid id, SubscriptionPackage package)
+        public async Task<SubscriptionPackage?> UpdatePackageAsync(Guid id, UpdateSubscriptionPackageRequest request)
         {
-            if (package == null)
-                throw new ArgumentNullException(nameof(package));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
 
             var existing = await _context.SubscriptionPackages.FindAsync(id);
             if (existing == null)
                 return null;
 
-            existing.Name = package.Name;
-            existing.Description = package.Description;
-            existing.Price = package.Price;
-            existing.DurationDays = package.DurationDays;
-            existing.EnergyKwh = package.EnergyKwh;
-            existing.IsActive = package.IsActive;
-            existing.ValidFrom = package.ValidFrom;
-            existing.ValidTo = package.ValidTo;
+            existing.Name = request.Name;
+            existing.Description = request.Description;
+            existing.Price = request.Price;
+            existing.DurationDays = request.DurationDays;
+            existing.EnergyKwh = request.EnergyKwh;
+            existing.IsActive = request.IsActive;
+            existing.ValidFrom = request.ValidFrom;
+            existing.ValidTo = request.ValidTo;
             existing.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();

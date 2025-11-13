@@ -1,3 +1,4 @@
+using BusinessLayer.DTOs;
 using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
@@ -70,24 +71,35 @@ namespace BusinessLayer.Services
                 .ToListAsync();
         }
 
-        public async Task<ChargingSpot> CreateSpotAsync(ChargingSpot spot)
+        public async Task<ChargingSpot> CreateSpotAsync(CreateChargingSpotRequest request)
         {
-            if (spot == null)
-                throw new ArgumentNullException(nameof(spot));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
 
             // Kiểm tra station tồn tại
-            var stationExists = await _context.ChargingStations.AnyAsync(s => s.Id == spot.ChargingStationId);
+            var stationExists = await _context.ChargingStations.AnyAsync(s => s.Id == request.ChargingStationId);
             if (!stationExists)
                 throw new InvalidOperationException("Charging station does not exist");
 
             // Kiểm tra spot number đã tồn tại trong station chưa
-            var spotExists = await SpotNumberExistsInStationAsync(spot.ChargingStationId, spot.SpotNumber);
+            var spotExists = await SpotNumberExistsInStationAsync(request.ChargingStationId, request.SpotNumber);
             if (spotExists)
-                throw new InvalidOperationException($"Spot number {spot.SpotNumber} already exists in this station");
+                throw new InvalidOperationException($"Spot number {request.SpotNumber} already exists in this station");
 
-            spot.Id = Guid.NewGuid();
-            spot.CreatedAt = DateTime.UtcNow;
-            spot.UpdatedAt = DateTime.UtcNow;
+            var spot = new ChargingSpot
+            {
+                Id = Guid.NewGuid(),
+                SpotNumber = request.SpotNumber,
+                ChargingStationId = request.ChargingStationId,
+                Status = request.Status,
+                ConnectorType = request.ConnectorType,
+                PowerOutput = request.PowerOutput,
+                PricePerKwh = request.PricePerKwh,
+                Description = request.Description,
+                IsOnline = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
             _context.ChargingSpots.Add(spot);
             await _context.SaveChangesAsync();
@@ -95,29 +107,29 @@ namespace BusinessLayer.Services
             return spot;
         }
 
-        public async Task<ChargingSpot?> UpdateSpotAsync(Guid id, ChargingSpot spot)
+        public async Task<ChargingSpot?> UpdateSpotAsync(Guid id, UpdateChargingSpotRequest request)
         {
-            if (spot == null)
-                throw new ArgumentNullException(nameof(spot));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
 
             var existingSpot = await _context.ChargingSpots.FindAsync(id);
             if (existingSpot == null)
                 return null;
 
             // Kiểm tra spot number đã tồn tại trong station chưa (nếu thay đổi)
-            if (existingSpot.SpotNumber != spot.SpotNumber)
+            if (existingSpot.SpotNumber != request.SpotNumber)
             {
-                var spotExists = await SpotNumberExistsInStationAsync(existingSpot.ChargingStationId, spot.SpotNumber, id);
+                var spotExists = await SpotNumberExistsInStationAsync(existingSpot.ChargingStationId, request.SpotNumber, id);
                 if (spotExists)
-                    throw new InvalidOperationException($"Spot number {spot.SpotNumber} already exists in this station");
+                    throw new InvalidOperationException($"Spot number {request.SpotNumber} already exists in this station");
             }
 
-            existingSpot.SpotNumber = spot.SpotNumber;
-            existingSpot.Status = spot.Status;
-            existingSpot.ConnectorType = spot.ConnectorType;
-            existingSpot.PowerOutput = spot.PowerOutput;
-            existingSpot.PricePerKwh = spot.PricePerKwh;
-            existingSpot.Description = spot.Description;
+            existingSpot.SpotNumber = request.SpotNumber;
+            existingSpot.Status = request.Status;
+            existingSpot.ConnectorType = request.ConnectorType;
+            existingSpot.PowerOutput = request.PowerOutput;
+            existingSpot.PricePerKwh = request.PricePerKwh;
+            existingSpot.Description = request.Description;
             existingSpot.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();

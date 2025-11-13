@@ -71,7 +71,7 @@ namespace PresentationLayer.Controllers
                 return BadRequest(ModelState);
             }
 
-            var payment = new PaymentTransaction
+            var paymentRequest = new CreatePaymentRequest
             {
                 ReservationId = request.ReservationId,
                 ChargingSessionId = request.ChargingSessionId,
@@ -81,7 +81,7 @@ namespace PresentationLayer.Controllers
                 Description = request.Description
             };
 
-            var created = await _paymentService.CreatePaymentAsync(GetUserId(), payment);
+            var created = await _paymentService.CreatePaymentAsync(GetUserId(), paymentRequest);
             return CreatedAtAction(nameof(GetPaymentById), new { id = created.Id }, MapToDto(created));
         }
 
@@ -158,17 +158,16 @@ namespace PresentationLayer.Controllers
             else
             {
                 // Create new payment transaction with Cash method
-                payment = new PaymentTransaction
+                var paymentRequest = new CreatePaymentRequest
                 {
                     ChargingSessionId = request.SessionId,
                     Amount = request.Amount > 0 ? request.Amount : (session.Cost ?? 0),
                     Currency = "VND",
                     Method = PaymentMethod.Cash,
-                    Description = request.Description ?? $"Thanh toán tiền mặt cho phiên sạc {session.Id}",
-                    Status = PaymentStatus.Pending
+                    Description = request.Description ?? $"Thanh toán tiền mặt cho phiên sạc {session.Id}"
                 };
 
-                payment = await _paymentService.CreatePaymentAsync(userId, payment);
+                payment = await _paymentService.CreatePaymentAsync(userId, paymentRequest);
             }
 
             // Update payment status to Captured (for cash payment)
@@ -239,17 +238,16 @@ namespace PresentationLayer.Controllers
                 else
                 {
                     // Create new payment transaction
-                    payment = new PaymentTransaction
+                    var paymentRequest = new CreatePaymentRequest
                     {
                         ReservationId = request.ReservationId.Value,
                         Amount = amount,
                         Currency = "VND",
                         Method = PaymentMethod.VNPay,
-                        Description = description,
-                        Status = PaymentStatus.Pending
+                        Description = description
                     };
 
-                    payment = await _paymentService.CreatePaymentAsync(userId, payment);
+                    payment = await _paymentService.CreatePaymentAsync(userId, paymentRequest);
                 }
             }
             // Handle session payment
@@ -286,17 +284,16 @@ namespace PresentationLayer.Controllers
                 else
                 {
                     // Create new payment transaction
-                    payment = new PaymentTransaction
+                    var paymentRequest = new CreatePaymentRequest
                     {
                         ChargingSessionId = request.SessionId.Value,
                         Amount = amount,
                         Currency = "VND",
                         Method = PaymentMethod.VNPay,
-                        Description = description,
-                        Status = PaymentStatus.Pending
+                        Description = description
                     };
 
-                    payment = await _paymentService.CreatePaymentAsync(userId, payment);
+                    payment = await _paymentService.CreatePaymentAsync(userId, paymentRequest);
                 }
             }
             else

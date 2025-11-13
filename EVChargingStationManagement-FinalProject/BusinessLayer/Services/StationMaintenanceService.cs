@@ -1,3 +1,4 @@
+using BusinessLayer.DTOs;
 using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
@@ -83,27 +84,39 @@ namespace BusinessLayer.Services
                 .ToListAsync();
         }
 
-        public async Task<StationMaintenance> CreateMaintenanceAsync(StationMaintenance maintenance)
+        public async Task<StationMaintenance> CreateMaintenanceAsync(CreateStationMaintenanceRequest request)
         {
-            if (maintenance == null)
-                throw new ArgumentNullException(nameof(maintenance));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
 
             // Kiểm tra station tồn tại
-            var stationExists = await _context.ChargingStations.AnyAsync(s => s.Id == maintenance.ChargingStationId);
+            var stationExists = await _context.ChargingStations.AnyAsync(s => s.Id == request.ChargingStationId);
             if (!stationExists)
                 throw new InvalidOperationException("Charging station does not exist");
 
             // Kiểm tra spot tồn tại (nếu có)
-            if (maintenance.ChargingSpotId.HasValue)
+            if (request.ChargingSpotId.HasValue)
             {
-                var spotExists = await _context.ChargingSpots.AnyAsync(s => s.Id == maintenance.ChargingSpotId.Value);
+                var spotExists = await _context.ChargingSpots.AnyAsync(s => s.Id == request.ChargingSpotId.Value);
                 if (!spotExists)
                     throw new InvalidOperationException("Charging spot does not exist");
             }
 
-            maintenance.Id = Guid.NewGuid();
-            maintenance.CreatedAt = DateTime.UtcNow;
-            maintenance.UpdatedAt = DateTime.UtcNow;
+            var maintenance = new StationMaintenance
+            {
+                Id = Guid.NewGuid(),
+                ChargingStationId = request.ChargingStationId,
+                ChargingSpotId = request.ChargingSpotId,
+                ReportedByUserId = request.ReportedByUserId,
+                AssignedToUserId = request.AssignedToUserId,
+                ScheduledDate = request.ScheduledDate,
+                Status = request.Status,
+                Title = request.Title,
+                Description = request.Description,
+                Notes = request.Notes,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
             _context.StationMaintenances.Add(maintenance);
             await _context.SaveChangesAsync();
@@ -111,24 +124,42 @@ namespace BusinessLayer.Services
             return maintenance;
         }
 
-        public async Task<StationMaintenance?> UpdateMaintenanceAsync(Guid id, StationMaintenance maintenance)
+        public async Task<StationMaintenance?> UpdateMaintenanceAsync(Guid id, UpdateStationMaintenanceRequest request)
         {
-            if (maintenance == null)
-                throw new ArgumentNullException(nameof(maintenance));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
 
             var existingMaintenance = await _context.StationMaintenances.FindAsync(id);
             if (existingMaintenance == null)
                 return null;
 
-            existingMaintenance.ChargingSpotId = maintenance.ChargingSpotId;
-            existingMaintenance.AssignedToUserId = maintenance.AssignedToUserId;
-            existingMaintenance.ScheduledDate = maintenance.ScheduledDate;
-            existingMaintenance.StartDate = maintenance.StartDate;
-            existingMaintenance.EndDate = maintenance.EndDate;
-            existingMaintenance.Status = maintenance.Status;
-            existingMaintenance.Title = maintenance.Title;
-            existingMaintenance.Description = maintenance.Description;
-            existingMaintenance.Notes = maintenance.Notes;
+            if (request.ChargingSpotId.HasValue)
+            {
+                existingMaintenance.ChargingSpotId = request.ChargingSpotId;
+            }
+            if (request.AssignedToUserId.HasValue)
+            {
+                existingMaintenance.AssignedToUserId = request.AssignedToUserId;
+            }
+            if (request.ScheduledDate.HasValue)
+            {
+                existingMaintenance.ScheduledDate = request.ScheduledDate.Value;
+            }
+            if (request.StartDate.HasValue)
+            {
+                existingMaintenance.StartDate = request.StartDate;
+            }
+            if (request.EndDate.HasValue)
+            {
+                existingMaintenance.EndDate = request.EndDate;
+            }
+            existingMaintenance.Status = request.Status;
+            existingMaintenance.Title = request.Title;
+            existingMaintenance.Description = request.Description;
+            if (request.Notes != null)
+            {
+                existingMaintenance.Notes = request.Notes;
+            }
             existingMaintenance.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();

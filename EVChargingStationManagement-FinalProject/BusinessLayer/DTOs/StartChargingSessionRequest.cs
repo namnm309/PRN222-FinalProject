@@ -15,6 +15,10 @@ namespace BusinessLayer.DTOs
 
         public decimal? PricePerKwh { get; set; }
 
+        public decimal? TargetSocPercentage { get; set; }
+
+        public string? QrCode { get; set; }
+
         public string? Notes { get; set; }
     }
 }

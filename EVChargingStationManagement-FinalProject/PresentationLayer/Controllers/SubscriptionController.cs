@@ -1,6 +1,5 @@
 using BusinessLayer.DTOs;
 using BusinessLayer.Services;
-using DataAccessLayer.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,7 +22,7 @@ namespace PresentationLayer.Controllers
         public async Task<IActionResult> GetPackages([FromQuery] bool activeOnly = true)
         {
             var packages = await _subscriptionService.GetAllPackagesAsync(activeOnly);
-            var packageDTOs = packages.Select(p => new SubscriptionPackageDTO
+            var packageDTOs = packages.Select((DataAccessLayer.Entities.SubscriptionPackage p) => new SubscriptionPackageDTO
             {
                 Id = p.Id,
                 Name = p.Name,
@@ -74,19 +73,7 @@ namespace PresentationLayer.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var package = new SubscriptionPackage
-            {
-                Name = request.Name,
-                Description = request.Description,
-                Price = request.Price,
-                DurationDays = request.DurationDays,
-                EnergyKwh = request.EnergyKwh,
-                IsActive = request.IsActive,
-                ValidFrom = request.ValidFrom,
-                ValidTo = request.ValidTo
-            };
-
-            var created = await _subscriptionService.CreatePackageAsync(package);
+            var created = await _subscriptionService.CreatePackageAsync(request);
             return CreatedAtAction(nameof(GetPackageById), new { id = created.Id }, new SubscriptionPackageDTO
             {
                 Id = created.Id,
@@ -110,19 +97,7 @@ namespace PresentationLayer.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var package = new SubscriptionPackage
-            {
-                Name = request.Name,
-                Description = request.Description,
-                Price = request.Price,
-                DurationDays = request.DurationDays,
-                EnergyKwh = request.EnergyKwh,
-                IsActive = request.IsActive,
-                ValidFrom = request.ValidFrom,
-                ValidTo = request.ValidTo
-            };
-
-            var updated = await _subscriptionService.UpdatePackageAsync(id, package);
+            var updated = await _subscriptionService.UpdatePackageAsync(id, request);
             if (updated == null)
                 return NotFound(new { message = "Package not found" });
 
@@ -202,7 +177,7 @@ namespace PresentationLayer.Controllers
                 return Unauthorized();
 
             var subscriptions = await _subscriptionService.GetUserSubscriptionsAsync(userId, activeOnly);
-            var dtos = subscriptions.Select(s => new UserSubscriptionDTO
+            var dtos = subscriptions.Select((DataAccessLayer.Entities.UserSubscription s) => new UserSubscriptionDTO
             {
                 Id = s.Id,
                 UserId = s.UserId,

@@ -7,8 +7,8 @@ namespace BusinessLayer.Services
     {
         Task<IEnumerable<SubscriptionPackage>> GetAllPackagesAsync(bool activeOnly = false);
         Task<SubscriptionPackage?> GetPackageByIdAsync(Guid id);
-        Task<SubscriptionPackage> CreatePackageAsync(SubscriptionPackage package);
-        Task<SubscriptionPackage?> UpdatePackageAsync(Guid id, SubscriptionPackage package);
+        Task<SubscriptionPackage> CreatePackageAsync(CreateSubscriptionPackageRequest request);
+        Task<SubscriptionPackage?> UpdatePackageAsync(Guid id, UpdateSubscriptionPackageRequest request);
         Task<bool> DeletePackageAsync(Guid id);
         Task<UserSubscription> PurchaseSubscriptionAsync(Guid userId, Guid packageId, string paymentMethod);
         Task<IEnumerable<UserSubscription>> GetUserSubscriptionsAsync(Guid userId, bool activeOnly = false);
