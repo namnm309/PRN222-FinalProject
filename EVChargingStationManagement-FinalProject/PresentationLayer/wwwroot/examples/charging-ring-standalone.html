@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChargingRing Component - Standalone Example</title>
+    <link rel="stylesheet" href="../css/charging-ring.css">
+    <style>
+        /* Demo page styles */
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #f6f8fb 0%, #e2e8f0 100%);
+            margin: 0;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+        
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #0f172a;
+            margin-bottom: 40px;
+        }
+        
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+        
+        .demo-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+        
+        .demo-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .controls {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e2e8f0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .value-display {
+            font-size: 16px;
+            font-weight: 600;
+            color: #0f172a;
+            text-align: center;
+            margin-top: 10px;
+        }
+        
+        .status-select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #ffffff;
+            color: #0f172a;
+            cursor: pointer;
+        }
+        
+        .status-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>ChargingRing Component - Xiaomi Style</h1>
+        
+        <div class="demo-grid">
+            <!-- Battery Gauge Example -->
+            <div class="demo-card">
+                <div class="demo-title">Mức Pin (Battery Level)</div>
+                <div id="battery-gauge" style="width: 100%;"></div>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Giá trị pin (%): <span id="battery-value-display">72.0</span>%</label>
+                        <input type="range" id="battery-slider" min="0" max="100" value="72" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label>Trạng thái:</label>
+                        <select id="battery-status" class="status-select">
+                            <option value="ĐANG SẠC">ĐANG SẠC</option>
+                            <option value="ĐÃ HOÀN TẤT">ĐÃ HOÀN TẤT</option>
+                            <option value="PIN THẤP">PIN THẤP</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Power Gauge Example -->
+            <div class="demo-card">
+                <div class="demo-title">Công Suất Sạc (Power)</div>
+                <div id="power-gauge" style="width: 100%;"></div>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Công suất (kW): <span id="power-value-display">104.3</span> kW</label>
+                        <input type="range" id="power-slider" min="0" max="150" value="104.3" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label>Trạng thái:</label>
+                        <select id="power-status" class="status-select">
+                            <option value="ĐANG SẠC">ĐANG SẠC</option>
+                            <option value="ĐÃ HOÀN TẤT">ĐÃ HOÀN TẤT</option>
+                            <option value="CÔNG SUẤT THẤP">CÔNG SUẤT THẤP</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="../js/charging-ring.js"></script>
+    <script>
+        // Initialize Battery Gauge
+        const batteryContainer = document.getElementById('battery-gauge');
+        batteryContainer.id = 'battery-gauge-container';
+        const batteryGauge = new ChargingRing(batteryContainer, {
+            value: 72,
+            min: 0,
+            max: 100,
+            unit: '%',
+            mainLabel: 'MỨC PIN',
+            status: 'ĐANG SẠC',
+            type: 'battery'
+        });
+        
+        // Initialize Power Gauge
+        const powerContainer = document.getElementById('power-gauge');
+        powerContainer.id = 'power-gauge-container';
+        const powerGauge = new ChargingRing(powerContainer, {
+            value: 104.3,
+            min: 0,
+            max: 150,
+            unit: 'kW',
+            mainLabel: 'CÔNG SUẤT SẠC',
+            status: 'ĐANG SẠC',
+            type: 'power'
+        });
+        
+        // Battery slider control
+        const batterySlider = document.getElementById('battery-slider');
+        const batteryValueDisplay = document.getElementById('battery-value-display');
+        const batteryStatusSelect = document.getElementById('battery-status');
+        
+        batterySlider.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            batteryValueDisplay.textContent = value.toFixed(1);
+            batteryGauge.update(value, batteryStatusSelect.value);
+        });
+        
+        batteryStatusSelect.addEventListener('change', (e) => {
+            batteryGauge.update(parseFloat(batterySlider.value), e.target.value);
+        });
+        
+        // Power slider control
+        const powerSlider = document.getElementById('power-slider');
+        const powerValueDisplay = document.getElementById('power-value-display');
+        const powerStatusSelect = document.getElementById('power-status');
+        
+        powerSlider.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            powerValueDisplay.textContent = value.toFixed(1);
+            powerGauge.update(value, powerStatusSelect.value);
+        });
+        
+        powerStatusSelect.addEventListener('change', (e) => {
+            powerGauge.update(parseFloat(powerSlider.value), e.target.value);
+        });
+        
+        // Simulate charging animation
+        let batteryValue = 72;
+        let powerValue = 104.3;
+        let charging = true;
+        
+        setInterval(() => {
+            if (charging) {
+                // Simulate battery charging
+                if (batteryValue < 100) {
+                    batteryValue += 0.1;
+                    batterySlider.value = batteryValue;
+                    batteryValueDisplay.textContent = batteryValue.toFixed(1);
+                    batteryGauge.update(batteryValue, 'ĐANG SẠC');
+                } else {
+                    charging = false;
+                    batteryGauge.update(100, 'ĐÃ HOÀN TẤT');
+                }
+                
+                // Simulate power variation
+                powerValue = 104.3 + (Math.random() - 0.5) * 4;
+                powerSlider.value = powerValue;
+                powerValueDisplay.textContent = powerValue.toFixed(1);
+                powerGauge.update(powerValue, 'ĐANG SẠC');
+            }
+        }, 100);
+    </script>
+</body>
+</html>
+

@@ -8,6 +8,7 @@ namespace BusinessLayer.Services
         string CreatePaymentUrl(PaymentTransaction payment, string returnUrl, string ipAddress);
         VnPayCallbackResult ValidateCallback(Dictionary<string, string> queryParams);
         bool VerifySignature(Dictionary<string, string> data, string signature);
+        string GetConfiguredReturnUrl();
     }
 }
 
