@@ -28,16 +28,36 @@ namespace BusinessLayer.Services
             _ipnUrl = _configuration["VNPay:IpnUrl"] ?? "";
         }
 
+        /// <summary>
+        /// Gets the configured return URL from appsettings.json
+        /// This should be set to ngrok URL or production domain to avoid VNPay error 72
+        /// </summary>
+        public string GetConfiguredReturnUrl()
+        {
+            return _returnUrl;
+        }
+
         public string CreatePaymentUrl(PaymentTransaction payment, string returnUrl, string ipAddress)
         {
+            // Validate configuration
+            if (string.IsNullOrWhiteSpace(_tmnCode))
+            {
+                throw new InvalidOperationException("VNPay TmnCode is not configured. Please set VNPay:TmnCode in appsettings.json");
+            }
+
+            if (string.IsNullOrWhiteSpace(_hashSecret))
+            {
+                throw new InvalidOperationException("VNPay HashSecret is not configured. Please set VNPay:HashSecret in appsettings.json");
+            }
+
             var vnpay = new Dictionary<string, string>
             {
                 { "vnp_Version", "2.1.0" },
                 { "vnp_Command", "pay" },
                 { "vnp_TmnCode", _tmnCode },
-                { "vnp_Amount", ((long)(payment.Amount * 100)).ToString() }, // VNPay expects amount in cents
+                { "vnp_Amount", ((long)Math.Round(payment.Amount * 100, 0)).ToString() }, // VNPay expects amount in cents, round to avoid precision issues
                 { "vnp_CurrCode", "VND" },
-                { "vnp_TxnRef", payment.Id.ToString() },
+                { "vnp_TxnRef", payment.Id.ToString("N") }, // Format Guid without dashes for VNPay compatibility
                 { "vnp_OrderInfo", $"Thanh toan don hang {payment.Id}" },
                 { "vnp_OrderType", "other" },
                 { "vnp_Locale", "vn" },

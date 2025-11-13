@@ -2266,8 +2266,10 @@
                                     
                                     if (paymentResponse.ok) {
                                         var paymentData = await paymentResponse.json();
-                                        if (paymentData.paymentUrl) {
-                                            window.location.href = paymentData.paymentUrl;
+                                        // Handle both camelCase and PascalCase
+                                        var paymentUrl = paymentData.paymentUrl || paymentData.PaymentUrl;
+                                        if (paymentUrl) {
+                                            window.location.href = paymentUrl;
                                             return;
                                         } else {
                                             console.error('Payment URL not found in response:', paymentData);
