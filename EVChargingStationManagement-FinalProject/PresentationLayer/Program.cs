@@ -216,6 +216,7 @@ namespace PresentationLayer
             app.MapRazorPages();
             app.MapControllers();
             app.MapHub<StationHub>("/hubs/station");
+            app.MapHub<UserHub>("/hubs/user");
             app.MapHealthChecks("/health");
 
             app.Run();

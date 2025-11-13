@@ -59,23 +59,11 @@
             <h3>Phiên sạc gần đây</h3>
             <button class="btn btn-sm btn-outline-primary" data-refresh-sessions>Tải lại</button>
         </div>
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Thời gian</th>
-                        <th>Trạm/Điểm</th>
-                        <th>Trạng thái</th>
-                        <th>Năng lượng (kWh)</th>
-                        <th>Chi phí (VND)</th>
-                    </tr>
-                </thead>
-                <tbody data-session-list>
-                    <tr>
-                        <td colspan="5" class="text-center">Đang tải dữ liệu...</td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="chart-container" style="position: relative; height: 300px; padding: 1rem;">
+            <canvas id="sessionsStatusChart" data-session-chart></canvas>
+            <div data-session-chart-empty class="text-center text-muted" style="display: none; padding: 2rem;">
+                Chưa có dữ liệu phiên sạc
+            </div>
         </div>
     </div>
     <div class="dashboard-panel">
@@ -83,22 +71,11 @@
             <h3>Lịch đặt chỗ sắp tới</h3>
             <button class="btn btn-sm btn-outline-primary" data-refresh-reservations>Tải lại</button>
         </div>
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Bắt đầu</th>
-                        <th>Khách hàng</th>
-                        <th>Trạm/Điểm</th>
-                        <th>Trạng thái</th>
-                    </tr>
-                </thead>
-                <tbody data-reservation-list>
-                    <tr>
-                        <td colspan="4" class="text-center">Đang tải dữ liệu...</td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="chart-container" style="position: relative; height: 300px; padding: 1rem;">
+            <canvas id="reservationsTrendChart" data-reservation-chart></canvas>
+            <div data-reservation-chart-empty class="text-center text-muted" style="display: none; padding: 2rem;">
+                Chưa có dữ liệu đặt chỗ
+            </div>
         </div>
     </div>
 </section>
