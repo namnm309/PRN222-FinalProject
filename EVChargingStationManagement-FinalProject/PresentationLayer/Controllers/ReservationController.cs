@@ -101,6 +101,8 @@ namespace PresentationLayer.Controllers
                 if (stationId != Guid.Empty)
                 {
                     await NotifyStationAvailabilityAsync(stationId);
+                    // Notify spots list updated to refresh dropdown
+                    await _notifier.NotifySpotsListUpdatedAsync(stationId);
                 }
                 
                 return CreatedAtAction(nameof(GetReservationById), new { id = created.Id }, MapToDto(created));
@@ -137,15 +139,17 @@ namespace PresentationLayer.Controllers
             await _notifier.NotifyReservationChangedAsync(updated);
             
             // Notify station availability change when status changes (Confirmed, Cancelled, Completed)
-            if (updated.Status == ReservationStatus.Confirmed || 
-                updated.Status == ReservationStatus.Cancelled || 
-                updated.Status == ReservationStatus.Completed)
+            var stationId = updated.ChargingSpot?.ChargingStationId ?? Guid.Empty;
+            if (stationId != Guid.Empty)
             {
-                var stationId = updated.ChargingSpot?.ChargingStationId ?? Guid.Empty;
-                if (stationId != Guid.Empty)
+                if (updated.Status == ReservationStatus.Confirmed || 
+                    updated.Status == ReservationStatus.Cancelled || 
+                    updated.Status == ReservationStatus.Completed)
                 {
                     await NotifyStationAvailabilityAsync(stationId);
                 }
+                // Always notify spots list updated when reservation status changes
+                await _notifier.NotifySpotsListUpdatedAsync(stationId);
             }
             
             return Ok(MapToDto(updated));
@@ -174,6 +178,8 @@ namespace PresentationLayer.Controllers
                 if (stationId != Guid.Empty)
                 {
                     await NotifyStationAvailabilityAsync(stationId);
+                    // Notify spots list updated to refresh dropdown
+                    await _notifier.NotifySpotsListUpdatedAsync(stationId);
                 }
             }
 

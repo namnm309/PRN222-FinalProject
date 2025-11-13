@@ -14,6 +14,8 @@ namespace BusinessLayer.DTOs
         public Guid? VehicleId { get; set; }
         public string? VehicleName { get; set; }
         public Guid? ReservationId { get; set; }
+        public DateTime? ScheduledStartTime { get; set; }
+        public DateTime? ScheduledEndTime { get; set; }
         public ChargingSessionStatus Status { get; set; }
         public DateTime SessionStartTime { get; set; }
         public DateTime? SessionEndTime { get; set; }

@@ -1,9 +1,11 @@
 using System.Linq;
 using BusinessLayer.Services;
+using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using BusinessLayer.DTOs;
 
 namespace PresentationLayer.Controllers
@@ -15,11 +17,13 @@ namespace PresentationLayer.Controllers
     {
         private readonly IChargingSpotService _spotService;
         private readonly IRealtimeNotifier _notifier;
+        private readonly EVDbContext _context;
 
-        public ChargingSpotController(IChargingSpotService spotService, IRealtimeNotifier notifier)
+        public ChargingSpotController(IChargingSpotService spotService, IRealtimeNotifier notifier, EVDbContext context)
         {
             _spotService = spotService;
             _notifier = notifier;
+            _context = context;
         }
 
         [HttpGet]
@@ -53,6 +57,45 @@ namespace PresentationLayer.Controllers
         {
             var spots = await _spotService.GetAvailableSpotsByStationIdAsync(stationId);
             var spotDTOs = spots.Select(s => MapToDTO(s)).ToList();
+            return Ok(spotDTOs);
+        }
+
+        [HttpGet("station/{stationId}/all")]
+        public async Task<IActionResult> GetAllSpotsByStationIdWithReservationInfo(Guid stationId)
+        {
+            var now = DateTime.UtcNow;
+            var spots = await _spotService.GetSpotsByStationIdAsync(stationId);
+            
+            // Get all active reservations for these spots
+            var spotIds = spots.Select(s => s.Id).ToList();
+            var activeReservations = await _context.Reservations
+                .Where(r => spotIds.Contains(r.ChargingSpotId) &&
+                           (r.Status == ReservationStatus.Pending ||
+                            r.Status == ReservationStatus.Confirmed ||
+                            r.Status == ReservationStatus.CheckedIn) &&
+                           r.ScheduledEndTime > now)
+                .Select(r => r.ChargingSpotId)
+                .Distinct()
+                .ToListAsync();
+            
+            // Get active sessions
+            var activeSessions = await _context.ChargingSessions
+                .Where(cs => spotIds.Contains(cs.ChargingSpotId) && 
+                            cs.Status == ChargingSessionStatus.InProgress)
+                .Select(cs => cs.ChargingSpotId)
+                .Distinct()
+                .ToListAsync();
+            
+            var spotDTOs = spots.Select(s => 
+            {
+                var dto = MapToDTO(s);
+                dto.IsReserved = activeReservations.Contains(s.Id);
+                dto.IsAvailable = s.Status == SpotStatus.Available && 
+                                 !activeReservations.Contains(s.Id) && 
+                                 !activeSessions.Contains(s.Id);
+                return dto;
+            }).ToList();
+            
             return Ok(spotDTOs);
         }
 
@@ -164,7 +207,9 @@ namespace PresentationLayer.Controllers
                 PricePerKwh = spot.PricePerKwh,
                 Description = spot.Description,
                 CreatedAt = spot.CreatedAt,
-                UpdatedAt = spot.UpdatedAt
+                UpdatedAt = spot.UpdatedAt,
+                IsReserved = false, // Will be set by caller if needed
+                IsAvailable = false // Will be set by caller if needed
             };
         }
     }

@@ -13,6 +13,25 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('station-select').addEventListener('change', handleStationSelect);
     document.getElementById('btn-scan-qr').addEventListener('click', handleQrScanned);
     document.getElementById('manual-qr-input').addEventListener('input', handleManualQrInput);
+    
+    // Add vehicle modal
+    const btnAddVehicle = document.getElementById('btn-add-vehicle');
+    if (btnAddVehicle) {
+        btnAddVehicle.addEventListener('click', openAddVehicleModal);
+    }
+    
+    const btnSaveVehicle = document.getElementById('btn-save-vehicle');
+    if (btnSaveVehicle) {
+        btnSaveVehicle.addEventListener('click', handleSaveVehicle);
+    }
+    
+    // Load spots when modal opens
+    const addVehicleModal = document.getElementById('addVehicleModal');
+    if (addVehicleModal) {
+        addVehicleModal.addEventListener('show.bs.modal', function() {
+            loadSpotsForAddVehicleModal();
+        });
+    }
 });
 
 async function initializeForm() {
@@ -182,6 +201,9 @@ async function handleSpotSelect(e) {
     
     document.getElementById('spot-id').value = spotId;
     await loadSpotAndQrCode(spotId);
+    
+    // Validate compatibility sau khi chọn spot
+    validateVehicleSpotCompatibility();
 }
 
 async function loadSpotAndQrCode(spotId) {
@@ -280,6 +302,13 @@ async function loadVehicles() {
                         ? `${vehicle.make} ${vehicle.model} (${vehicle.licensePlate})`
                         : `${vehicle.make} ${vehicle.model}`;
                     option.textContent = displayText;
+                    // Lưu preferred spot ID vào data attribute để validate sau
+                    const preferredSpotId = getPreferredSpotId(vehicle);
+                    if (preferredSpotId) {
+                        option.dataset.preferredSpotId = preferredSpotId;
+                    }
+                    // Lưu toàn bộ vehicle object vào dataset để dễ truy cập
+                    option.dataset.vehicleData = JSON.stringify(vehicle);
                     select.appendChild(option);
                 });
             } else {
@@ -293,8 +322,54 @@ async function loadVehicles() {
         select.innerHTML = '<option value="">-- Lỗi tải dữ liệu --</option>';
     }
     
-    // Add change listener để update button state
-    select.addEventListener('change', updateStartButtonState);
+    // Add change listener để update button state và validate spot
+    select.addEventListener('change', function() {
+        updateStartButtonState();
+        validateVehicleSpotCompatibility();
+    });
+}
+
+// Helper function để lấy preferred spot ID từ vehicle notes
+function getPreferredSpotId(vehicle) {
+    if (!vehicle || !vehicle.notes) return null;
+    const match = vehicle.notes.match(/PREFERRED_SPOT_ID:([a-f0-9-]+)/i);
+    return match ? match[1] : null;
+}
+
+// Validate xem xe đã chọn có compatible với cổng sạc đã chọn không
+function validateVehicleSpotCompatibility() {
+    const vehicleSelect = document.getElementById('vehicle-select');
+    const spotSelect = document.getElementById('spot-select');
+    
+    if (!vehicleSelect || !spotSelect) return;
+    
+    const selectedVehicleOption = vehicleSelect.options[vehicleSelect.selectedIndex];
+    const selectedSpotId = spotSelect.value;
+    
+    if (!selectedVehicleOption || !selectedVehicleOption.value || !selectedSpotId) {
+        return; // Chưa chọn đủ, không validate
+    }
+    
+    const preferredSpotId = selectedVehicleOption.dataset.preferredSpotId;
+    
+    if (preferredSpotId && preferredSpotId !== selectedSpotId) {
+        // Xe có cổng sạc ưa thích nhưng không khớp với cổng đã chọn
+        const vehicleData = JSON.parse(selectedVehicleOption.dataset.vehicleData || '{}');
+        const vehicleName = vehicleData.licensePlate 
+            ? `${vehicleData.make} ${vehicleData.model} (${vehicleData.licensePlate})`
+            : `${vehicleData.make} ${vehicleData.model}`;
+        
+        alert(`Cảnh báo: Xe "${vehicleName}" chỉ tương thích với cổng sạc đã đăng ký. Vui lòng chọn cổng sạc phù hợp hoặc chọn xe khác.`);
+        
+        // Disable nút bắt đầu sạc
+        const btnStart = document.getElementById('btn-start-charging');
+        if (btnStart) {
+            btnStart.disabled = true;
+        }
+    } else {
+        // Khớp hoặc không có preferred spot, enable nút
+        updateStartButtonState();
+    }
 }
 
 async function handleStartCharging(e) {
@@ -326,6 +401,25 @@ async function handleStartCharging(e) {
     if (!spotId) {
         alert('Vui lòng chọn cổng sạc');
         return;
+    }
+    
+    // Validate vehicle-spot compatibility trước khi submit
+    const vehicleSelect = document.getElementById('vehicle-select');
+    const spotSelect = document.getElementById('spot-select');
+    if (vehicleSelect && spotSelect) {
+        const selectedVehicleOption = vehicleSelect.options[vehicleSelect.selectedIndex];
+        const selectedSpotId = spotSelect.value;
+        if (selectedVehicleOption && selectedVehicleOption.value && selectedSpotId) {
+            const preferredSpotId = selectedVehicleOption.dataset.preferredSpotId;
+            if (preferredSpotId && preferredSpotId !== selectedSpotId) {
+                const vehicleData = JSON.parse(selectedVehicleOption.dataset.vehicleData || '{}');
+                const vehicleName = vehicleData.licensePlate 
+                    ? `${vehicleData.make} ${vehicleData.model} (${vehicleData.licensePlate})`
+                    : `${vehicleData.make} ${vehicleData.model}`;
+                alert(`Không thể bắt đầu sạc: Xe "${vehicleName}" chỉ tương thích với cổng sạc đã đăng ký. Vui lòng chọn cổng sạc phù hợp hoặc chọn xe khác.`);
+                return;
+            }
+        }
     }
 
     const submitBtn = document.getElementById('btn-start-charging');
@@ -364,4 +458,134 @@ async function handleStartCharging(e) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Bắt đầu sạc';
     }
+}
+
+// Add Vehicle Modal Functions
+function openAddVehicleModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addVehicleModal'));
+    modal.show();
+}
+
+async function loadSpotsForAddVehicleModal() {
+    const select = document.getElementById('add-vehicle-spot-select');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">-- Đang tải --</option>';
+    
+    try {
+        // Load tất cả stations và spots
+        const stationsResponse = await fetch('/api/ChargingStation', {
+            credentials: 'include'
+        });
+        
+        if (stationsResponse.ok) {
+            const stations = await stationsResponse.json();
+            select.innerHTML = '<option value="">-- Chọn cổng sạc (tùy chọn) --</option>';
+            
+            // Load spots từ tất cả stations
+            for (const station of stations) {
+                try {
+                    const spotsResponse = await fetch(`/api/ChargingSpot/station/${station.id}`, {
+                        credentials: 'include'
+                    });
+                    if (spotsResponse.ok) {
+                        const spots = await spotsResponse.json();
+                        spots.forEach(spot => {
+                            const option = document.createElement('option');
+                            option.value = spot.id;
+                            option.textContent = `${station.name} - Cổng ${spot.spotNumber} (${spot.connectorType || 'N/A'})`;
+                            select.appendChild(option);
+                        });
+                    }
+                } catch (err) {
+                    console.error(`Error loading spots for station ${station.id}:`, err);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading spots:', error);
+        select.innerHTML = '<option value="">-- Lỗi tải dữ liệu --</option>';
+    }
+}
+
+async function handleSaveVehicle() {
+    const form = document.getElementById('add-vehicle-form');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    const make = document.getElementById('vehicle-make').value.trim();
+    const licensePlate = document.getElementById('vehicle-license-plate').value.trim();
+    const model = document.getElementById('vehicle-model').value.trim() || make; // Nếu không có model, dùng make
+    const spotId = document.getElementById('add-vehicle-spot-select').value;
+    
+    if (!make || !licensePlate) {
+        alert('Vui lòng nhập đầy đủ hãng xe và biển số.');
+        return;
+    }
+    
+    const btnSave = document.getElementById('btn-save-vehicle');
+    btnSave.disabled = true;
+    btnSave.textContent = 'Đang lưu...';
+    
+    try {
+        // Lưu preferred spot ID vào Notes nếu có chọn
+        let notes = '';
+        if (spotId) {
+            notes = `PREFERRED_SPOT_ID:${spotId}`;
+        }
+        
+        const vehicleData = {
+            make: make,
+            model: model,
+            licensePlate: licensePlate,
+            vehicleType: 'Car', // Mặc định là Car
+            isPrimary: false,
+            notes: notes || null
+        };
+        
+        const response = await fetch('/api/Vehicle', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(vehicleData)
+        });
+        
+        if (response.ok) {
+            const newVehicle = await response.json();
+            
+            // Đóng modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addVehicleModal'));
+            modal.hide();
+            
+            // Reset form
+            form.reset();
+            
+            // Reload danh sách xe và chọn xe vừa thêm
+            await loadVehicles();
+            document.getElementById('vehicle-select').value = newVehicle.id;
+            updateStartButtonState();
+            
+            alert('Thêm xe thành công!');
+        } else {
+            const error = await response.json();
+            alert('Lỗi: ' + (error.message || 'Không thể thêm xe'));
+        }
+    } catch (error) {
+        console.error('Error saving vehicle:', error);
+        alert('Có lỗi xảy ra. Vui lòng thử lại.');
+    } finally {
+        btnSave.disabled = false;
+        btnSave.textContent = 'Lưu';
+    }
+}
+
+// Helper function để lấy preferred spot ID từ vehicle notes
+function getPreferredSpotId(vehicle) {
+    if (!vehicle || !vehicle.notes) return null;
+    const match = vehicle.notes.match(/PREFERRED_SPOT_ID:([a-f0-9-]+)/i);
+    return match ? match[1] : null;
 }
