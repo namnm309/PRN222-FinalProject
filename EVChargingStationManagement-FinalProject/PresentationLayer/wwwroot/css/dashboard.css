@@ -92,4 +92,389 @@ body.sidebar-collapsed .dashboard-root { grid-template-columns: 80px 1fr; }
   .content-grid { grid-template-columns: 1fr; }
 }
 
+/* Car Dashboard Style Gauges */
+.car-gauge-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
+                inset 0 0 60px rgba(59, 130, 246, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.car-gauge-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at center, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.car-gauge-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    height: 250px;
+}
+
+.car-gauge {
+    width: 100%;
+    height: 100%;
+    display: block;
+    filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.3));
+}
+
+.car-gauge-center-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -20%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.car-gauge-main-value {
+    font-size: 56px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1;
+    margin-bottom: 4px;
+    transition: all 0.3s ease;
+    text-shadow: 0 0 20px rgba(59, 130, 246, 0.8),
+                 0 0 40px rgba(59, 130, 246, 0.4),
+                 0 2px 4px rgba(0, 0, 0, 0.5);
+    font-family: 'Arial', sans-serif;
+    letter-spacing: -2px;
+}
+
+.car-gauge-unit {
+    font-size: 20px;
+    font-weight: 600;
+    color: #94a3b8;
+    margin-bottom: 8px;
+    text-shadow: 0 0 10px rgba(148, 163, 184, 0.5);
+    letter-spacing: 1px;
+}
+
+.car-gauge-label {
+    font-size: 12px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 600;
+    text-shadow: 0 0 5px rgba(100, 116, 139, 0.3);
+}
+
+.progress-section {
+    margin-top: 20px;
+}
+
+.progress-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.progress-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #3b82f6;
+}
+
+.progress-details {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.stat-box {
+    text-align: center;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+/* Gauges Row - Side by Side Layout */
+.gauges-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+    .gauges-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Fuel Gauge Style (Full Circle) - Xiaomi Style Enhanced */
+.fuel-gauge-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+    border-radius: 24px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(59,130,246,0.1);
+    box-shadow: 
+        0 4px 20px rgba(0,0,0,0.05),
+        inset 0 0 40px rgba(59,130,246,0.03);
+}
+
+.fuel-gauge-container::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%);
+    animation: xiaomiGlow 4s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes xiaomiGlow {
+    0%, 100% { 
+        opacity: 0.5;
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.8;
+        transform: scale(1.1);
+    }
+}
+
+.fuel-gauge-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    z-index: 1;
+}
+
+.fuel-gauge {
+    width: 100%;
+    height: 100%;
+    display: block;
+    filter: drop-shadow(0 4px 12px rgba(59,130,246,0.15));
+    animation: xiaomiPulse 3s ease-in-out infinite;
+}
+
+@keyframes xiaomiPulse {
+    0%, 100% { 
+        filter: drop-shadow(0 4px 12px rgba(59,130,246,0.15));
+    }
+    50% { 
+        filter: drop-shadow(0 6px 20px rgba(59,130,246,0.25));
+    }
+}
+
+.fuel-gauge-center-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 10;
+    width: 160px;
+}
+
+.fuel-gauge-main-value {
+    font-size: 56px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #1e293b 0%, #3b82f6 50%, #10b981 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+    margin-bottom: 4px;
+    transition: all 0.3s ease;
+    font-family: 'Arial', 'Helvetica', sans-serif;
+    letter-spacing: -2px;
+    text-shadow: 0 0 30px rgba(59,130,246,0.3);
+    animation: xiaomiValueGlow 2s ease-in-out infinite;
+}
+
+@keyframes xiaomiValueGlow {
+    0%, 100% { 
+        filter: brightness(1);
+    }
+    50% { 
+        filter: brightness(1.15);
+    }
+}
+
+.fuel-gauge-unit {
+    font-size: 20px;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+    opacity: 0.9;
+}
+
+.fuel-gauge-label {
+    font-size: 13px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    opacity: 0.8;
+}
+
+.fuel-gauge-status {
+    font-size: 11px;
+    color: #10b981;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    margin-top: 4px;
+    text-shadow: 0 0 10px rgba(16,185,129,0.4);
+    animation: xiaomiStatusPulse 2s ease-in-out infinite;
+}
+
+@keyframes xiaomiStatusPulse {
+    0%, 100% { 
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+/* Color variations for different SOC levels - Xiaomi Style */
+.fuel-gauge-container.soc-low .fuel-gauge-main-value {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 30px rgba(239,68,68,0.3);
+}
+
+.fuel-gauge-container.soc-medium .fuel-gauge-main-value {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 30px rgba(245,158,11,0.3);
+}
+
+.fuel-gauge-container.soc-high .fuel-gauge-main-value {
+    background: linear-gradient(135deg, #10b981 0%, #16a34a 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 30px rgba(16,185,129,0.3);
+}
+
+/* Particle animation for energy effect */
+@keyframes particlePulse {
+    0%, 100% { 
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.8;
+        transform: scale(1.5);
+    }
+}
+
+/* Additional Xiaomi style enhancements */
+.fuel-gauge-container:hover {
+    transform: scale(1.01);
+    transition: transform 0.3s ease;
+}
+
+.fuel-gauge-container:hover .fuel-gauge-main-value {
+    filter: brightness(1.1);
+}
+
+/* Energy flow lines effect */
+@keyframes energyFlow {
+    0% {
+        opacity: 0;
+        transform: translateY(0);
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+}
+
+/* Stats and Actions Row */
+.stats-actions-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 20px;
+    align-items: start;
+    margin-top: 20px;
+}
+
+@media (max-width: 992px) {
+    .stats-actions-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Actions Section */
+.actions-section {
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (max-width: 992px) {
+    .actions-section {
+        width: 100%;
+    }
+}
+
 
