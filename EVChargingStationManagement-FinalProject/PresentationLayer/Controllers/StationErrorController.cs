@@ -1,6 +1,4 @@
 using BusinessLayer.Services;
-using DataAccessLayer.Entities;
-using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using BusinessLayer.DTOs;
@@ -55,7 +53,7 @@ namespace PresentationLayer.Controllers
         }
 
         [HttpGet("status/{status}")]
-        public async Task<IActionResult> GetErrorsByStatus(ErrorStatus status)
+        public async Task<IActionResult> GetErrorsByStatus(DataAccessLayer.Enums.ErrorStatus status)
         {
             var errors = await _errorService.GetErrorsByStatusAsync(status);
             var errorDTOs = errors.Select(e => MapToDTO(e)).ToList();
@@ -79,13 +77,12 @@ namespace PresentationLayer.Controllers
             try
             {
                 // Get userId from User context if not provided in request
-                var reportedByUserId = request.ReportedByUserId;
-                if (reportedByUserId == Guid.Empty)
+                if (request.ReportedByUserId == Guid.Empty)
                 {
                     var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
                     if (userIdClaim != null && Guid.TryParse(userIdClaim, out var userId))
                     {
-                        reportedByUserId = userId;
+                        request.ReportedByUserId = userId;
                     }
                     else
                     {
@@ -93,19 +90,7 @@ namespace PresentationLayer.Controllers
                     }
                 }
 
-                var error = new StationError
-                {
-                    ChargingStationId = request.ChargingStationId,
-                    ChargingSpotId = request.ChargingSpotId,
-                    ReportedByUserId = reportedByUserId,
-                    Status = request.Status,
-                    ErrorCode = request.ErrorCode,
-                    Title = request.Title,
-                    Description = request.Description,
-                    Severity = request.Severity
-                };
-
-                var createdError = await _errorService.CreateErrorAsync(error);
+                var createdError = await _errorService.CreateErrorAsync(request);
                 return CreatedAtAction(nameof(GetErrorById), new { id = createdError.Id }, MapToDTO(createdError));
             }
             catch (InvalidOperationException ex)
@@ -125,16 +110,25 @@ namespace PresentationLayer.Controllers
             if (existingError == null)
                 return NotFound(new { message = "Error record not found" });
 
-            var error = new StationError
+            // Set default values from existing error if not provided in request
+            if (!request.ResolvedByUserId.HasValue && existingError.ResolvedByUserId.HasValue)
             {
-                ResolvedByUserId = request.ResolvedByUserId ?? existingError.ResolvedByUserId,
-                Status = request.Status,
-                ResolvedAt = request.ResolvedAt ?? existingError.ResolvedAt,
-                ResolutionNotes = request.ResolutionNotes ?? existingError.ResolutionNotes,
-                Severity = request.Severity ?? existingError.Severity
-            };
+                request.ResolvedByUserId = existingError.ResolvedByUserId;
+            }
+            if (!request.ResolvedAt.HasValue && existingError.ResolvedAt.HasValue)
+            {
+                request.ResolvedAt = existingError.ResolvedAt;
+            }
+            if (request.ResolutionNotes == null && existingError.ResolutionNotes != null)
+            {
+                request.ResolutionNotes = existingError.ResolutionNotes;
+            }
+            if (request.Severity == null && existingError.Severity != null)
+            {
+                request.Severity = existingError.Severity;
+            }
 
-            var updatedError = await _errorService.UpdateErrorAsync(id, error);
+            var updatedError = await _errorService.UpdateErrorAsync(id, request);
             if (updatedError == null)
                 return NotFound(new { message = "Error record not found" });
 
@@ -152,7 +146,7 @@ namespace PresentationLayer.Controllers
             return Ok(new { message = "Error record deleted successfully" });
         }
 
-        private StationErrorDTO MapToDTO(StationError error)
+        private StationErrorDTO MapToDTO(DataAccessLayer.Entities.StationError error)
         {
             return new StationErrorDTO
             {

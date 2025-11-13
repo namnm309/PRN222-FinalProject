@@ -2,10 +2,13 @@
 
 let qrCodeInstance = null;
 let isQrScanned = false;
+let signalRConnection = null;
+let currentSubscribedStationId = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     loadVehicles();
     initializeForm();
+    initSignalR(); // Khởi tạo SignalR
     
     // Event listeners
     document.getElementById('start-charging-form').addEventListener('submit', handleStartCharging);
@@ -34,6 +37,131 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Initialize SignalR connection
+async function initSignalR() {
+    if (typeof signalR === 'undefined') {
+        console.warn('SignalR library not loaded');
+        return;
+    }
+
+    try {
+        signalRConnection = new signalR.HubConnectionBuilder()
+            .withUrl('/hubs/station')
+            .withAutomaticReconnect()
+            .build();
+
+        // Listen for station availability updates
+        signalRConnection.on('StationAvailabilityUpdated', function(stationId, totalSpots, availableSpots) {
+            console.log('StationAvailabilityUpdated received:', stationId, totalSpots, availableSpots);
+            
+            // Cập nhật UI nếu đang xem station này
+            const currentStationId = document.getElementById('station-id').value;
+            if (currentStationId === stationId) {
+                updateStationAvailabilityUI(stationId, totalSpots, availableSpots);
+            }
+        });
+
+        // Listen for spot status updates
+        signalRConnection.on('SpotStatusUpdated', function(spotId, status) {
+            console.log('SpotStatusUpdated received:', spotId, status);
+            
+            // Cập nhật danh sách spots nếu spot này thuộc station hiện tại
+            const currentStationId = document.getElementById('station-id').value;
+            if (currentStationId) {
+                // Reload spots để cập nhật trạng thái
+                loadSpotsForStation(currentStationId);
+            }
+        });
+
+        // Listen for spots list updates
+        signalRConnection.on('SpotsListUpdated', function(stationId) {
+            console.log('SpotsListUpdated received:', stationId);
+            
+            const currentStationId = document.getElementById('station-id').value;
+            if (currentStationId === stationId) {
+                loadSpotsForStation(stationId);
+            }
+        });
+
+        // Listen for session updates (khi session mới được tạo)
+        signalRConnection.on('SessionUpdated', function(sessionId) {
+            console.log('SessionUpdated received:', sessionId);
+            // Có thể hiển thị thông báo hoặc cập nhật UI nếu cần
+        });
+
+        await signalRConnection.start();
+        console.log('SignalR connected for StartCharging page');
+
+        // Subscribe to station nếu có stationId
+        const stationId = document.getElementById('station-id').value;
+        if (stationId) {
+            await subscribeToStation(stationId);
+        }
+    } catch (err) {
+        console.error('Error starting SignalR connection:', err);
+    }
+}
+
+// Subscribe to station group
+async function subscribeToStation(stationId) {
+    if (!signalRConnection || signalRConnection.state !== signalR.HubConnectionState.Connected) {
+        console.warn('SignalR not connected, cannot subscribe to station');
+        return;
+    }
+
+    // Unsubscribe from previous station if any
+    if (currentSubscribedStationId && currentSubscribedStationId !== stationId) {
+        await unsubscribeFromStation(currentSubscribedStationId);
+    }
+
+    try {
+        await signalRConnection.invoke('SubscribeStation', stationId);
+        currentSubscribedStationId = stationId;
+        console.log('Subscribed to station:', stationId);
+    } catch (err) {
+        console.error('Error subscribing to station:', err);
+    }
+}
+
+// Unsubscribe from station group
+async function unsubscribeFromStation(stationId) {
+    if (!signalRConnection || signalRConnection.state !== signalR.HubConnectionState.Connected) {
+        return;
+    }
+
+    try {
+        await signalRConnection.invoke('UnsubscribeStation', stationId);
+        if (currentSubscribedStationId === stationId) {
+            currentSubscribedStationId = null;
+        }
+        console.log('Unsubscribed from station:', stationId);
+    } catch (err) {
+        console.error('Error unsubscribing from station:', err);
+    }
+}
+
+// Update station availability UI
+function updateStationAvailabilityUI(stationId, totalSpots, availableSpots) {
+    // Cập nhật thông tin availability trong UI nếu có
+    const stationSelect = document.getElementById('station-select');
+    if (stationSelect) {
+        const option = Array.from(stationSelect.options).find(opt => opt.value === stationId);
+        if (option) {
+            // Lấy tên station từ text hiện tại (trước dấu ngoặc)
+            const stationName = option.textContent.split(' (')[0];
+            option.textContent = `${stationName} (${availableSpots}/${totalSpots} cổng trống)`;
+        }
+    }
+
+    // Nếu không có spots available, có thể disable form hoặc hiển thị cảnh báo
+    if (availableSpots === 0) {
+        const spotSelect = document.getElementById('spot-select');
+        if (spotSelect && spotSelect.value === '') {
+            spotSelect.innerHTML = '<option value="">-- Không có cổng sạc trống --</option>';
+        }
+    }
+}
+
 async function initializeForm() {
     const reservationId = document.getElementById('reservation-id').value;
     const spotId = document.getElementById('spot-id').value;
@@ -49,6 +177,10 @@ async function initializeForm() {
         // Load từ station (chọn từ bản đồ)
         document.getElementById('station-id').value = stationId;
         await loadSpotsForStation(stationId);
+        // Subscribe to station sau khi load
+        if (signalRConnection && signalRConnection.state === signalR.HubConnectionState.Connected) {
+            await subscribeToStation(stationId);
+        }
     } else {
         // Load danh sách stations
         await loadStations();
@@ -70,6 +202,11 @@ async function loadFromReservation(reservationId) {
                 
                 // Load spots cho station và select spot đã đặt
                 await loadSpotsForStationAndSelect(reservation.chargingStationId, reservation.chargingSpotId);
+                
+                // Subscribe to station sau khi load
+                if (signalRConnection && signalRConnection.state === signalR.HubConnectionState.Connected) {
+                    await subscribeToStation(reservation.chargingStationId);
+                }
             }
         }
     } catch (error) {
@@ -102,11 +239,20 @@ async function handleStationSelect(e) {
     const stationId = e.target.value;
     if (!stationId) {
         document.getElementById('spot-select').innerHTML = '<option value="">-- Chọn cổng sạc --</option>';
+        // Unsubscribe nếu không chọn station nào
+        if (currentSubscribedStationId) {
+            await unsubscribeFromStation(currentSubscribedStationId);
+        }
         return;
     }
     
     document.getElementById('station-id').value = stationId;
     await loadSpotsForStation(stationId);
+    
+    // Subscribe to new station
+    if (signalRConnection && signalRConnection.state === signalR.HubConnectionState.Connected) {
+        await subscribeToStation(stationId);
+    }
 }
 
 async function loadSpotsForStation(stationId) {
@@ -589,3 +735,13 @@ function getPreferredSpotId(vehicle) {
     const match = vehicle.notes.match(/PREFERRED_SPOT_ID:([a-f0-9-]+)/i);
     return match ? match[1] : null;
 }
+
+// Cleanup khi rời trang
+window.addEventListener('beforeunload', function() {
+    if (signalRConnection && currentSubscribedStationId) {
+        unsubscribeFromStation(currentSubscribedStationId);
+    }
+    if (signalRConnection) {
+        signalRConnection.stop();
+    }
+});

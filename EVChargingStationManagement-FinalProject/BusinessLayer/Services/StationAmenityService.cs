@@ -1,4 +1,5 @@
 using System.Linq;
+using BusinessLayer.DTOs;
 using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -27,18 +28,26 @@ namespace BusinessLayer.Services
             return await _context.StationAmenities.FindAsync(id);
         }
 
-        public async Task<StationAmenity> CreateAmenityAsync(StationAmenity amenity)
+        public async Task<StationAmenity> CreateAmenityAsync(CreateStationAmenityRequest request)
         {
-            amenity.Id = Guid.NewGuid();
-            amenity.CreatedAt = DateTime.UtcNow;
-            amenity.UpdatedAt = DateTime.UtcNow;
+            var amenity = new StationAmenity
+            {
+                Id = Guid.NewGuid(),
+                ChargingStationId = request.ChargingStationId,
+                Name = request.Name,
+                Description = request.Description,
+                IsActive = request.IsActive,
+                DisplayOrder = request.DisplayOrder,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
             _context.StationAmenities.Add(amenity);
             await _context.SaveChangesAsync();
             return amenity;
         }
 
-        public async Task<StationAmenity?> UpdateAmenityAsync(Guid id, StationAmenity amenity)
+        public async Task<StationAmenity?> UpdateAmenityAsync(Guid id, UpdateStationAmenityRequest request)
         {
             var existingAmenity = await _context.StationAmenities.FindAsync(id);
             if (existingAmenity == null)
@@ -46,10 +55,10 @@ namespace BusinessLayer.Services
                 return null;
             }
 
-            existingAmenity.Name = amenity.Name;
-            existingAmenity.Description = amenity.Description;
-            existingAmenity.IsActive = amenity.IsActive;
-            existingAmenity.DisplayOrder = amenity.DisplayOrder;
+            existingAmenity.Name = request.Name;
+            existingAmenity.Description = request.Description;
+            existingAmenity.IsActive = request.IsActive;
+            existingAmenity.DisplayOrder = request.DisplayOrder;
             existingAmenity.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();

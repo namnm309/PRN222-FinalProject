@@ -1,4 +1,5 @@
 using System.Linq;
+using BusinessLayer.DTOs;
 using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
@@ -68,12 +69,15 @@ namespace BusinessLayer.Services
                 .FirstOrDefaultAsync(cs => cs.Id == id);
         }
 
-        public async Task<ChargingSession> StartSessionAsync(Guid userId, ChargingSession session)
+        public async Task<ChargingSession> StartSessionAsync(Guid userId, StartChargingSessionRequest request)
         {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
             var spot = await _context.ChargingSpots
                 .Include(s => s.ChargingSessions.Where(cs => cs.Status == ChargingSessionStatus.InProgress))
                 .Include(s => s.ChargingStation)
-                .FirstOrDefaultAsync(s => s.Id == session.ChargingSpotId);
+                .FirstOrDefaultAsync(s => s.Id == request.ChargingSpotId);
 
             if (spot == null)
             {
@@ -96,15 +100,29 @@ namespace BusinessLayer.Services
                 throw new InvalidOperationException("Charging spot already has an active session.");
             }
 
-            session.Id = Guid.NewGuid();
-            session.UserId = userId;
-            session.Status = ChargingSessionStatus.InProgress;
-            session.SessionStartTime = DateTime.UtcNow;
-            session.CreatedAt = DateTime.UtcNow;
-            session.UpdatedAt = DateTime.UtcNow;
+            var session = new ChargingSession
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ChargingSpotId = request.ChargingSpotId,
+                ReservationId = request.ReservationId,
+                VehicleId = request.VehicleId,
+                EnergyRequestedKwh = request.EnergyRequestedKwh,
+                TargetSocPercentage = request.TargetSocPercentage,
+                QrCodeScanned = request.QrCode,
+                Notes = request.Notes,
+                Status = ChargingSessionStatus.InProgress,
+                SessionStartTime = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
-            // Lưu pricePerKwh từ spot nếu chưa có
-            if (!session.PricePerKwh.HasValue && spot.PricePerKwh.HasValue)
+            // Lưu pricePerKwh từ request hoặc từ spot
+            if (request.PricePerKwh.HasValue)
+            {
+                session.PricePerKwh = request.PricePerKwh.Value;
+            }
+            else if (spot.PricePerKwh.HasValue)
             {
                 session.PricePerKwh = spot.PricePerKwh.Value;
             }

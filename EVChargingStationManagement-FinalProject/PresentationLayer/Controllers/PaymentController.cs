@@ -72,7 +72,7 @@ namespace PresentationLayer.Controllers
                 return BadRequest(ModelState);
             }
 
-            var payment = new PaymentTransaction
+            var paymentRequest = new CreatePaymentRequest
             {
                 ReservationId = request.ReservationId,
                 ChargingSessionId = request.ChargingSessionId,
@@ -82,7 +82,7 @@ namespace PresentationLayer.Controllers
                 Description = request.Description
             };
 
-            var created = await _paymentService.CreatePaymentAsync(GetUserId(), payment);
+            var created = await _paymentService.CreatePaymentAsync(GetUserId(), paymentRequest);
             return CreatedAtAction(nameof(GetPaymentById), new { id = created.Id }, MapToDto(created));
         }
 
@@ -159,17 +159,16 @@ namespace PresentationLayer.Controllers
             else
             {
                 // Create new payment transaction with Cash method
-                payment = new PaymentTransaction
+                var paymentRequest = new CreatePaymentRequest
                 {
                     ChargingSessionId = request.SessionId,
                     Amount = request.Amount > 0 ? request.Amount : (session.Cost ?? 0),
                     Currency = "VND",
                     Method = PaymentMethod.Cash,
-                    Description = request.Description ?? $"Thanh toán tiền mặt cho phiên sạc {session.Id}",
-                    Status = PaymentStatus.Pending
+                    Description = request.Description ?? $"Thanh toán tiền mặt cho phiên sạc {session.Id}"
                 };
 
-                payment = await _paymentService.CreatePaymentAsync(userId, payment);
+                payment = await _paymentService.CreatePaymentAsync(userId, paymentRequest);
             }
 
             // Update payment status to Captured (for cash payment)
@@ -231,38 +230,38 @@ namespace PresentationLayer.Controllers
                     amount = request.Amount > 0 ? request.Amount : (reservation.EstimatedCost ?? 0);
                     description = $"Thanh toán cho đặt lịch {reservation.Id}";
 
-                    // Check if payment already exists
-                    var existingPayments = await _paymentService.GetPaymentsForUserAsync(userId, 100);
-                    var existingPayment = existingPayments.FirstOrDefault(p => p.ReservationId == request.ReservationId);
-                    
-                    if (existingPayment != null)
-                    {
-                        payment = existingPayment;
-                    }
-                    else
-                    {
-                        // Create new payment transaction
-                        payment = new PaymentTransaction
-                        {
-                            ReservationId = request.ReservationId.Value,
-                            Amount = amount,
-                            Currency = "VND",
-                            Method = PaymentMethod.VNPay,
-                            Description = description,
-                            Status = PaymentStatus.Pending
-                        };
-
-                        payment = await _paymentService.CreatePaymentAsync(userId, payment);
-                    }
-                }
-                // Handle session payment
-                else if (request.SessionId.HasValue)
+                // Check if payment already exists
+                var existingPayments = await _paymentService.GetPaymentsForUserAsync(userId, 100);
+                var existingPayment = existingPayments.FirstOrDefault(p => p.ReservationId == request.ReservationId);
+                
+                if (existingPayment != null)
                 {
-                    var session = await _sessionService.GetSessionByIdAsync(request.SessionId.Value);
-                    if (session == null)
+                    payment = existingPayment;
+                }
+                else
+                {
+                    // Create new payment transaction
+                    payment = new PaymentTransaction
                     {
-                        return NotFound(new { message = "Charging session not found" });
-                    }
+                        ReservationId = request.ReservationId.Value,
+                        Amount = amount,
+                        Currency = "VND",
+                        Method = PaymentMethod.VNPay,
+                        Description = description,
+                        Status = PaymentStatus.Pending
+                    };
+
+                    payment = await _paymentService.CreatePaymentAsync(userId, payment);
+                }
+            }
+            // Handle session payment
+            else if (request.SessionId.HasValue)
+            {
+                var session = await _sessionService.GetSessionByIdAsync(request.SessionId.Value);
+                if (session == null)
+                {
+                    return NotFound(new { message = "Charging session not found" });
+                }
 
                     if (session.UserId != userId)
                     {
@@ -278,34 +277,34 @@ namespace PresentationLayer.Controllers
                     amount = request.Amount > 0 ? request.Amount : (session.Cost ?? 0);
                     description = $"Thanh toán cho phiên sạc {session.Id}";
 
-                    // Check if payment already exists
-                    var existingPayments = await _paymentService.GetPaymentsForUserAsync(userId, 100);
-                    var existingPayment = existingPayments.FirstOrDefault(p => p.ChargingSessionId == request.SessionId);
-                    
-                    if (existingPayment != null)
-                    {
-                        payment = existingPayment;
-                    }
-                    else
-                    {
-                        // Create new payment transaction
-                        payment = new PaymentTransaction
-                        {
-                            ChargingSessionId = request.SessionId.Value,
-                            Amount = amount,
-                            Currency = "VND",
-                            Method = PaymentMethod.VNPay,
-                            Description = description,
-                            Status = PaymentStatus.Pending
-                        };
-
-                        payment = await _paymentService.CreatePaymentAsync(userId, payment);
-                    }
+                // Check if payment already exists
+                var existingPayments = await _paymentService.GetPaymentsForUserAsync(userId, 100);
+                var existingPayment = existingPayments.FirstOrDefault(p => p.ChargingSessionId == request.SessionId);
+                
+                if (existingPayment != null)
+                {
+                    payment = existingPayment;
                 }
                 else
                 {
-                    return BadRequest(new { message = "Either SessionId or ReservationId must be provided" });
+                    // Create new payment transaction
+                    payment = new PaymentTransaction
+                    {
+                        ChargingSessionId = request.SessionId.Value,
+                        Amount = amount,
+                        Currency = "VND",
+                        Method = PaymentMethod.VNPay,
+                        Description = description,
+                        Status = PaymentStatus.Pending
+                    };
+
+                    payment = await _paymentService.CreatePaymentAsync(userId, payment);
                 }
+            }
+            else
+            {
+                return BadRequest(new { message = "Either SessionId or ReservationId must be provided" });
+            }
 
                 // Get client IP
                 var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";

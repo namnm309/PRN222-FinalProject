@@ -2,12 +2,9 @@ using System.Linq;
 using System.Security.Claims;
 using BusinessLayer.DTOs;
 using BusinessLayer.Services;
-using DataAccessLayer.Data;
-using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace PresentationLayer.Controllers
 {
@@ -20,20 +17,17 @@ namespace PresentationLayer.Controllers
         private readonly IChargingSpotService _spotService;
         private readonly IRealtimeNotifier _notifier;
         private readonly IChargingStationService _stationService;
-        private readonly EVDbContext _context;
 
         public ReservationController(
             IReservationService reservationService,
             IChargingSpotService spotService,
             IRealtimeNotifier notifier,
-            IChargingStationService stationService,
-            EVDbContext context)
+            IChargingStationService stationService)
         {
             _reservationService = reservationService;
             _spotService = spotService;
             _notifier = notifier;
             _stationService = stationService;
-            _context = context;
         }
 
         [HttpGet("me")]
@@ -81,19 +75,7 @@ namespace PresentationLayer.Controllers
                     return NotFound(new { message = "Không tìm thấy cổng sạc" });
                 }
 
-                var reservation = new Reservation
-                {
-                    ChargingSpotId = request.ChargingSpotId,
-                    VehicleId = request.VehicleId,
-                    ScheduledStartTime = request.ScheduledStartTime.ToUniversalTime(),
-                    ScheduledEndTime = request.ScheduledEndTime.HasValue ? request.ScheduledEndTime.Value.ToUniversalTime() : default(DateTime),
-                    EstimatedEnergyKwh = request.EstimatedEnergyKwh,
-                    EstimatedCost = request.EstimatedCost,
-                    IsPrepaid = request.IsPrepaid,
-                    Notes = request.Notes
-                };
-
-                var created = await _reservationService.CreateReservationAsync(GetUserId(), reservation);
+                var created = await _reservationService.CreateReservationAsync(GetUserId(), request);
                 await _notifier.NotifyReservationChangedAsync(created);
                 
                 // Notify station availability change
@@ -198,30 +180,11 @@ namespace PresentationLayer.Controllers
         [Authorize(Roles = "Admin,CSStaff")]
         public async Task<IActionResult> GetAllReservationsForStaff([FromQuery] DateTime? from, [FromQuery] DateTime? to)
         {
-            // Get all reservations for staff to manage
-            var reservations = await _context.Reservations
-                .Include(r => r.User)
-                .Include(r => r.ChargingSpot)
-                    .ThenInclude(s => s!.ChargingStation)
-                .Include(r => r.Vehicle)
-                .OrderByDescending(r => r.ScheduledStartTime)
-                .ToListAsync();
-
-            // Apply date filters if provided
-            if (from.HasValue)
-            {
-                reservations = reservations.Where(r => r.ScheduledStartTime >= from.Value.ToUniversalTime()).ToList();
-            }
-
-            if (to.HasValue)
-            {
-                reservations = reservations.Where(r => r.ScheduledStartTime <= to.Value.ToUniversalTime()).ToList();
-            }
-
+            var reservations = await _reservationService.GetAllReservationsForStaffAsync(from, to);
             return Ok(reservations.Select(MapToDto));
         }
 
-        private ReservationDTO MapToDto(Reservation reservation)
+        private ReservationDTO MapToDto(DataAccessLayer.Entities.Reservation reservation)
         {
             return new ReservationDTO
             {
@@ -256,7 +219,7 @@ namespace PresentationLayer.Controllers
             var station = await _stationService.GetStationByIdAsync(stationId);
             if (station != null)
             {
-                var spots = station.ChargingSpots?.ToList() ?? new List<ChargingSpot>();
+                var spots = station.ChargingSpots?.ToList() ?? new List<DataAccessLayer.Entities.ChargingSpot>();
                 var totalSpots = spots.Count;
                 
                 // Nếu station không Active, thì availableSpots = 0
@@ -268,7 +231,8 @@ namespace PresentationLayer.Controllers
                     var spotIds = spots.Select(s => s.Id).ToList();
                     
                     // Load tất cả active reservations cho các spots trong station này một lần
-                    var activeReservations = await _context.Reservations
+                    var allReservations = await _reservationService.GetReservationsForStationAsync(stationId);
+                    var activeReservations = allReservations
                         .Where(r => spotIds.Contains(r.ChargingSpotId) &&
                                     (r.Status == ReservationStatus.Pending ||
                                      r.Status == ReservationStatus.Confirmed ||
@@ -276,7 +240,7 @@ namespace PresentationLayer.Controllers
                                     r.ScheduledEndTime > now)
                         .Select(r => r.ChargingSpotId)
                         .Distinct()
-                        .ToListAsync();
+                        .ToList();
                     
                     // Một spot available nếu: status = Available VÀ không có active reservation
                     availableSpots = spots.Count(s => 

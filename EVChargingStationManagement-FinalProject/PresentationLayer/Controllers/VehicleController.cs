@@ -2,7 +2,6 @@ using System.Linq;
 using System.Security.Claims;
 using BusinessLayer.DTOs;
 using BusinessLayer.Services;
-using DataAccessLayer.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -54,25 +53,7 @@ namespace PresentationLayer.Controllers
             try
             {
                 var userId = GetUserId();
-                var vehicle = new Vehicle
-                {
-                    Make = request.Make,
-                    Model = request.Model,
-                    ModelYear = request.ModelYear,
-                    LicensePlate = request.LicensePlate,
-                    VehicleType = request.VehicleType,
-                    BatteryCapacityKwh = request.BatteryCapacityKwh,
-                    MaxChargingPowerKw = request.MaxChargingPowerKw,
-                    Color = request.Color,
-                    Notes = request.Notes
-                };
-
-                var created = await _vehicleService.CreateVehicleAsync(
-                    userId,
-                    vehicle,
-                    request.IsPrimary,
-                    request.Nickname,
-                    request.ChargePortLocation);
+                var created = await _vehicleService.CreateVehicleAsync(userId, request);
 
                 return CreatedAtAction(nameof(GetVehicle), new { id = created.Id }, MapToDto(created));
             }
@@ -91,25 +72,7 @@ namespace PresentationLayer.Controllers
             }
 
             var userId = GetUserId();
-            var vehicle = new Vehicle
-            {
-                Make = request.Make,
-                Model = request.Model,
-                ModelYear = request.ModelYear,
-                LicensePlate = request.LicensePlate,
-                VehicleType = request.VehicleType,
-                BatteryCapacityKwh = request.BatteryCapacityKwh,
-                MaxChargingPowerKw = request.MaxChargingPowerKw,
-                Color = request.Color,
-                Notes = request.Notes
-            };
-
-            var updated = await _vehicleService.UpdateVehicleAsync(
-                id,
-                vehicle,
-                request.IsPrimary,
-                request.Nickname,
-                request.ChargePortLocation);
+            var updated = await _vehicleService.UpdateVehicleAsync(id, request);
 
             if (updated == null || updated.UserVehicles.All(uv => uv.UserId != userId))
             {
@@ -147,7 +110,7 @@ namespace PresentationLayer.Controllers
             return Ok();
         }
 
-        private VehicleDTO MapToDto(Vehicle vehicle)
+        private VehicleDTO MapToDto(DataAccessLayer.Entities.Vehicle vehicle)
         {
             var userVehicle = vehicle.UserVehicles.FirstOrDefault();
             return new VehicleDTO
