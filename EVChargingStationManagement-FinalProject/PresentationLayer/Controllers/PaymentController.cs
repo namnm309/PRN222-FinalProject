@@ -241,17 +241,16 @@ namespace PresentationLayer.Controllers
                 else
                 {
                     // Create new payment transaction
-                    payment = new PaymentTransaction
+                    var paymentRequest = new CreatePaymentRequest
                     {
                         ReservationId = request.ReservationId.Value,
                         Amount = amount,
                         Currency = "VND",
                         Method = PaymentMethod.VNPay,
-                        Description = description,
-                        Status = PaymentStatus.Pending
+                        Description = description
                     };
 
-                    payment = await _paymentService.CreatePaymentAsync(userId, payment);
+                    payment = await _paymentService.CreatePaymentAsync(userId, paymentRequest);
                 }
             }
             // Handle session payment
@@ -288,17 +287,16 @@ namespace PresentationLayer.Controllers
                 else
                 {
                     // Create new payment transaction
-                    payment = new PaymentTransaction
+                    var paymentRequest = new CreatePaymentRequest
                     {
                         ChargingSessionId = request.SessionId.Value,
                         Amount = amount,
                         Currency = "VND",
                         Method = PaymentMethod.VNPay,
-                        Description = description,
-                        Status = PaymentStatus.Pending
+                        Description = description
                     };
 
-                    payment = await _paymentService.CreatePaymentAsync(userId, payment);
+                    payment = await _paymentService.CreatePaymentAsync(userId, paymentRequest);
                 }
             }
             else

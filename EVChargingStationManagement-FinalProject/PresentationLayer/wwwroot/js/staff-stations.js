@@ -23,11 +23,25 @@
         statusFilter = document.getElementById('StationStatusFilter');
         searchInput = document.getElementById('StationSearch');
         
+        // Initialize modal elements
         const modalElement = document.getElementById('spotsDetailModal');
-        if (modalElement) {
-            spotsDetailModal = new bootstrap.Modal(modalElement);
-            spotsDetailModalTitle = document.getElementById('spotsDetailModalTitle');
-            spotsDetailTableBody = document.getElementById('spotsDetailTableBody');
+        if (!modalElement) {
+            console.error('Modal element spotsDetailModal not found');
+        } else {
+            try {
+                spotsDetailModal = new bootstrap.Modal(modalElement);
+                spotsDetailModalTitle = document.getElementById('spotsDetailModalTitle');
+                spotsDetailTableBody = document.getElementById('spotsDetailTableBody');
+                
+                if (!spotsDetailModalTitle) {
+                    console.error('Modal title element not found');
+                }
+                if (!spotsDetailTableBody) {
+                    console.error('Modal table body element not found');
+                }
+            } catch (error) {
+                console.error('Error initializing modal:', error);
+            }
         }
 
         // Event listeners
@@ -52,11 +66,20 @@
         initSignalR();
     }
 
-    // Wait for DOM to be ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
+    // Wait for DOM to be ready and Bootstrap to be loaded
+    function waitForBootstrap() {
+        if (typeof bootstrap === 'undefined') {
+            console.warn('Bootstrap not loaded yet, retrying...');
+            setTimeout(waitForBootstrap, 100);
+            return;
+        }
         init();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', waitForBootstrap);
+    } else {
+        waitForBootstrap();
     }
 
     async function loadStations() {
@@ -130,28 +153,80 @@
 
         // Attach event listeners to view spots buttons
         stationsTableBody.querySelectorAll('[data-action="view-spots"]').forEach(btn => {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
                 const stationId = this.getAttribute('data-station-id');
+                console.log('View spots button clicked, stationId:', stationId);
                 if (stationId) {
                     viewStationSpots(stationId);
+                } else {
+                    console.error('Station ID not found on button');
+                    alert('Không tìm thấy ID trạm sạc');
                 }
             });
         });
     }
 
     async function viewStationSpots(stationId) {
-        const station = stations.find(s => s.id === stationId);
+        console.log('viewStationSpots called with stationId:', stationId);
+        console.log('Available stations:', stations.map(s => ({ id: s.id, name: s.name })));
+        
+        // Try to find station by string or GUID comparison
+        const station = stations.find(s => {
+            const sId = String(s.id || '');
+            const searchId = String(stationId || '');
+            return sId === searchId || sId.toLowerCase() === searchId.toLowerCase();
+        });
+        
         if (!station) {
-            alert('Không tìm thấy trạm sạc');
+            console.error('Station not found with ID:', stationId);
+            alert('Không tìm thấy trạm sạc với ID: ' + stationId);
             return;
+        }
+        
+        console.log('Found station:', station);
+
+        // Re-initialize modal if not already initialized
+        if (!spotsDetailModal) {
+            const modalElement = document.getElementById('spotsDetailModal');
+            if (modalElement && typeof bootstrap !== 'undefined') {
+                try {
+                    spotsDetailModal = new bootstrap.Modal(modalElement);
+                } catch (error) {
+                    console.error('Error creating modal instance:', error);
+                    alert('Không thể mở modal. Vui lòng thử lại.');
+                    return;
+                }
+            } else {
+                console.error('Modal element or Bootstrap not available');
+                alert('Không thể mở modal. Vui lòng tải lại trang.');
+                return;
+            }
+        }
+
+        // Re-initialize modal elements if needed
+        if (!spotsDetailModalTitle) {
+            spotsDetailModalTitle = document.getElementById('spotsDetailModalTitle');
+        }
+        if (!spotsDetailTableBody) {
+            spotsDetailTableBody = document.getElementById('spotsDetailTableBody');
         }
 
         if (!spotsDetailModal || !spotsDetailTableBody || !spotsDetailModalTitle) {
-            console.error('Modal elements not initialized');
+            console.error('Modal elements not initialized', {
+                modal: !!spotsDetailModal,
+                title: !!spotsDetailModalTitle,
+                body: !!spotsDetailTableBody
+            });
+            alert('Không thể mở modal. Vui lòng tải lại trang.');
             return;
         }
 
         spotsDetailModalTitle.textContent = `Chi tiết điểm sạc - ${station.name}`;
+
+        // Show loading state
+        spotsDetailTableBody.innerHTML = '<tr><td colspan="5" class="text-center">Đang tải...</td></tr>';
 
         // Load full station details with spots if not already loaded
         let spots = station.chargingSpots || [];
@@ -163,6 +238,8 @@
                 if (response.ok) {
                     const fullStation = await response.json();
                     spots = fullStation.chargingSpots || [];
+                } else {
+                    console.error('Failed to load station details:', response.status, response.statusText);
                 }
             } catch (error) {
                 console.error('Error loading station details:', error);
@@ -179,17 +256,22 @@
                 
                 return `
                     <tr>
-                        <td><strong>${spot.spotNumber || spot.number || '--'}</strong></td>
-                        <td><span class="badge ${spotStatusClass}">${spotStatus}</span></td>
-                        <td>${spot.powerKw || spot.power || '--'} kW</td>
-                        <td>${spot.connectorType || '--'}</td>
+                        <td><strong>${escapeHtml(String(spot.spotNumber || spot.number || '--'))}</strong></td>
+                        <td><span class="badge ${spotStatusClass}">${escapeHtml(spotStatus)}</span></td>
+                        <td>${escapeHtml(String(spot.powerKw || spot.power || '--'))} kW</td>
+                        <td>${escapeHtml(String(spot.connectorType || '--'))}</td>
                         <td><span class="badge ${isOnline ? 'bg-success' : 'bg-danger'}">${isOnline ? 'Online' : 'Offline'}</span></td>
                     </tr>
                 `;
             }).join('');
         }
 
-        spotsDetailModal.show();
+        try {
+            spotsDetailModal.show();
+        } catch (error) {
+            console.error('Error showing modal:', error);
+            alert('Không thể hiển thị modal. Vui lòng thử lại.');
+        }
     }
 
     function getSpotStatusText(status) {
