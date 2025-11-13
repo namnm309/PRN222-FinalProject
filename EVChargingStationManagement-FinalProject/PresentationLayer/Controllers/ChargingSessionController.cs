@@ -108,6 +108,13 @@ namespace PresentationLayer.Controllers
             var created = await _sessionService.StartSessionAsync(GetUserId(), session);
             await _notifier.NotifySessionChangedAsync(created);
             
+            // Notify spot status change (spot becomes occupied)
+            if (created.ChargingSpot != null)
+            {
+                await _notifier.NotifySpotStatusChangedAsync(created.ChargingSpot);
+                await _notifier.NotifySpotsListUpdatedAsync(created.ChargingSpot.ChargingStationId);
+            }
+            
             // Notify station availability change
             var stationId = created.ChargingSpot?.ChargingStationId ?? Guid.Empty;
             if (stationId != Guid.Empty)
@@ -210,6 +217,13 @@ namespace PresentationLayer.Controllers
 
             var created = await _sessionService.StartSessionAsync(GetUserId(), session);
             await _notifier.NotifySessionChangedAsync(created);
+            
+            // Notify spot status change (spot becomes occupied)
+            if (created.ChargingSpot != null)
+            {
+                await _notifier.NotifySpotStatusChangedAsync(created.ChargingSpot);
+                await _notifier.NotifySpotsListUpdatedAsync(created.ChargingSpot.ChargingStationId);
+            }
             
             // Notify station availability change
             var stationId = created.ChargingSpot?.ChargingStationId ?? Guid.Empty;

@@ -431,6 +431,7 @@ namespace PresentationLayer.Controllers
                 return NotFound(new { message = "Charging station not found" });
 
             // Toggle giữa Active và Inactive
+            var oldStatus = station.Status;
             station.Status = station.Status == StationStatus.Active 
                 ? StationStatus.Inactive 
                 : StationStatus.Active;
@@ -438,6 +439,13 @@ namespace PresentationLayer.Controllers
             var updatedStation = await _stationService.UpdateStationAsync(id, station);
             if (updatedStation == null)
                 return NotFound(new { message = "Charging station not found" });
+
+            // Gửi SignalR notification để cập nhật realtime cho tất cả clients đang xem trạm này
+            await _notifier.NotifyStationStatusChangedAsync(
+                updatedStation.Id, 
+                updatedStation.Status.ToString(), 
+                updatedStation.Name
+            );
 
             return Ok(MapToDTO(updatedStation));
         }

@@ -12,6 +12,7 @@ namespace BusinessLayer.Services
         Task NotifyStationAvailabilityChangedAsync(Guid stationId, int totalSpots, int availableSpots);
         Task NotifyChargingProgressUpdatedAsync(Guid sessionId, ChargingProgressDTO progress);
         Task NotifySpotsListUpdatedAsync(Guid stationId);
+        Task NotifyStationStatusChangedAsync(Guid stationId, string status, string stationName);
     }
 }
 

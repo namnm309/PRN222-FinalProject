@@ -5,8 +5,10 @@
     const utils = window.dashboardUtils;
     const rangeSelect = document.querySelector('[data-range-filter]');
     const kpiRoot = document.querySelector('.dashboard-kpis');
-    const sessionTable = document.querySelector('[data-session-list]');
-    const reservationTable = document.querySelector('[data-reservation-list]');
+    const sessionChartCanvas = document.querySelector('[data-session-chart]');
+    const sessionChartEmpty = document.querySelector('[data-session-chart-empty]');
+    const reservationChartCanvas = document.querySelector('[data-reservation-chart]');
+    const reservationChartEmpty = document.querySelector('[data-reservation-chart-empty]');
     const notificationList = document.querySelector('[data-notification-list]');
     const mapContainer = document.querySelector('[data-map-container]');
 
@@ -15,7 +17,9 @@
         stations: [],
         connection: null,
         previousStationId: null,
-        dateRange: 'today' // today, yesterday, 7days, 30days
+        dateRange: 'today', // today, yesterday, 7days, 30days
+        sessionsChart: null,
+        reservationsChart: null
     };
 
     const buildQueryString = (params) => {
@@ -56,46 +60,273 @@
         utils.setKpiValue(kpiRoot, 'revenue-today', data.revenueToday, utils.formatCurrency);
     };
 
+    const getStatusName = (status) => {
+        const statusMap = {
+            'Scheduled': 'Đã lên lịch',
+            'InProgress': 'Đang chạy',
+            'Completed': 'Hoàn thành',
+            'Cancelled': 'Đã hủy',
+            'Failed': 'Thất bại'
+        };
+        return statusMap[status] || status;
+    };
+
+    const getStatusColor = (status) => {
+        const colorMap = {
+            'Scheduled': 'rgba(128, 128, 128, 1)',      // Xám
+            'InProgress': 'rgba(255, 193, 7, 1)',       // Vàng
+            'Completed': 'rgba(40, 167, 69, 1)',        // Xanh lá
+            'Cancelled': 'rgba(220, 53, 69, 1)',        // Đỏ
+            'Failed': 'rgba(220, 53, 69, 1)'            // Đỏ
+        };
+        return colorMap[status] || 'rgba(128, 128, 128, 1)';
+    };
+
+    const groupSessionsByStatus = (sessions) => {
+        const grouped = {};
+        sessions.forEach(session => {
+            const status = session.status || 'Scheduled';
+            if (!grouped[status]) {
+                grouped[status] = 0;
+            }
+            grouped[status]++;
+        });
+        return grouped;
+    };
+
     const updateSessions = (rows) => {
-        if (!sessionTable) return;
+        if (!sessionChartCanvas) return;
+
+        // Hiển thị message nếu không có dữ liệu
         if (!rows || rows.length === 0) {
-            sessionTable.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Chưa có dữ liệu</td></tr>`;
+            if (state.sessionsChart) {
+                state.sessionsChart.destroy();
+                state.sessionsChart = null;
+            }
+            sessionChartCanvas.style.display = 'none';
+            if (sessionChartEmpty) sessionChartEmpty.style.display = 'block';
             return;
         }
-        sessionTable.innerHTML = rows.map(item => `
-            <tr>
-                <td>${utils.formatDateTime(item.sessionStartTime)}${item.sessionEndTime ? `<br/><small>Kết thúc: ${utils.formatDateTime(item.sessionEndTime)}</small>` : ''}</td>
-                <td><strong>${item.stationName || '--'}</strong><br/><small>Điểm: ${item.spotNumber || '--'}</small></td>
-                <td>${utils.renderStatusBadge(item.status)}</td>
-                <td>${utils.formatNumber(item.energyDeliveredKwh ?? item.energyRequestedKwh, 1)}</td>
-                <td>${utils.formatCurrency(item.cost)}</td>
-            </tr>
-        `).join('');
+
+        sessionChartCanvas.style.display = 'block';
+        if (sessionChartEmpty) sessionChartEmpty.style.display = 'none';
+
+        // Nhóm sessions theo trạng thái
+        const grouped = groupSessionsByStatus(rows);
+        const labels = Object.keys(grouped).map(status => getStatusName(status));
+        const data = Object.values(grouped);
+        const backgroundColors = Object.keys(grouped).map(status => getStatusColor(status));
+        const borderColors = backgroundColors.map(color => color.replace('1)', '1)'));
+
+        // Destroy chart cũ nếu có
+        if (state.sessionsChart) {
+            state.sessionsChart.destroy();
+        }
+
+        // Tạo biểu đồ cột mới
+        state.sessionsChart = new Chart(sessionChartCanvas, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Số phiên sạc',
+                    data: data,
+                    backgroundColor: backgroundColors.map(color => color.replace('1)', '0.7)')),
+                    borderColor: borderColors,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                const value = context.parsed.y || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            precision: 0
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    };
+
+    const groupReservationsByDate = (reservations, dateRange) => {
+        const { startDate, endDate } = getDateRange(dateRange);
+        const grouped = {};
+        
+        // Tạo mảng tất cả các ngày trong khoảng thời gian
+        const dates = [];
+        const currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+            const dateKey = currentDate.toISOString().split('T')[0];
+            dates.push(dateKey);
+            grouped[dateKey] = 0;
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        // Filter và đếm reservations theo ngày trong khoảng thời gian
+        reservations.forEach(reservation => {
+            const reservationDate = new Date(reservation.scheduledStartTime);
+            // Chỉ đếm reservations trong khoảng thời gian được chọn
+            if (reservationDate >= startDate && reservationDate <= endDate) {
+                const dateKey = reservationDate.toISOString().split('T')[0];
+                if (grouped.hasOwnProperty(dateKey)) {
+                    grouped[dateKey]++;
+                }
+            }
+        });
+
+        return { dates, counts: dates.map(date => grouped[date] || 0) };
+    };
+
+    const formatDateLabel = (dateString) => {
+        const date = new Date(dateString);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (date.toDateString() === today.toDateString()) {
+            return 'Hôm nay';
+        } else if (date.toDateString() === yesterday.toDateString()) {
+            return 'Hôm qua';
+        } else {
+            return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+        }
     };
 
     const updateReservations = async () => {
-        if (!reservationTable) return;
+        if (!reservationChartCanvas) return;
+
         if (!state.stationId) {
-            reservationTable.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Hãy chọn trạm để xem lịch đặt chỗ.</td></tr>`;
+            if (state.reservationsChart) {
+                state.reservationsChart.destroy();
+                state.reservationsChart = null;
+            }
+            reservationChartCanvas.style.display = 'none';
+            if (reservationChartEmpty) {
+                reservationChartEmpty.textContent = 'Hãy chọn trạm để xem lịch đặt chỗ.';
+                reservationChartEmpty.style.display = 'block';
+            }
             return;
         }
+
         try {
             const data = await utils.fetchJson(`/api/reservation/station/${state.stationId}`);
+            
+            // Hiển thị message nếu không có dữ liệu
             if (!data || data.length === 0) {
-                reservationTable.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Chưa có đặt chỗ.</td></tr>`;
+                if (state.reservationsChart) {
+                    state.reservationsChart.destroy();
+                    state.reservationsChart = null;
+                }
+                reservationChartCanvas.style.display = 'none';
+                if (reservationChartEmpty) {
+                    reservationChartEmpty.textContent = 'Chưa có đặt chỗ.';
+                    reservationChartEmpty.style.display = 'block';
+                }
                 return;
             }
-            reservationTable.innerHTML = data.slice(0, 10).map(item => `
-                <tr>
-                    <td>${utils.formatDateTime(item.scheduledStartTime)}</td>
-                    <td>${item.userFullName || item.userId}</td>
-                    <td>${item.chargingStationName || '--'} • ${item.chargingSpotNumber || '--'}</td>
-                    <td>${utils.renderStatusBadge(item.status)}</td>
-                </tr>
-            `).join('');
+
+            reservationChartCanvas.style.display = 'block';
+            if (reservationChartEmpty) reservationChartEmpty.style.display = 'none';
+
+            // Nhóm reservations theo ngày
+            const { dates, counts } = groupReservationsByDate(data, state.dateRange);
+            const labels = dates.map(date => formatDateLabel(date));
+
+            // Destroy chart cũ nếu có
+            if (state.reservationsChart) {
+                state.reservationsChart.destroy();
+            }
+
+            // Tạo biểu đồ đường mới
+            state.reservationsChart = new Chart(reservationChartCanvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Số đặt chỗ',
+                        data: counts,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: 'rgba(75, 192, 192, 1)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `Số đặt chỗ: ${context.parsed.y}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                precision: 0
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
         } catch (err) {
             console.error(err);
-            reservationTable.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Không thể tải dữ liệu đặt chỗ.</td></tr>`;
+            if (state.reservationsChart) {
+                state.reservationsChart.destroy();
+                state.reservationsChart = null;
+            }
+            reservationChartCanvas.style.display = 'none';
+            if (reservationChartEmpty) {
+                reservationChartEmpty.textContent = 'Không thể tải dữ liệu đặt chỗ.';
+                reservationChartEmpty.style.display = 'block';
+            }
         }
     };
 
@@ -247,7 +478,7 @@
                 startDate: startDate.toISOString(),
                 endDate: endDate.toISOString(),
                 page: 1,
-                pageSize: 50
+                pageSize: 1000 // Tăng pageSize để lấy đủ dữ liệu cho biểu đồ
             };
             
             const response = await utils.fetchJson(`/api/dashboard/sessions/all${buildQueryString(params)}`);
@@ -255,7 +486,13 @@
             updateSessions(sessions);
         } catch (err) {
             console.error('sessions', err);
-            if (sessionTable) sessionTable.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Không thể tải dữ liệu phiên sạc.</td></tr>`;
+            if (sessionChartCanvas) {
+                sessionChartCanvas.style.display = 'none';
+                if (sessionChartEmpty) {
+                    sessionChartEmpty.textContent = 'Không thể tải dữ liệu phiên sạc.';
+                    sessionChartEmpty.style.display = 'block';
+                }
+            }
         }
     };
 
@@ -274,7 +511,10 @@
         if (rangeSelect) {
             rangeSelect.addEventListener('change', async (e) => {
                 state.dateRange = e.target.value || 'today';
-                await loadSessions();
+                await Promise.all([
+                    loadSessions(),
+                    updateReservations()
+                ]);
             });
         }
 
