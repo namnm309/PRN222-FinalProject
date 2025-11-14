@@ -203,7 +203,8 @@ namespace BusinessLayer.Services
                 CreatedAt = spot.CreatedAt,
                 UpdatedAt = spot.UpdatedAt,
                 IsReserved = false, // Will be set by caller if needed
-                IsAvailable = false // Will be set by caller if needed
+                IsAvailable = false, // Will be set by caller if needed
+                IsOnline = spot.IsOnline
             };
         }
     }
