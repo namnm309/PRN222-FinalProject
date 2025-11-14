@@ -17,6 +17,88 @@
     let pageSize = 50;
     let totalCount = 0;
     let totalPages = 0;
+    let userHubConnection = null;
+
+    // Initialize SignalR connection
+    async function initSignalR() {
+        if (typeof signalR === 'undefined') {
+            console.warn('SignalR library not loaded');
+            return;
+        }
+
+        try {
+            userHubConnection = new signalR.HubConnectionBuilder()
+                .withUrl('/hubs/user')
+                .withAutomaticReconnect()
+                .build();
+
+            // Listen for user status updates
+            userHubConnection.on('UserStatusUpdated', function (userData) {
+                console.log('UserStatusUpdated received:', userData);
+                
+                // Cập nhật user trong danh sách nếu đang hiển thị
+                const userIndex = users.findIndex(u => u.id === userData.userId);
+                if (userIndex !== -1) {
+                    users[userIndex].isActive = userData.isActive;
+                    users[userIndex].updatedAt = userData.updatedAt;
+                    renderUsers();
+                } else {
+                    // Nếu user không có trong danh sách hiện tại, reload để đảm bảo đồng bộ
+                    loadUsers();
+                }
+
+                // Hiển thị thông báo toast/alert
+                const statusText = userData.isActive ? 'kích hoạt' : 'vô hiệu hóa';
+                showNotification(`Tài khoản ${userData.fullName} (${userData.email}) đã được ${statusText}`, userData.isActive ? 'success' : 'warning');
+            });
+
+            await userHubConnection.start();
+            console.log('SignalR UserHub connected');
+        } catch (err) {
+            console.error('Error starting SignalR UserHub connection:', err);
+        }
+    }
+
+    // Show notification function
+    function showNotification(message, type = 'info') {
+        // Tạo toast notification
+        const toastContainer = document.getElementById('toast-container') || createToastContainer();
+        
+        const toastId = 'toast-' + Date.now();
+        const bgClass = type === 'success' ? 'bg-success' : type === 'warning' ? 'bg-warning' : 'bg-info';
+        const textClass = type === 'warning' ? 'text-dark' : 'text-white';
+        
+        const toastHTML = `
+            <div id="${toastId}" class="toast ${bgClass} ${textClass}" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="5000">
+                <div class="toast-header ${bgClass} ${textClass}">
+                    <strong class="me-auto">Thông báo</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        `;
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement);
+        toast.show();
+        
+        // Xóa toast element sau khi ẩn
+        toastElement.addEventListener('hidden.bs.toast', function () {
+            toastElement.remove();
+        });
+    }
+
+    function createToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container.style.zIndex = '9999';
+        document.body.appendChild(container);
+        return container;
+    }
 
     // Initialize when DOM is ready
     function init() {
@@ -77,6 +159,9 @@
 
         // Load users on page load
         loadUsers();
+        
+        // Initialize SignalR
+        initSignalR();
     }
 
     // Wait for DOM to be ready
@@ -442,12 +527,34 @@
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Failed to update user status');
+                let errorMessage = 'Failed to update user status';
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    try {
+                        const error = await response.json();
+                        errorMessage = error.message || errorMessage;
+                    } catch (e) {
+                        // Nếu không parse được JSON, dùng status text
+                        errorMessage = response.statusText || errorMessage;
+                    }
+                } else {
+                    errorMessage = response.statusText || errorMessage;
+                }
+                throw new Error(errorMessage);
             }
 
-            alert(`Đã ${newStatus ? 'kích hoạt' : 'vô hiệu hóa'} tài khoản thành công!`);
-            loadUsers();
+            // Parse response để đảm bảo request thành công
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                await response.json();
+            }
+
+            // Hiển thị thông báo thành công
+            const statusText = newStatus ? 'kích hoạt' : 'vô hiệu hóa';
+            showNotification(`Đã ${statusText} tài khoản thành công!`, 'success');
+            
+            // Không cần reload vì SignalR sẽ tự động cập nhật
+            // loadUsers(); // SignalR sẽ tự động cập nhật UI
         } catch (error) {
             console.error('Error updating user status:', error);
             alert('Lỗi khi cập nhật trạng thái: ' + error.message);

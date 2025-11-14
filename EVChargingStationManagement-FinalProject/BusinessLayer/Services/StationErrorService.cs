@@ -1,3 +1,4 @@
+using BusinessLayer.DTOs;
 using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
@@ -14,30 +15,34 @@ namespace BusinessLayer.Services
             _context = context;
         }
 
-        public async Task<IEnumerable<StationError>> GetAllErrorsAsync()
+        public async Task<IEnumerable<StationErrorDTO>> GetAllErrorsAsync()
         {
-            return await _context.StationErrors
+            var errors = await _context.StationErrors
                 .Include(e => e.ChargingStation)
                 .Include(e => e.ChargingSpot)
                 .Include(e => e.ReportedByUser)
                 .Include(e => e.ResolvedByUser)
                 .OrderByDescending(e => e.CreatedAt)
                 .ToListAsync();
+            
+            return errors.Select(MapToDTO);
         }
 
-        public async Task<StationError?> GetErrorByIdAsync(Guid id)
+        public async Task<StationErrorDTO?> GetErrorByIdAsync(Guid id)
         {
-            return await _context.StationErrors
+            var error = await _context.StationErrors
                 .Include(e => e.ChargingStation)
                 .Include(e => e.ChargingSpot)
                 .Include(e => e.ReportedByUser)
                 .Include(e => e.ResolvedByUser)
                 .FirstOrDefaultAsync(e => e.Id == id);
+            
+            return error == null ? null : MapToDTO(error);
         }
 
-        public async Task<IEnumerable<StationError>> GetErrorsByStationIdAsync(Guid stationId)
+        public async Task<IEnumerable<StationErrorDTO>> GetErrorsByStationIdAsync(Guid stationId)
         {
-            return await _context.StationErrors
+            var errors = await _context.StationErrors
                 .Include(e => e.ChargingStation)
                 .Include(e => e.ChargingSpot)
                 .Include(e => e.ReportedByUser)
@@ -45,11 +50,13 @@ namespace BusinessLayer.Services
                 .Where(e => e.ChargingStationId == stationId)
                 .OrderByDescending(e => e.CreatedAt)
                 .ToListAsync();
+            
+            return errors.Select(MapToDTO);
         }
 
-        public async Task<IEnumerable<StationError>> GetErrorsBySpotIdAsync(Guid spotId)
+        public async Task<IEnumerable<StationErrorDTO>> GetErrorsBySpotIdAsync(Guid spotId)
         {
-            return await _context.StationErrors
+            var errors = await _context.StationErrors
                 .Include(e => e.ChargingStation)
                 .Include(e => e.ChargingSpot)
                 .Include(e => e.ReportedByUser)
@@ -57,11 +64,13 @@ namespace BusinessLayer.Services
                 .Where(e => e.ChargingSpotId == spotId)
                 .OrderByDescending(e => e.CreatedAt)
                 .ToListAsync();
+            
+            return errors.Select(MapToDTO);
         }
 
-        public async Task<IEnumerable<StationError>> GetErrorsByStatusAsync(ErrorStatus status)
+        public async Task<IEnumerable<StationErrorDTO>> GetErrorsByStatusAsync(ErrorStatus status)
         {
-            return await _context.StationErrors
+            var errors = await _context.StationErrors
                 .Include(e => e.ChargingStation)
                 .Include(e => e.ChargingSpot)
                 .Include(e => e.ReportedByUser)
@@ -69,11 +78,23 @@ namespace BusinessLayer.Services
                 .Where(e => e.Status == status)
                 .OrderByDescending(e => e.CreatedAt)
                 .ToListAsync();
+            
+            return errors.Select(MapToDTO);
         }
 
-        public async Task<IEnumerable<StationError>> GetErrorsByUserIdAsync(Guid userId)
+        public async Task<IEnumerable<StationErrorDTO>> GetErrorsByStatusStringAsync(string status)
         {
-            return await _context.StationErrors
+            if (!Enum.TryParse<ErrorStatus>(status, true, out var errorStatus))
+            {
+                throw new ArgumentException($"Invalid status value: {status}", nameof(status));
+            }
+
+            return await GetErrorsByStatusAsync(errorStatus);
+        }
+
+        public async Task<IEnumerable<StationErrorDTO>> GetErrorsByUserIdAsync(Guid userId)
+        {
+            var errors = await _context.StationErrors
                 .Include(e => e.ChargingStation)
                 .Include(e => e.ChargingSpot)
                 .Include(e => e.ReportedByUser)
@@ -81,71 +102,108 @@ namespace BusinessLayer.Services
                 .Where(e => e.ReportedByUserId == userId || e.ResolvedByUserId == userId)
                 .OrderByDescending(e => e.CreatedAt)
                 .ToListAsync();
+            
+            return errors.Select(MapToDTO);
         }
 
-        public async Task<StationError> CreateErrorAsync(StationError error)
+        public async Task<StationErrorDTO> CreateErrorAsync(CreateStationErrorRequest request)
         {
-            if (error == null)
-                throw new ArgumentNullException(nameof(error));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
 
             // Kiểm tra station tồn tại
-            var stationExists = await _context.ChargingStations.AnyAsync(s => s.Id == error.ChargingStationId);
+            var stationExists = await _context.ChargingStations.AnyAsync(s => s.Id == request.ChargingStationId);
             if (!stationExists)
                 throw new InvalidOperationException("Charging station does not exist");
 
             // Kiểm tra spot tồn tại (nếu có)
-            if (error.ChargingSpotId.HasValue)
+            if (request.ChargingSpotId.HasValue)
             {
-                var spotExists = await _context.ChargingSpots.AnyAsync(s => s.Id == error.ChargingSpotId.Value);
+                var spotExists = await _context.ChargingSpots.AnyAsync(s => s.Id == request.ChargingSpotId.Value);
                 if (!spotExists)
                     throw new InvalidOperationException("Charging spot does not exist");
             }
 
             // Kiểm tra user tồn tại
-            var userExists = await _context.Users.AnyAsync(u => u.Id == error.ReportedByUserId);
+            var userExists = await _context.Users.AnyAsync(u => u.Id == request.ReportedByUserId);
             if (!userExists)
                 throw new InvalidOperationException("User does not exist");
 
-            error.Id = Guid.NewGuid();
-            error.CreatedAt = DateTime.UtcNow;
-            error.UpdatedAt = DateTime.UtcNow;
-
-            if (!error.ReportedAt.HasValue)
+            var error = new StationError
             {
-                error.ReportedAt = DateTime.UtcNow;
-            }
+                Id = Guid.NewGuid(),
+                ChargingStationId = request.ChargingStationId,
+                ChargingSpotId = request.ChargingSpotId,
+                ReportedByUserId = request.ReportedByUserId,
+                Status = request.Status,
+                ErrorCode = request.ErrorCode,
+                Title = request.Title,
+                Description = request.Description,
+                Severity = request.Severity,
+                ReportedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
             _context.StationErrors.Add(error);
             await _context.SaveChangesAsync();
 
-            return error;
+            // Reload với navigation properties
+            var createdError = await _context.StationErrors
+                .Include(e => e.ChargingStation)
+                .Include(e => e.ChargingSpot)
+                .Include(e => e.ReportedByUser)
+                .Include(e => e.ResolvedByUser)
+                .FirstOrDefaultAsync(e => e.Id == error.Id);
+            
+            return MapToDTO(createdError!);
         }
 
-        public async Task<StationError?> UpdateErrorAsync(Guid id, StationError error)
+        public async Task<StationErrorDTO?> UpdateErrorAsync(Guid id, UpdateStationErrorRequest request)
         {
-            if (error == null)
-                throw new ArgumentNullException(nameof(error));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
 
             var existingError = await _context.StationErrors.FindAsync(id);
             if (existingError == null)
                 return null;
 
-            existingError.ResolvedByUserId = error.ResolvedByUserId;
-            existingError.Status = error.Status;
-            existingError.ResolvedAt = error.ResolvedAt;
-            existingError.ResolutionNotes = error.ResolutionNotes;
-            existingError.Severity = error.Severity;
+            if (request.ResolvedByUserId.HasValue)
+            {
+                existingError.ResolvedByUserId = request.ResolvedByUserId;
+            }
+            existingError.Status = request.Status;
+            if (request.ResolvedAt.HasValue)
+            {
+                existingError.ResolvedAt = request.ResolvedAt;
+            }
+            if (request.ResolutionNotes != null)
+            {
+                existingError.ResolutionNotes = request.ResolutionNotes;
+            }
+            if (request.Severity != null)
+            {
+                existingError.Severity = request.Severity;
+            }
             existingError.UpdatedAt = DateTime.UtcNow;
 
             // Tự động set ResolvedAt khi status là Resolved hoặc Closed
-            if ((error.Status == ErrorStatus.Resolved || error.Status == ErrorStatus.Closed) && !existingError.ResolvedAt.HasValue)
+            if ((request.Status == ErrorStatus.Resolved || request.Status == ErrorStatus.Closed) && !existingError.ResolvedAt.HasValue)
             {
                 existingError.ResolvedAt = DateTime.UtcNow;
             }
 
             await _context.SaveChangesAsync();
 
-            return existingError;
+            // Reload với navigation properties
+            var updatedError = await _context.StationErrors
+                .Include(e => e.ChargingStation)
+                .Include(e => e.ChargingSpot)
+                .Include(e => e.ReportedByUser)
+                .Include(e => e.ResolvedByUser)
+                .FirstOrDefaultAsync(e => e.Id == id);
+            
+            return updatedError == null ? null : MapToDTO(updatedError);
         }
 
         public async Task<bool> DeleteErrorAsync(Guid id)
@@ -163,6 +221,32 @@ namespace BusinessLayer.Services
         public async Task<bool> ErrorExistsAsync(Guid id)
         {
             return await _context.StationErrors.AnyAsync(e => e.Id == id);
+        }
+
+        private StationErrorDTO MapToDTO(StationError error)
+        {
+            return new StationErrorDTO
+            {
+                Id = error.Id,
+                ChargingStationId = error.ChargingStationId,
+                ChargingStationName = error.ChargingStation?.Name,
+                ChargingSpotId = error.ChargingSpotId,
+                ChargingSpotNumber = error.ChargingSpot?.SpotNumber,
+                ReportedByUserId = error.ReportedByUserId,
+                ReportedByUserName = error.ReportedByUser?.FullName,
+                ResolvedByUserId = error.ResolvedByUserId,
+                ResolvedByUserName = error.ResolvedByUser?.FullName,
+                Status = error.Status,
+                ErrorCode = error.ErrorCode,
+                Title = error.Title,
+                Description = error.Description,
+                ReportedAt = error.ReportedAt,
+                ResolvedAt = error.ResolvedAt,
+                ResolutionNotes = error.ResolutionNotes,
+                Severity = error.Severity,
+                CreatedAt = error.CreatedAt,
+                UpdatedAt = error.UpdatedAt
+            };
         }
     }
 }

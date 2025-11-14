@@ -10,6 +10,7 @@ using System.Text;
 using System.Diagnostics;
 using PresentationLayer.Hubs;
 using PresentationLayer.Services;
+using PresentationLayer.Models;
 
 namespace PresentationLayer
 {
@@ -94,6 +95,7 @@ namespace PresentationLayer
             builder.Services.AddScoped<IRealtimeNotifier, StationHubNotifier>();
             builder.Services.AddScoped<IStationDataMergeService, StationDataMergeService>();
             builder.Services.AddScoped<IQrCodeService, QrCodeService>();
+            builder.Services.AddScoped<IDashboardService, DashboardService>();
             builder.Services.AddScoped<IChargingProgressService>(sp =>
             {
                 var context = sp.GetRequiredService<EVDbContext>();
@@ -105,6 +107,10 @@ namespace PresentationLayer
             builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
             builder.Services.AddScoped<IReportingService, ReportingService>();
             builder.Services.AddScoped<IVnPayService, VnPayService>();
+            
+            // Register MoMoService with HttpClient
+            builder.Services.AddHttpClient<IMoMoService, MoMoService>();
+            
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddHostedService<RefreshTokenCleanupService>();
 
@@ -216,6 +222,7 @@ namespace PresentationLayer
             app.MapRazorPages();
             app.MapControllers();
             app.MapHub<StationHub>("/hubs/station");
+            app.MapHub<UserHub>("/hubs/user");
             app.MapHealthChecks("/health");
 
             app.Run();

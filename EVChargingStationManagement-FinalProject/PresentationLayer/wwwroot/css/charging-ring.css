@@ -1,0 +1,257 @@
+/**
+ * ChargingRing Component - Xiaomi Style Charging Animation
+ * A futuristic circular gauge with electric current animation
+ */
+
+/* Container for the charging ring */
+.charging-ring-container {
+    position: relative;
+    width: 100%;
+    max-width: 350px;
+    aspect-ratio: 1;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Dark background area for the gauge (works in light dashboard) */
+.charging-ring-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, 
+        rgba(15, 23, 42, 0.95) 0%, 
+        rgba(15, 23, 42, 0.85) 50%,
+        rgba(15, 23, 42, 0.7) 100%);
+    border-radius: 50%;
+    box-shadow: 
+        0 0 40px rgba(0, 0, 0, 0.3),
+        inset 0 0 60px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* SVG container */
+.charging-ring-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg); /* Start from top */
+}
+
+/* Background ring (subtle) */
+.charging-ring-bg {
+    fill: none;
+    stroke: rgba(148, 163, 184, 0.1);
+    stroke-width: 2;
+}
+
+/* Progress ring (filled arc) */
+.charging-ring-progress {
+    fill: none;
+    stroke-width: 8;
+    stroke-linecap: round;
+    filter: url(#ringGlow);
+    transition: stroke-dashoffset 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Electric current ring (animated highlight) */
+.charging-ring-current {
+    fill: none;
+    stroke-width: 10;
+    stroke-linecap: round;
+    opacity: 0.8;
+    filter: url(#currentGlow);
+    stroke-dasharray: 20 280;
+    animation: electricCurrent 2s linear infinite;
+}
+
+/* Pulsing outer glow */
+.charging-ring-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 110%;
+    height: 110%;
+    border-radius: 50%;
+    opacity: 0.4;
+    animation: pulseGlow 2s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Center content */
+.charging-ring-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 10;
+    pointer-events: none;
+    width: 70%;
+}
+
+/* Main value (big number) */
+.charging-ring-value {
+    font-size: clamp(36px, 8vw, 64px);
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+    font-family: 'Arial', 'Helvetica', sans-serif;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+/* Unit text */
+.charging-ring-unit {
+    font-size: clamp(14px, 3vw, 20px);
+    font-weight: 600;
+    color: rgba(148, 163, 184, 0.9);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+/* Main label (Vietnamese) */
+.charging-ring-label {
+    font-size: clamp(11px, 2.5vw, 13px);
+    color: rgba(148, 163, 184, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+/* Status text */
+.charging-ring-status {
+    font-size: clamp(10px, 2vw, 11px);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    margin-top: 4px;
+    transition: color 0.3s ease;
+}
+
+/* Particles container */
+.charging-ring-particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* Individual particle */
+.charging-ring-particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    opacity: 0;
+    animation: particleEmit 2s ease-out infinite;
+}
+
+/* Animations */
+@keyframes electricCurrent {
+    0% {
+        stroke-dashoffset: 0;
+    }
+    100% {
+        stroke-dashoffset: -300;
+    }
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        opacity: 0.3;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: translate(-50%, -50%) scale(1.05);
+    }
+}
+
+@keyframes particleEmit {
+    0% {
+        opacity: 0;
+        transform: scale(0) translate(0, 0);
+    }
+    20% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.5) translate(var(--particle-x, 0), var(--particle-y, 0));
+    }
+}
+
+/* Color schemes - gradients are set dynamically via JavaScript */
+/* CSS data attributes are used for glow colors only */
+
+/* Glow colors based on type and level */
+.charging-ring-container[data-type="battery"][data-level="low"] .charging-ring-glow {
+    background: radial-gradient(circle, rgba(239, 68, 68, 0.3) 0%, transparent 70%);
+}
+
+.charging-ring-container[data-type="battery"][data-level="medium"] .charging-ring-glow {
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.3) 0%, transparent 70%);
+}
+
+.charging-ring-container[data-type="battery"][data-level="high"] .charging-ring-glow {
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%);
+}
+
+.charging-ring-container[data-type="battery"][data-level="full"] .charging-ring-glow {
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, transparent 70%);
+}
+
+.charging-ring-container[data-type="power"][data-level="low"] .charging-ring-glow {
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%);
+}
+
+.charging-ring-container[data-type="power"][data-level="medium"] .charging-ring-glow {
+    background: radial-gradient(circle, rgba(6, 182, 212, 0.3) 0%, transparent 70%);
+}
+
+.charging-ring-container[data-type="power"][data-level="high"] .charging-ring-glow {
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, transparent 70%);
+}
+
+/* Status colors */
+.charging-ring-status.charging {
+    color: #10b981;
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.charging-ring-status.completed {
+    color: #64748b;
+}
+
+.charging-ring-status.low {
+    color: #ef4444;
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .charging-ring-container {
+        max-width: 300px;
+    }
+}
+
+/* Ensure smooth animations */
+.charging-ring-container * {
+    will-change: transform, opacity;
+}
+

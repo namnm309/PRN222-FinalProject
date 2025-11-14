@@ -1,3 +1,4 @@
+using BusinessLayer.DTOs;
 using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +14,7 @@ namespace BusinessLayer.Services
             _context = context;
         }
 
-        public async Task<IEnumerable<SubscriptionPackage>> GetAllPackagesAsync(bool activeOnly = false)
+        public async Task<IEnumerable<SubscriptionPackageDTO>> GetAllPackagesAsync(bool activeOnly = false)
         {
             var query = _context.SubscriptionPackages.AsQueryable();
             
@@ -25,51 +26,64 @@ namespace BusinessLayer.Services
                     (!p.ValidTo.HasValue || p.ValidTo.Value >= now));
             }
 
-            return await query.OrderBy(p => p.Price).ToListAsync();
+            var packages = await query.OrderBy(p => p.Price).ToListAsync();
+            return packages.Select(MapPackageToDTO);
         }
 
-        public async Task<SubscriptionPackage?> GetPackageByIdAsync(Guid id)
+        public async Task<SubscriptionPackageDTO?> GetPackageByIdAsync(Guid id)
         {
-            return await _context.SubscriptionPackages.FindAsync(id);
+            var package = await _context.SubscriptionPackages.FindAsync(id);
+            return package == null ? null : MapPackageToDTO(package);
         }
 
-        public async Task<SubscriptionPackage> CreatePackageAsync(SubscriptionPackage package)
+        public async Task<SubscriptionPackageDTO> CreatePackageAsync(CreateSubscriptionPackageRequest request)
         {
-            if (package == null)
-                throw new ArgumentNullException(nameof(package));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
 
-            package.Id = Guid.NewGuid();
-            package.CreatedAt = DateTime.UtcNow;
-            package.UpdatedAt = DateTime.UtcNow;
+            var package = new SubscriptionPackage
+            {
+                Id = Guid.NewGuid(),
+                Name = request.Name,
+                Description = request.Description,
+                Price = request.Price,
+                DurationDays = request.DurationDays,
+                EnergyKwh = request.EnergyKwh,
+                IsActive = request.IsActive,
+                ValidFrom = request.ValidFrom,
+                ValidTo = request.ValidTo,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
             _context.SubscriptionPackages.Add(package);
             await _context.SaveChangesAsync();
 
-            return package;
+            return MapPackageToDTO(package);
         }
 
-        public async Task<SubscriptionPackage?> UpdatePackageAsync(Guid id, SubscriptionPackage package)
+        public async Task<SubscriptionPackageDTO?> UpdatePackageAsync(Guid id, UpdateSubscriptionPackageRequest request)
         {
-            if (package == null)
-                throw new ArgumentNullException(nameof(package));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
 
             var existing = await _context.SubscriptionPackages.FindAsync(id);
             if (existing == null)
                 return null;
 
-            existing.Name = package.Name;
-            existing.Description = package.Description;
-            existing.Price = package.Price;
-            existing.DurationDays = package.DurationDays;
-            existing.EnergyKwh = package.EnergyKwh;
-            existing.IsActive = package.IsActive;
-            existing.ValidFrom = package.ValidFrom;
-            existing.ValidTo = package.ValidTo;
+            existing.Name = request.Name;
+            existing.Description = request.Description;
+            existing.Price = request.Price;
+            existing.DurationDays = request.DurationDays;
+            existing.EnergyKwh = request.EnergyKwh;
+            existing.IsActive = request.IsActive;
+            existing.ValidFrom = request.ValidFrom;
+            existing.ValidTo = request.ValidTo;
             existing.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 
-            return existing;
+            return MapPackageToDTO(existing);
         }
 
         public async Task<bool> DeletePackageAsync(Guid id)
@@ -84,7 +98,7 @@ namespace BusinessLayer.Services
             return true;
         }
 
-        public async Task<UserSubscription> PurchaseSubscriptionAsync(Guid userId, Guid packageId, string paymentMethod)
+        public async Task<UserSubscriptionDTO> PurchaseSubscriptionAsync(Guid userId, Guid packageId, string paymentMethod)
         {
             var package = await _context.SubscriptionPackages.FindAsync(packageId);
             if (package == null)
@@ -111,10 +125,15 @@ namespace BusinessLayer.Services
             _context.UserSubscriptions.Add(subscription);
             await _context.SaveChangesAsync();
 
-            return subscription;
+            // Reload với navigation properties
+            var createdSubscription = await _context.UserSubscriptions
+                .Include(us => us.SubscriptionPackage)
+                .FirstOrDefaultAsync(us => us.Id == subscription.Id);
+            
+            return MapUserSubscriptionToDTO(createdSubscription!);
         }
 
-        public async Task<IEnumerable<UserSubscription>> GetUserSubscriptionsAsync(Guid userId, bool activeOnly = false)
+        public async Task<IEnumerable<UserSubscriptionDTO>> GetUserSubscriptionsAsync(Guid userId, bool activeOnly = false)
         {
             var query = _context.UserSubscriptions
                 .Include(us => us.SubscriptionPackage)
@@ -128,14 +147,17 @@ namespace BusinessLayer.Services
                     us.RemainingEnergyKwh > 0);
             }
 
-            return await query.OrderByDescending(us => us.PurchasedAt).ToListAsync();
+            var subscriptions = await query.OrderByDescending(us => us.PurchasedAt).ToListAsync();
+            return subscriptions.Select(MapUserSubscriptionToDTO);
         }
 
-        public async Task<UserSubscription?> GetUserSubscriptionByIdAsync(Guid id)
+        public async Task<UserSubscriptionDTO?> GetUserSubscriptionByIdAsync(Guid id)
         {
-            return await _context.UserSubscriptions
+            var subscription = await _context.UserSubscriptions
                 .Include(us => us.SubscriptionPackage)
                 .FirstOrDefaultAsync(us => us.Id == id);
+            
+            return subscription == null ? null : MapUserSubscriptionToDTO(subscription);
         }
 
         public async Task<bool> UseSubscriptionEnergyAsync(Guid subscriptionId, decimal energyKwh)
@@ -158,6 +180,42 @@ namespace BusinessLayer.Services
             await _context.SaveChangesAsync();
 
             return true;
+        }
+
+        private SubscriptionPackageDTO MapPackageToDTO(SubscriptionPackage package)
+        {
+            return new SubscriptionPackageDTO
+            {
+                Id = package.Id,
+                Name = package.Name,
+                Description = package.Description,
+                Price = package.Price,
+                DurationDays = package.DurationDays,
+                EnergyKwh = package.EnergyKwh,
+                IsActive = package.IsActive,
+                ValidFrom = package.ValidFrom,
+                ValidTo = package.ValidTo,
+                CreatedAt = package.CreatedAt,
+                UpdatedAt = package.UpdatedAt
+            };
+        }
+
+        private UserSubscriptionDTO MapUserSubscriptionToDTO(UserSubscription subscription)
+        {
+            return new UserSubscriptionDTO
+            {
+                Id = subscription.Id,
+                UserId = subscription.UserId,
+                SubscriptionPackageId = subscription.SubscriptionPackageId,
+                PackageName = subscription.SubscriptionPackage?.Name,
+                PurchasedAt = subscription.PurchasedAt,
+                ActivatedAt = subscription.ActivatedAt,
+                ExpiresAt = subscription.ExpiresAt,
+                RemainingEnergyKwh = subscription.RemainingEnergyKwh,
+                IsActive = subscription.IsActive,
+                CreatedAt = subscription.CreatedAt,
+                UpdatedAt = subscription.UpdatedAt
+            };
         }
     }
 }

@@ -2,7 +2,6 @@ using System.Linq;
 using System.Security.Claims;
 using BusinessLayer.DTOs;
 using BusinessLayer.Services;
-using DataAccessLayer.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -25,22 +24,20 @@ namespace PresentationLayer.Controllers
         {
             var userId = GetUserId();
             var vehicles = await _vehicleService.GetVehiclesByUserAsync(userId);
-            var dtos = vehicles.Select(MapToDto).ToList();
-            return Ok(dtos);
+            return Ok(vehicles);
         }
 
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetVehicle(Guid id)
         {
-            var userId = GetUserId();
             var vehicle = await _vehicleService.GetVehicleByIdAsync(id);
 
-            if (vehicle == null || vehicle.UserVehicles.All(uv => uv.UserId != userId))
+            if (vehicle == null)
             {
                 return NotFound();
             }
 
-            return Ok(MapToDto(vehicle));
+            return Ok(vehicle);
         }
 
         [HttpPost]
@@ -54,27 +51,9 @@ namespace PresentationLayer.Controllers
             try
             {
                 var userId = GetUserId();
-                var vehicle = new Vehicle
-                {
-                    Make = request.Make,
-                    Model = request.Model,
-                    ModelYear = request.ModelYear,
-                    LicensePlate = request.LicensePlate,
-                    VehicleType = request.VehicleType,
-                    BatteryCapacityKwh = request.BatteryCapacityKwh,
-                    MaxChargingPowerKw = request.MaxChargingPowerKw,
-                    Color = request.Color,
-                    Notes = request.Notes
-                };
+                var created = await _vehicleService.CreateVehicleAsync(userId, request);
 
-                var created = await _vehicleService.CreateVehicleAsync(
-                    userId,
-                    vehicle,
-                    request.IsPrimary,
-                    request.Nickname,
-                    request.ChargePortLocation);
-
-                return CreatedAtAction(nameof(GetVehicle), new { id = created.Id }, MapToDto(created));
+                return CreatedAtAction(nameof(GetVehicle), new { id = created.Id }, created);
             }
             catch (Exception ex)
             {
@@ -90,41 +69,21 @@ namespace PresentationLayer.Controllers
                 return BadRequest(ModelState);
             }
 
-            var userId = GetUserId();
-            var vehicle = new Vehicle
-            {
-                Make = request.Make,
-                Model = request.Model,
-                ModelYear = request.ModelYear,
-                LicensePlate = request.LicensePlate,
-                VehicleType = request.VehicleType,
-                BatteryCapacityKwh = request.BatteryCapacityKwh,
-                MaxChargingPowerKw = request.MaxChargingPowerKw,
-                Color = request.Color,
-                Notes = request.Notes
-            };
+            var updated = await _vehicleService.UpdateVehicleAsync(id, request);
 
-            var updated = await _vehicleService.UpdateVehicleAsync(
-                id,
-                vehicle,
-                request.IsPrimary,
-                request.Nickname,
-                request.ChargePortLocation);
-
-            if (updated == null || updated.UserVehicles.All(uv => uv.UserId != userId))
+            if (updated == null)
             {
                 return NotFound();
             }
 
-            return Ok(MapToDto(updated));
+            return Ok(updated);
         }
 
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> DeleteVehicle(Guid id)
         {
-            var userId = GetUserId();
             var vehicle = await _vehicleService.GetVehicleByIdAsync(id);
-            if (vehicle == null || vehicle.UserVehicles.All(uv => uv.UserId != userId))
+            if (vehicle == null)
             {
                 return NotFound();
             }
@@ -138,34 +97,13 @@ namespace PresentationLayer.Controllers
         {
             var userId = GetUserId();
             var vehicle = await _vehicleService.GetVehicleByIdAsync(id);
-            if (vehicle == null || vehicle.UserVehicles.All(uv => uv.UserId != userId))
+            if (vehicle == null)
             {
                 return NotFound();
             }
 
             await _vehicleService.SetPrimaryVehicleAsync(userId, id);
             return Ok();
-        }
-
-        private VehicleDTO MapToDto(Vehicle vehicle)
-        {
-            var userVehicle = vehicle.UserVehicles.FirstOrDefault();
-            return new VehicleDTO
-            {
-                Id = vehicle.Id,
-                Make = vehicle.Make,
-                Model = vehicle.Model,
-                ModelYear = vehicle.ModelYear,
-                LicensePlate = vehicle.LicensePlate,
-                VehicleType = vehicle.VehicleType,
-                BatteryCapacityKwh = vehicle.BatteryCapacityKwh,
-                MaxChargingPowerKw = vehicle.MaxChargingPowerKw,
-                Color = vehicle.Color,
-                Notes = vehicle.Notes,
-                IsPrimary = userVehicle?.IsPrimary ?? false,
-                Nickname = userVehicle?.Nickname,
-                ChargePortLocation = userVehicle?.ChargePortLocation
-            };
         }
 
         private Guid GetUserId()

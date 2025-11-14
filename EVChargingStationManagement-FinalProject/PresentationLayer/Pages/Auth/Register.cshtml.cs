@@ -1,21 +1,17 @@
 using BusinessLayer.Services;
 using BusinessLayer.DTOs;
-using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Security.Claims;
-using DataAccessLayer.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace PresentationLayer.Pages.Auth
 {
     public class RegisterModel : PageModel
     {
         private readonly IAuthService _authService;
-        private readonly EVDbContext _context;
         private readonly ILogger<RegisterModel> _logger;
 
         [BindProperty]
@@ -29,11 +25,9 @@ namespace PresentationLayer.Pages.Auth
 
         public RegisterModel(
             IAuthService authService,
-            EVDbContext context,
             ILogger<RegisterModel> logger)
         {
             _authService = authService;
-            _context = context;
             _logger = logger;
         }
 
@@ -64,16 +58,16 @@ namespace PresentationLayer.Pages.Auth
             }
 
             // Kiểm tra username đã tồn tại chưa
-            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == RegisterRequest.Username);
-            if (existingUser != null)
+            var usernameExists = await _authService.CheckUsernameExistsAsync(RegisterRequest.Username);
+            if (usernameExists)
             {
                 ErrorMessage = "Tên đăng nhập đã được sử dụng. Vui lòng chọn tên khác.";
                 return Page();
             }
 
             // Kiểm tra email đã tồn tại chưa
-            var existingEmail = await _context.Users.FirstOrDefaultAsync(u => u.Email == RegisterRequest.Email);
-            if (existingEmail != null)
+            var emailExists = await _authService.CheckEmailExistsAsync(RegisterRequest.Email);
+            if (emailExists)
             {
                 ErrorMessage = "Email đã được sử dụng. Vui lòng sử dụng email khác.";
                 return Page();
@@ -90,7 +84,7 @@ namespace PresentationLayer.Pages.Auth
                     RegisterRequest.Phone,
                     RegisterRequest.DateOfBirth,
                     RegisterRequest.Gender,
-                    UserRole.EVDriver // Mặc định là EVDriver cho user đăng ký
+                    RegisterRequest.Role // Sử dụng Role từ RegisterRequest (mặc định là EVDriver)
                 );
 
                 // Tạo claims cho cookie authentication

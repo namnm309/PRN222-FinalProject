@@ -26,10 +26,15 @@ namespace PresentationLayer.Pages.Auth
             _logger = logger;
         }
 
-        public void OnGet(string? error = null, string? success = null)
+        public void OnGet(string? error = null, string? success = null, bool? locked = null)
         {
             ErrorMessage = error;
             SuccessMessage = success;
+            
+            if (locked == true)
+            {
+                ErrorMessage = "Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ với quản trị viên để được hỗ trợ.";
+            }
         }
 
         public async Task<IActionResult> OnPostLoginAsync()
