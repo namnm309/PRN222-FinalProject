@@ -4,7 +4,6 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using BusinessLayer.DTOs;
-using DataAccessLayer.Entities;
 using Microsoft.Extensions.Configuration;
 
 namespace BusinessLayer.Services
@@ -37,7 +36,7 @@ namespace BusinessLayer.Services
             return _returnUrl;
         }
 
-        public string CreatePaymentUrl(PaymentTransaction payment, string returnUrl, string ipAddress)
+        public string CreatePaymentUrl(PaymentTransactionDTO payment, string returnUrl, string ipAddress)
         {
             // Validate payment is not null
             if (payment == null)
@@ -72,7 +71,6 @@ namespace BusinessLayer.Services
             {
                 // Use a valid domain format for UI testing (VNPay only checks format, not if domain exists)
                 returnUrl = "https://example.com/vnpay/return";
-                Console.WriteLine("[VNPay] ReturnUrl is empty, using valid domain format for UI testing: " + returnUrl);
             }
             
             // Replace localhost with valid domain format for UI testing
@@ -83,7 +81,6 @@ namespace BusinessLayer.Services
                 returnUrl = returnUrl.Replace("localhost", "example.com")
                                    .Replace("127.0.0.1", "example.com")
                                    .Replace("::1", "example.com");
-                Console.WriteLine("[VNPay] Converted localhost to valid domain format for UI testing: " + returnUrl);
             }
 
             // Validate configuration
@@ -128,7 +125,6 @@ namespace BusinessLayer.Services
             if (string.IsNullOrWhiteSpace(ipAddress))
             {
                 ipAddress = "127.0.0.1";
-                Console.WriteLine("[VNPay] Warning: IP address is empty, using default: " + ipAddress);
             }
             
             var vnpay = new Dictionary<string, string>
@@ -146,13 +142,6 @@ namespace BusinessLayer.Services
                 { "vnp_IpAddr", ipAddress },
                 { "vnp_CreateDate", createDate }
             };
-            
-            // Debug logging for UI testing
-            Console.WriteLine($"[VNPay CreatePaymentUrl] Payment ID: {payment.Id}");
-            Console.WriteLine($"[VNPay CreatePaymentUrl] Amount: {payment.Amount} VND -> {amountInCents} cents");
-            Console.WriteLine($"[VNPay CreatePaymentUrl] TxnRef: {txnRef}");
-            Console.WriteLine($"[VNPay CreatePaymentUrl] ReturnUrl: {returnUrl}");
-            Console.WriteLine($"[VNPay CreatePaymentUrl] IP Address: {ipAddress}");
 
             // Remove empty values and null values before calculating hash (VNPay requirement)
             var filteredDict = vnpay
@@ -182,11 +171,6 @@ namespace BusinessLayer.Services
             var signData = signDataBuilder.ToString();
             var vnp_SecureHash = HmacSHA512(_hashSecret, signData);
             
-            // Debug logging
-            Console.WriteLine($"[VNPay] SignData: {signData}");
-            Console.WriteLine($"[VNPay] HashSecret: {_hashSecret}");
-            Console.WriteLine($"[VNPay] SecureHash: {vnp_SecureHash}");
-            
             // Build final query string for URL (encode both key and value for URL)
             var queryString = new StringBuilder();
             foreach (var kvp in sortedDict)
@@ -213,7 +197,6 @@ namespace BusinessLayer.Services
             {
                 result.Success = false;
                 result.Message = "Invalid callback data";
-                Console.WriteLine("[VNPay ValidateCallback] No query parameters received");
                 return result;
             }
 
@@ -223,7 +206,6 @@ namespace BusinessLayer.Services
             {
                 result.Success = false;
                 result.Message = "Missing vnp_SecureHash";
-                Console.WriteLine("[VNPay ValidateCallback] Missing vnp_SecureHash parameter");
                 return result;
             }
 
@@ -239,9 +221,6 @@ namespace BusinessLayer.Services
                     vnpayData.Add(item.Key, item.Value);
                 }
             }
-
-            Console.WriteLine($"[VNPay ValidateCallback] Processing {vnpayData.Count} parameters for signature verification");
-            Console.WriteLine($"[VNPay ValidateCallback] Received vnp_SecureHash: {vnp_SecureHash}");
 
             // Verify signature
             if (!VerifySignature(vnpayData, vnp_SecureHash))
@@ -305,12 +284,6 @@ namespace BusinessLayer.Services
 
             // Compute hash using trimmed secret
             var computedHash = HmacSHA512(_hashSecret, signData);
-            
-            // Debug logging
-            Console.WriteLine($"[VNPay Verify] SignData: {signData}");
-            Console.WriteLine($"[VNPay Verify] Expected Hash: {signature}");
-            Console.WriteLine($"[VNPay Verify] Computed Hash: {computedHash}");
-            Console.WriteLine($"[VNPay Verify] Match: {computedHash.Equals(signature, StringComparison.OrdinalIgnoreCase)}");
 
             return computedHash.Equals(signature, StringComparison.OrdinalIgnoreCase);
         }

@@ -21,8 +21,7 @@ namespace PresentationLayer.Controllers
         public async Task<IActionResult> GetAllMaintenances()
         {
             var maintenances = await _maintenanceService.GetAllMaintenancesAsync();
-            var maintenanceDTOs = maintenances.Select(m => MapToDTO(m)).ToList();
-            return Ok(maintenanceDTOs);
+            return Ok(maintenances);
         }
 
         [HttpGet("{id}")]
@@ -32,39 +31,42 @@ namespace PresentationLayer.Controllers
             if (maintenance == null)
                 return NotFound(new { message = "Maintenance record not found" });
 
-            return Ok(MapToDTO(maintenance));
+            return Ok(maintenance);
         }
 
         [HttpGet("station/{stationId}")]
         public async Task<IActionResult> GetMaintenancesByStationId(Guid stationId)
         {
             var maintenances = await _maintenanceService.GetMaintenancesByStationIdAsync(stationId);
-            var maintenanceDTOs = maintenances.Select(m => MapToDTO(m)).ToList();
-            return Ok(maintenanceDTOs);
+            return Ok(maintenances);
         }
 
         [HttpGet("spot/{spotId}")]
         public async Task<IActionResult> GetMaintenancesBySpotId(Guid spotId)
         {
             var maintenances = await _maintenanceService.GetMaintenancesBySpotIdAsync(spotId);
-            var maintenanceDTOs = maintenances.Select(m => MapToDTO(m)).ToList();
-            return Ok(maintenanceDTOs);
+            return Ok(maintenances);
         }
 
         [HttpGet("status/{status}")]
-        public async Task<IActionResult> GetMaintenancesByStatus(DataAccessLayer.Enums.MaintenanceStatus status)
+        public async Task<IActionResult> GetMaintenancesByStatus([FromRoute] string status)
         {
-            var maintenances = await _maintenanceService.GetMaintenancesByStatusAsync(status);
-            var maintenanceDTOs = maintenances.Select(m => MapToDTO(m)).ToList();
-            return Ok(maintenanceDTOs);
+            try
+            {
+                var maintenances = await _maintenanceService.GetMaintenancesByStatusStringAsync(status);
+                return Ok(maintenances);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetMaintenancesByUserId(Guid userId)
         {
             var maintenances = await _maintenanceService.GetMaintenancesByUserIdAsync(userId);
-            var maintenanceDTOs = maintenances.Select(m => MapToDTO(m)).ToList();
-            return Ok(maintenanceDTOs);
+            return Ok(maintenances);
         }
 
         [HttpPost]
@@ -77,7 +79,7 @@ namespace PresentationLayer.Controllers
             try
             {
                 var createdMaintenance = await _maintenanceService.CreateMaintenanceAsync(request);
-                return CreatedAtAction(nameof(GetMaintenanceById), new { id = createdMaintenance.Id }, MapToDTO(createdMaintenance));
+                return CreatedAtAction(nameof(GetMaintenanceById), new { id = createdMaintenance.Id }, createdMaintenance);
             }
             catch (InvalidOperationException ex)
             {
@@ -126,7 +128,7 @@ namespace PresentationLayer.Controllers
             if (updatedMaintenance == null)
                 return NotFound(new { message = "Maintenance record not found" });
 
-            return Ok(MapToDTO(updatedMaintenance));
+            return Ok(updatedMaintenance);
         }
 
         [HttpDelete("{id}")]
@@ -138,31 +140,6 @@ namespace PresentationLayer.Controllers
                 return NotFound(new { message = "Maintenance record not found" });
 
             return Ok(new { message = "Maintenance record deleted successfully" });
-        }
-
-        private StationMaintenanceDTO MapToDTO(DataAccessLayer.Entities.StationMaintenance maintenance)
-        {
-            return new StationMaintenanceDTO
-            {
-                Id = maintenance.Id,
-                ChargingStationId = maintenance.ChargingStationId,
-                ChargingStationName = maintenance.ChargingStation?.Name,
-                ChargingSpotId = maintenance.ChargingSpotId,
-                ChargingSpotNumber = maintenance.ChargingSpot?.SpotNumber,
-                ReportedByUserId = maintenance.ReportedByUserId,
-                ReportedByUserName = maintenance.ReportedByUser?.FullName,
-                AssignedToUserId = maintenance.AssignedToUserId,
-                AssignedToUserName = maintenance.AssignedToUser?.FullName,
-                ScheduledDate = maintenance.ScheduledDate,
-                StartDate = maintenance.StartDate,
-                EndDate = maintenance.EndDate,
-                Status = maintenance.Status,
-                Title = maintenance.Title,
-                Description = maintenance.Description,
-                Notes = maintenance.Notes,
-                CreatedAt = maintenance.CreatedAt,
-                UpdatedAt = maintenance.UpdatedAt
-            };
         }
     }
 }

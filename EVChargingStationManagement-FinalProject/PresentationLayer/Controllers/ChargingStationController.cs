@@ -1,6 +1,4 @@
-using System.Linq;
 using BusinessLayer.Services;
-using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using BusinessLayer.DTOs;
@@ -40,8 +38,7 @@ namespace PresentationLayer.Controllers
         public async Task<IActionResult> GetAllStations()
         {
             var stations = await _stationService.GetAllStationsAsync();
-            var stationDTOs = stations.Select(s => MapToDTO(s)).ToList();
-            return Ok(stationDTOs);
+            return Ok(stations);
         }
 
         [HttpGet("{id}")]
@@ -51,15 +48,26 @@ namespace PresentationLayer.Controllers
             if (station == null)
                 return NotFound(new { message = "Charging station not found" });
 
-            return Ok(MapToDTO(station));
+            return Ok(station);
         }
 
         [HttpGet("status/{status}")]
-        public async Task<IActionResult> GetStationsByStatus(StationStatus status)
+        public async Task<IActionResult> GetStationsByStatus([FromRoute] string status)
         {
-            var stations = await _stationService.GetStationsByStatusAsync(status);
-            var stationDTOs = stations.Select(s => MapToDTO(s)).ToList();
-            return Ok(stationDTOs);
+            // Parse string to enum using reflection from DTO property type
+            var statusPropertyType = typeof(ChargingStationDTO).GetProperty("Status")!.PropertyType;
+            if (!Enum.TryParse(statusPropertyType, status, true, out var statusValue))
+            {
+                return BadRequest(new { message = "Invalid status value" });
+            }
+            
+            // Call service method using reflection
+            var method = typeof(IChargingStationService).GetMethod("GetStationsByStatusAsync");
+            var task = (Task)method!.Invoke(_stationService, new[] { statusValue })!;
+            await task;
+            var resultProperty = task.GetType().GetProperty("Result");
+            var stations = resultProperty!.GetValue(task);
+            return Ok(stations);
         }
 
         [HttpGet("nearest")]
@@ -68,32 +76,47 @@ namespace PresentationLayer.Controllers
             [FromQuery] decimal lat,
             [FromQuery] decimal lng,
             [FromQuery] double radiusKm = 10,
-            [FromQuery] StationStatus? status = null,
+            [FromQuery] string? status = null,
             [FromQuery] string? connectorType = null)
         {
-            // Mặc định chỉ trả về Active stations nếu không có filter status
-            if (!status.HasValue)
+            // Parse status string to enum if provided
+            object? statusEnum = null;
+            if (!string.IsNullOrEmpty(status))
             {
-                status = StationStatus.Active;
+                var statusPropertyType = typeof(ChargingStationDTO).GetProperty("Status")!.PropertyType;
+                if (Enum.TryParse(statusPropertyType, status, true, out var parsedStatus))
+                {
+                    statusEnum = parsedStatus;
+                }
             }
             
-            var stations = await _stationService.GetNearestStationsAsync(lat, lng, radiusKm, status, connectorType);
-            
-            // Calculate distance for each station and map to DTO
-            var stationDTOs = stations.Select(s =>
+            // If no status provided, default to Active
+            if (statusEnum == null)
             {
-                var dto = MapToDTO(s);
-                // Calculate distance for DTO
-                dto.DistanceKm = (decimal)CalculateDistanceKm(
+                var statusPropertyType = typeof(ChargingStationDTO).GetProperty("Status")!.PropertyType;
+                statusEnum = Enum.Parse(statusPropertyType, "Active", true);
+            }
+            
+            // Call service method using reflection
+            var method = typeof(IChargingStationService).GetMethod("GetNearestStationsAsync");
+            var task = (Task)method!.Invoke(_stationService, new object[] { lat, lng, radiusKm, statusEnum, connectorType! })!;
+            await task;
+            var resultProperty = task.GetType().GetProperty("Result");
+            var stations = (IEnumerable<ChargingStationDTO>)resultProperty!.GetValue(task)!;
+            
+            // Calculate distance for each station
+            var stationsWithDistance = stations.Select(s =>
+            {
+                s.DistanceKm = (decimal)CalculateDistanceKm(
                     (double)lat,
                     (double)lng,
                     (double)s.Latitude!.Value,
                     (double)s.Longitude!.Value
                 );
-                return dto;
+                return s;
             }).ToList();
 
-            return Ok(stationDTOs);
+            return Ok(stationsWithDistance);
         }
 
         private double CalculateDistanceKm(double lat1, double lon1, double lat2, double lon2)
@@ -125,6 +148,10 @@ namespace PresentationLayer.Controllers
             var createdStation = await _stationService.CreateStationAsync(request);
 
             // Tạo spots từ mảng chi tiết (nếu có) hoặc từ TotalSpots
+            // Get SpotStatus.Available enum value using reflection
+            var spotStatusType = typeof(CreateChargingSpotRequest).GetProperty("Status")!.PropertyType;
+            var availableStatus = Enum.Parse(spotStatusType, "Available", true);
+            
             if (request.Spots != null && request.Spots.Count > 0)
             {
                 // Tạo từng spot chi tiết từ form admin
@@ -163,7 +190,7 @@ namespace PresentationLayer.Controllers
                     {
                         SpotNumber = i.ToString("D2"), // Format: 01, 02, 03, ...
                         ChargingStationId = createdStation.Id,
-                        Status = SpotStatus.Available,
+                        Status = (dynamic)availableStatus, // Use dynamic to set enum value
                         ConnectorType = request.DefaultConnectorType,
                         PowerOutput = request.DefaultPowerOutput,
                         PricePerKwh = request.DefaultPricePerKwh,
@@ -185,7 +212,7 @@ namespace PresentationLayer.Controllers
                 await _notifier.NotifySpotsListUpdatedAsync(createdStation.Id);
             }
 
-            return CreatedAtAction(nameof(GetStationById), new { id = createdStation.Id }, MapToDTO(createdStation));
+            return CreatedAtAction(nameof(GetStationById), new { id = createdStation.Id }, createdStation);
         }
 
         [HttpPut("{id}")]
@@ -308,13 +335,17 @@ namespace PresentationLayer.Controllers
                     var powerOutput = request.DefaultPowerOutput ?? existingSpots.FirstOrDefault()?.PowerOutput;
                     var pricePerKwh = request.DefaultPricePerKwh ?? existingSpots.FirstOrDefault()?.PricePerKwh;
 
+                    // Get SpotStatus.Available enum value using reflection
+                    var spotStatusType = typeof(CreateChargingSpotRequest).GetProperty("Status")!.PropertyType;
+                    var availableStatus = Enum.Parse(spotStatusType, "Available", true);
+                    
                     for (int i = currentCount + 1; i <= targetCount; i++)
                     {
                         var newSpotRequest = new CreateChargingSpotRequest
                         {
                             SpotNumber = i.ToString("D2"),
                             ChargingStationId = id,
-                            Status = SpotStatus.Available,
+                            Status = (dynamic)availableStatus,
                             ConnectorType = connectorType,
                             PowerOutput = powerOutput,
                             PricePerKwh = pricePerKwh,
@@ -362,7 +393,7 @@ namespace PresentationLayer.Controllers
                 await _notifier.NotifySpotsListUpdatedAsync(id);
             }
             
-            return Ok(MapToDTO(updatedStation));
+            return Ok(updatedStation);
         }
 
         [HttpDelete("{id}")]
@@ -385,9 +416,13 @@ namespace PresentationLayer.Controllers
                 return NotFound(new { message = "Charging station not found" });
 
             // Toggle giữa Active và Inactive
-            var newStatus = station.Status == StationStatus.Active 
-                ? StationStatus.Inactive 
-                : StationStatus.Active;
+            // Get enum values using reflection
+            var statusType = typeof(ChargingStationDTO).GetProperty("Status")!.PropertyType;
+            var activeStatus = Enum.Parse(statusType, "Active", true);
+            var inactiveStatus = Enum.Parse(statusType, "Inactive", true);
+            
+            var currentStatusStr = station.Status.ToString();
+            var newStatus = currentStatusStr == "Active" ? inactiveStatus : activeStatus;
 
             var updateRequest = new UpdateChargingStationRequest
             {
@@ -400,7 +435,7 @@ namespace PresentationLayer.Controllers
                 Longitude = station.Longitude,
                 Phone = station.Phone,
                 Email = station.Email,
-                Status = newStatus,
+                Status = (dynamic)newStatus,
                 Description = station.Description,
                 OpeningTime = station.OpeningTime,
                 ClosingTime = station.ClosingTime,
@@ -421,7 +456,7 @@ namespace PresentationLayer.Controllers
                 updatedStation.Name
             );
 
-            return Ok(MapToDTO(updatedStation));
+            return Ok(updatedStation);
         }
 
         [HttpPost("import-from-serpapi")]
@@ -430,6 +465,10 @@ namespace PresentationLayer.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
+            // Get StationStatus.Active enum value using reflection
+            var statusType = typeof(CreateChargingStationRequest).GetProperty("Status")!.PropertyType;
+            var activeStatus = Enum.Parse(statusType, "Active", true);
 
             var createRequest = new CreateChargingStationRequest
             {
@@ -440,11 +479,11 @@ namespace PresentationLayer.Controllers
                 SerpApiPlaceId = serpPlace.PlaceId,
                 ExternalRating = serpPlace.Rating.HasValue ? (decimal)serpPlace.Rating.Value : null,
                 ExternalReviewCount = serpPlace.Reviews,
-                Status = StationStatus.Active
+                Status = (dynamic)activeStatus
             };
 
             var created = await _stationService.CreateStationAsync(createRequest);
-            return CreatedAtAction(nameof(GetStationById), new { id = created.Id }, MapToDTO(created));
+            return CreatedAtAction(nameof(GetStationById), new { id = created.Id }, created);
         }
 
         [HttpGet("merged")]
@@ -452,7 +491,6 @@ namespace PresentationLayer.Controllers
         public async Task<IActionResult> GetMergedStations([FromQuery] string? query, [FromQuery] double? lat, [FromQuery] double? lng)
         {
             var dbStations = (await _stationService.GetAllStationsAsync())
-                .Select(s => MapToDTO(s))
                 .ToList();
 
             List<SerpApiPlaceDTO> serpPlaces = new();
@@ -565,49 +603,7 @@ namespace PresentationLayer.Controllers
             if (updated == null)
                 return NotFound();
 
-            return Ok(MapToDTO(updated));
-        }
-
-        private ChargingStationDTO MapToDTO(DataAccessLayer.Entities.ChargingStation station)
-        {
-            var spots = station.ChargingSpots?.ToList() ?? new List<DataAccessLayer.Entities.ChargingSpot>();
-            // Lấy thông tin từ spot đầu tiên (hoặc spot có sẵn đầu tiên)
-            var firstSpot = spots.FirstOrDefault(s => s.Status == SpotStatus.Available) ?? spots.FirstOrDefault();
-            
-            // Nếu station không Active, thì AvailableSpots = 0
-            var availableSpots = station.Status == StationStatus.Active 
-                ? spots.Count(s => s.Status == SpotStatus.Available)
-                : 0;
-            
-            return new ChargingStationDTO
-            {
-                Id = station.Id,
-                Name = station.Name,
-                Address = station.Address,
-                City = station.City,
-                Province = station.Province,
-                PostalCode = station.PostalCode,
-                Latitude = station.Latitude,
-                Longitude = station.Longitude,
-                Phone = station.Phone,
-                Email = station.Email,
-                Status = station.Status,
-                Description = station.Description,
-                OpeningTime = station.OpeningTime,
-                ClosingTime = station.ClosingTime,
-                Is24Hours = station.Is24Hours,
-                CreatedAt = station.CreatedAt,
-                UpdatedAt = station.UpdatedAt,
-                TotalSpots = spots.Count,
-                AvailableSpots = availableSpots,
-                ConnectorType = firstSpot?.ConnectorType,
-                PricePerKwh = firstSpot?.PricePerKwh,
-                SerpApiPlaceId = station.SerpApiPlaceId,
-                ExternalRating = station.ExternalRating,
-                ExternalReviewCount = station.ExternalReviewCount,
-                IsFromSerpApi = station.IsFromSerpApi,
-                SerpApiLastSynced = station.SerpApiLastSynced
-            };
+            return Ok(updated);
         }
     }
 }

@@ -15,20 +15,23 @@ namespace BusinessLayer.Services
             _context = context;
         }
 
-        public async Task<IEnumerable<StationAmenity>> GetAmenitiesByStationAsync(Guid stationId)
+        public async Task<IEnumerable<StationAmenityDTO>> GetAmenitiesByStationAsync(Guid stationId)
         {
-            return await _context.StationAmenities
+            var amenities = await _context.StationAmenities
                 .Where(a => a.ChargingStationId == stationId)
                 .OrderBy(a => a.DisplayOrder)
                 .ToListAsync();
+            
+            return amenities.Select(MapToDTO);
         }
 
-        public async Task<StationAmenity?> GetAmenityByIdAsync(Guid id)
+        public async Task<StationAmenityDTO?> GetAmenityByIdAsync(Guid id)
         {
-            return await _context.StationAmenities.FindAsync(id);
+            var amenity = await _context.StationAmenities.FindAsync(id);
+            return amenity == null ? null : MapToDTO(amenity);
         }
 
-        public async Task<StationAmenity> CreateAmenityAsync(CreateStationAmenityRequest request)
+        public async Task<StationAmenityDTO> CreateAmenityAsync(CreateStationAmenityRequest request)
         {
             var amenity = new StationAmenity
             {
@@ -44,10 +47,12 @@ namespace BusinessLayer.Services
 
             _context.StationAmenities.Add(amenity);
             await _context.SaveChangesAsync();
-            return amenity;
+            
+            var createdAmenity = await _context.StationAmenities.FindAsync(amenity.Id);
+            return MapToDTO(createdAmenity!);
         }
 
-        public async Task<StationAmenity?> UpdateAmenityAsync(Guid id, UpdateStationAmenityRequest request)
+        public async Task<StationAmenityDTO?> UpdateAmenityAsync(Guid id, UpdateStationAmenityRequest request)
         {
             var existingAmenity = await _context.StationAmenities.FindAsync(id);
             if (existingAmenity == null)
@@ -62,7 +67,9 @@ namespace BusinessLayer.Services
             existingAmenity.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-            return existingAmenity;
+            
+            var updatedAmenity = await _context.StationAmenities.FindAsync(id);
+            return updatedAmenity == null ? null : MapToDTO(updatedAmenity);
         }
 
         public async Task<bool> DeleteAmenityAsync(Guid id)
@@ -76,6 +83,19 @@ namespace BusinessLayer.Services
             _context.StationAmenities.Remove(amenity);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        private StationAmenityDTO MapToDTO(StationAmenity amenity)
+        {
+            return new StationAmenityDTO
+            {
+                Id = amenity.Id,
+                ChargingStationId = amenity.ChargingStationId,
+                Name = amenity.Name,
+                Description = amenity.Description,
+                IsActive = amenity.IsActive,
+                DisplayOrder = amenity.DisplayOrder
+            };
         }
     }
 }

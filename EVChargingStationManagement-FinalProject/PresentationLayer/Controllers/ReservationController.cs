@@ -1,8 +1,6 @@
-using System.Linq;
 using System.Security.Claims;
 using BusinessLayer.DTOs;
 using BusinessLayer.Services;
-using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -36,7 +34,7 @@ namespace PresentationLayer.Controllers
         {
             var userId = GetUserId();
             var reservations = await _reservationService.GetReservationsForUserAsync(userId, from, to);
-            return Ok(reservations.Select(MapToDto));
+            return Ok(reservations);
         }
 
         [HttpGet("{id:guid}")]
@@ -50,12 +48,12 @@ namespace PresentationLayer.Controllers
 
             var userId = GetUserId();
             var role = User.FindFirstValue(ClaimTypes.Role);
-            if (reservation.UserId != userId && role != UserRole.Admin.ToString() && role != UserRole.CSStaff.ToString())
+            if (reservation.UserId != userId && role != "Admin" && role != "CSStaff")
             {
                 return Forbid();
             }
 
-            return Ok(MapToDto(reservation));
+            return Ok(reservation);
         }
 
         [HttpPost]
@@ -79,15 +77,14 @@ namespace PresentationLayer.Controllers
                 await _notifier.NotifyReservationChangedAsync(created);
                 
                 // Notify station availability change
-                var stationId = created.ChargingSpot?.ChargingStationId ?? Guid.Empty;
-                if (stationId != Guid.Empty)
+                if (created.ChargingStationId != Guid.Empty)
                 {
-                    await NotifyStationAvailabilityAsync(stationId);
+                    await NotifyStationAvailabilityAsync(created.ChargingStationId);
                     // Notify spots list updated to refresh dropdown
-                    await _notifier.NotifySpotsListUpdatedAsync(stationId);
+                    await _notifier.NotifySpotsListUpdatedAsync(created.ChargingStationId);
                 }
                 
-                return CreatedAtAction(nameof(GetReservationById), new { id = created.Id }, MapToDto(created));
+                return CreatedAtAction(nameof(GetReservationById), new { id = created.Id }, created);
             }
             catch (InvalidOperationException ex)
             {
@@ -107,7 +104,9 @@ namespace PresentationLayer.Controllers
             {
                 return BadRequest(ModelState);
             }
-            if (!Enum.IsDefined(typeof(ReservationStatus), request.Status))
+            // Validate enum using reflection from DTO
+            var statusType = typeof(ReservationDTO).GetProperty("Status")!.PropertyType;
+            if (!Enum.IsDefined(statusType, request.Status))
             {
                 return BadRequest(new { message = "Trạng thái không hợp lệ" });
             }
@@ -121,20 +120,20 @@ namespace PresentationLayer.Controllers
             await _notifier.NotifyReservationChangedAsync(updated);
             
             // Notify station availability change when status changes (Confirmed, Cancelled, Completed)
-            var stationId = updated.ChargingSpot?.ChargingStationId ?? Guid.Empty;
-            if (stationId != Guid.Empty)
+            if (updated.ChargingStationId != Guid.Empty)
             {
-                if (updated.Status == ReservationStatus.Confirmed || 
-                    updated.Status == ReservationStatus.Cancelled || 
-                    updated.Status == ReservationStatus.Completed)
+                var statusStr = updated.Status.ToString();
+                if (statusStr == "Confirmed" || 
+                    statusStr == "Cancelled" || 
+                    statusStr == "Completed")
                 {
-                    await NotifyStationAvailabilityAsync(stationId);
+                    await NotifyStationAvailabilityAsync(updated.ChargingStationId);
                 }
                 // Always notify spots list updated when reservation status changes
-                await _notifier.NotifySpotsListUpdatedAsync(stationId);
+                await _notifier.NotifySpotsListUpdatedAsync(updated.ChargingStationId);
             }
             
-            return Ok(MapToDto(updated));
+            return Ok(updated);
         }
 
         [HttpDelete("{id:guid}")]
@@ -156,12 +155,11 @@ namespace PresentationLayer.Controllers
                 
                 // Notify station availability change - this will trigger SignalR update
                 // to refresh homepage immediately when reservation is cancelled
-                var stationId = reservation.ChargingSpot?.ChargingStationId ?? Guid.Empty;
-                if (stationId != Guid.Empty)
+                if (reservation.ChargingStationId != Guid.Empty)
                 {
-                    await NotifyStationAvailabilityAsync(stationId);
+                    await NotifyStationAvailabilityAsync(reservation.ChargingStationId);
                     // Notify spots list updated to refresh dropdown
-                    await _notifier.NotifySpotsListUpdatedAsync(stationId);
+                    await _notifier.NotifySpotsListUpdatedAsync(reservation.ChargingStationId);
                 }
             }
 
@@ -170,10 +168,24 @@ namespace PresentationLayer.Controllers
 
         [HttpGet("station/{stationId:guid}")]
         [Authorize(Roles = "Admin,CSStaff")]
-        public async Task<IActionResult> GetReservationsForStation(Guid stationId, [FromQuery] ReservationStatus? status)
+        public async Task<IActionResult> GetReservationsForStation(Guid stationId, [FromQuery] string? status)
         {
-            var reservations = await _reservationService.GetReservationsForStationAsync(stationId, status);
-            return Ok(reservations.Select(MapToDto));
+            // Parse status string to enum using reflection
+            object? statusEnum = null;
+            if (!string.IsNullOrEmpty(status))
+            {
+                var statusType = typeof(ReservationDTO).GetProperty("Status")!.PropertyType;
+                if (Enum.TryParse(statusType, status, true, out var parsedStatus))
+                {
+                    statusEnum = parsedStatus;
+                }
+            }
+            
+            // Cast to the expected enum type for the service
+            var statusTypeForService = typeof(ReservationDTO).GetProperty("Status")!.PropertyType;
+            var typedStatus = statusEnum != null ? Convert.ChangeType(statusEnum, statusTypeForService) : null;
+            var reservations = await _reservationService.GetReservationsForStationAsync(stationId, (dynamic?)typedStatus);
+            return Ok(reservations);
         }
 
         [HttpGet("staff/all")]
@@ -181,31 +193,7 @@ namespace PresentationLayer.Controllers
         public async Task<IActionResult> GetAllReservationsForStaff([FromQuery] DateTime? from, [FromQuery] DateTime? to)
         {
             var reservations = await _reservationService.GetAllReservationsForStaffAsync(from, to);
-            return Ok(reservations.Select(MapToDto));
-        }
-
-        private ReservationDTO MapToDto(DataAccessLayer.Entities.Reservation reservation)
-        {
-            return new ReservationDTO
-            {
-                Id = reservation.Id,
-                ChargingSpotId = reservation.ChargingSpotId,
-                ChargingSpotNumber = reservation.ChargingSpot?.SpotNumber,
-                ChargingStationId = reservation.ChargingSpot?.ChargingStationId ?? Guid.Empty,
-                ChargingStationName = reservation.ChargingSpot?.ChargingStation?.Name,
-                UserId = reservation.UserId,
-                VehicleId = reservation.VehicleId,
-                VehicleName = reservation.Vehicle != null ? $"{reservation.Vehicle.Make} {reservation.Vehicle.Model}" : null,
-                UserFullName = reservation.User?.FullName,
-                Status = reservation.Status,
-                ConfirmationCode = reservation.ConfirmationCode,
-                ScheduledStartTime = reservation.ScheduledStartTime,
-                ScheduledEndTime = reservation.ScheduledEndTime,
-                EstimatedEnergyKwh = reservation.EstimatedEnergyKwh,
-                EstimatedCost = reservation.EstimatedCost,
-                IsPrepaid = reservation.IsPrepaid,
-                Notes = reservation.Notes
-            };
+            return Ok(reservations);
         }
 
         private Guid GetUserId()
@@ -219,32 +207,34 @@ namespace PresentationLayer.Controllers
             var station = await _stationService.GetStationByIdAsync(stationId);
             if (station != null)
             {
-                var spots = station.ChargingSpots?.ToList() ?? new List<DataAccessLayer.Entities.ChargingSpot>();
-                var totalSpots = spots.Count;
+                var spots = await _spotService.GetSpotsByStationIdAsync(stationId);
+                var spotsList = spots.ToList();
+                var totalSpots = spotsList.Count;
                 
                 // Nếu station không Active, thì availableSpots = 0
                 int availableSpots = 0;
-                if (station.Status == StationStatus.Active)
+                if (station.Status.ToString() == "Active")
                 {
                     // Tính available spots: spot phải Available VÀ không có active reservations
                     var now = DateTime.UtcNow;
-                    var spotIds = spots.Select(s => s.Id).ToList();
+                    var spotIds = spotsList.Select(s => s.Id).ToList();
                     
                     // Load tất cả active reservations cho các spots trong station này một lần
-                    var allReservations = await _reservationService.GetReservationsForStationAsync(stationId);
-                    var activeReservations = allReservations
+                    var allReservations = await _reservationService.GetReservationsForStationAsync(stationId, null);
+                    var reservationsList = allReservations.ToList();
+                    var activeReservations = reservationsList
                         .Where(r => spotIds.Contains(r.ChargingSpotId) &&
-                                    (r.Status == ReservationStatus.Pending ||
-                                     r.Status == ReservationStatus.Confirmed ||
-                                     r.Status == ReservationStatus.CheckedIn) &&
+                                    (r.Status.ToString() == "Pending" ||
+                                     r.Status.ToString() == "Confirmed" ||
+                                     r.Status.ToString() == "CheckedIn") &&
                                     r.ScheduledEndTime > now)
                         .Select(r => r.ChargingSpotId)
                         .Distinct()
                         .ToList();
                     
                     // Một spot available nếu: status = Available VÀ không có active reservation
-                    availableSpots = spots.Count(s => 
-                        s.Status == SpotStatus.Available && 
+                    availableSpots = spotsList.Count(s => 
+                        s.Status.ToString() == "Available" && 
                         !activeReservations.Contains(s.Id));
                 }
                 

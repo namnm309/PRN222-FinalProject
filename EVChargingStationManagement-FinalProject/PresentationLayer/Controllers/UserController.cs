@@ -1,6 +1,5 @@
 using BusinessLayer.DTOs;
 using BusinessLayer.Services;
-using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -28,11 +27,11 @@ namespace PresentationLayer.Controllers
         public async Task<IActionResult> GetAllUsers(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 50,
-            [FromQuery] UserRole? role = null,
+            [FromQuery] string? role = null,
             [FromQuery] bool? isActive = null,
             [FromQuery] string? search = null)
         {
-            var (users, totalCount) = await _userService.GetAllUsersAsync(
+            var (users, totalCount) = await _userService.GetAllUsersByRoleStringAsync(
                 page,
                 pageSize,
                 role,

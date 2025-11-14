@@ -22,8 +22,7 @@ namespace PresentationLayer.Controllers
         public async Task<IActionResult> GetAllErrors()
         {
             var errors = await _errorService.GetAllErrorsAsync();
-            var errorDTOs = errors.Select(e => MapToDTO(e)).ToList();
-            return Ok(errorDTOs);
+            return Ok(errors);
         }
 
         [HttpGet("{id}")]
@@ -33,39 +32,42 @@ namespace PresentationLayer.Controllers
             if (error == null)
                 return NotFound(new { message = "Error record not found" });
 
-            return Ok(MapToDTO(error));
+            return Ok(error);
         }
 
         [HttpGet("station/{stationId}")]
         public async Task<IActionResult> GetErrorsByStationId(Guid stationId)
         {
             var errors = await _errorService.GetErrorsByStationIdAsync(stationId);
-            var errorDTOs = errors.Select(e => MapToDTO(e)).ToList();
-            return Ok(errorDTOs);
+            return Ok(errors);
         }
 
         [HttpGet("spot/{spotId}")]
         public async Task<IActionResult> GetErrorsBySpotId(Guid spotId)
         {
             var errors = await _errorService.GetErrorsBySpotIdAsync(spotId);
-            var errorDTOs = errors.Select(e => MapToDTO(e)).ToList();
-            return Ok(errorDTOs);
+            return Ok(errors);
         }
 
         [HttpGet("status/{status}")]
-        public async Task<IActionResult> GetErrorsByStatus(DataAccessLayer.Enums.ErrorStatus status)
+        public async Task<IActionResult> GetErrorsByStatus([FromRoute] string status)
         {
-            var errors = await _errorService.GetErrorsByStatusAsync(status);
-            var errorDTOs = errors.Select(e => MapToDTO(e)).ToList();
-            return Ok(errorDTOs);
+            try
+            {
+                var errors = await _errorService.GetErrorsByStatusStringAsync(status);
+                return Ok(errors);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetErrorsByUserId(Guid userId)
         {
             var errors = await _errorService.GetErrorsByUserIdAsync(userId);
-            var errorDTOs = errors.Select(e => MapToDTO(e)).ToList();
-            return Ok(errorDTOs);
+            return Ok(errors);
         }
 
         [HttpPost]
@@ -91,7 +93,7 @@ namespace PresentationLayer.Controllers
                 }
 
                 var createdError = await _errorService.CreateErrorAsync(request);
-                return CreatedAtAction(nameof(GetErrorById), new { id = createdError.Id }, MapToDTO(createdError));
+                return CreatedAtAction(nameof(GetErrorById), new { id = createdError.Id }, createdError);
             }
             catch (InvalidOperationException ex)
             {
@@ -132,7 +134,7 @@ namespace PresentationLayer.Controllers
             if (updatedError == null)
                 return NotFound(new { message = "Error record not found" });
 
-            return Ok(MapToDTO(updatedError));
+            return Ok(updatedError);
         }
 
         [HttpDelete("{id}")]
@@ -144,32 +146,6 @@ namespace PresentationLayer.Controllers
                 return NotFound(new { message = "Error record not found" });
 
             return Ok(new { message = "Error record deleted successfully" });
-        }
-
-        private StationErrorDTO MapToDTO(DataAccessLayer.Entities.StationError error)
-        {
-            return new StationErrorDTO
-            {
-                Id = error.Id,
-                ChargingStationId = error.ChargingStationId,
-                ChargingStationName = error.ChargingStation?.Name,
-                ChargingSpotId = error.ChargingSpotId,
-                ChargingSpotNumber = error.ChargingSpot?.SpotNumber,
-                ReportedByUserId = error.ReportedByUserId,
-                ReportedByUserName = error.ReportedByUser?.FullName,
-                ResolvedByUserId = error.ResolvedByUserId,
-                ResolvedByUserName = error.ResolvedByUser?.FullName,
-                Status = error.Status,
-                ErrorCode = error.ErrorCode,
-                Title = error.Title,
-                Description = error.Description,
-                ReportedAt = error.ReportedAt,
-                ResolvedAt = error.ResolvedAt,
-                ResolutionNotes = error.ResolutionNotes,
-                Severity = error.Severity,
-                CreatedAt = error.CreatedAt,
-                UpdatedAt = error.UpdatedAt
-            };
         }
     }
 }

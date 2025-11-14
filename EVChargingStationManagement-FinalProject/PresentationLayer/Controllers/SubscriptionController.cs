@@ -22,22 +22,7 @@ namespace PresentationLayer.Controllers
         public async Task<IActionResult> GetPackages([FromQuery] bool activeOnly = true)
         {
             var packages = await _subscriptionService.GetAllPackagesAsync(activeOnly);
-            var packageDTOs = packages.Select((DataAccessLayer.Entities.SubscriptionPackage p) => new SubscriptionPackageDTO
-            {
-                Id = p.Id,
-                Name = p.Name,
-                Description = p.Description,
-                Price = p.Price,
-                DurationDays = p.DurationDays,
-                EnergyKwh = p.EnergyKwh,
-                IsActive = p.IsActive,
-                ValidFrom = p.ValidFrom,
-                ValidTo = p.ValidTo,
-                CreatedAt = p.CreatedAt,
-                UpdatedAt = p.UpdatedAt
-            }).ToList();
-
-            return Ok(packageDTOs);
+            return Ok(packages);
         }
 
         [HttpGet("packages/{id}")]
@@ -48,22 +33,7 @@ namespace PresentationLayer.Controllers
             if (package == null)
                 return NotFound(new { message = "Package not found" });
 
-            var dto = new SubscriptionPackageDTO
-            {
-                Id = package.Id,
-                Name = package.Name,
-                Description = package.Description,
-                Price = package.Price,
-                DurationDays = package.DurationDays,
-                EnergyKwh = package.EnergyKwh,
-                IsActive = package.IsActive,
-                ValidFrom = package.ValidFrom,
-                ValidTo = package.ValidTo,
-                CreatedAt = package.CreatedAt,
-                UpdatedAt = package.UpdatedAt
-            };
-
-            return Ok(dto);
+            return Ok(package);
         }
 
         [HttpPost("packages")]
@@ -74,20 +44,7 @@ namespace PresentationLayer.Controllers
                 return BadRequest(ModelState);
 
             var created = await _subscriptionService.CreatePackageAsync(request);
-            return CreatedAtAction(nameof(GetPackageById), new { id = created.Id }, new SubscriptionPackageDTO
-            {
-                Id = created.Id,
-                Name = created.Name,
-                Description = created.Description,
-                Price = created.Price,
-                DurationDays = created.DurationDays,
-                EnergyKwh = created.EnergyKwh,
-                IsActive = created.IsActive,
-                ValidFrom = created.ValidFrom,
-                ValidTo = created.ValidTo,
-                CreatedAt = created.CreatedAt,
-                UpdatedAt = created.UpdatedAt
-            });
+            return CreatedAtAction(nameof(GetPackageById), new { id = created.Id }, created);
         }
 
         [HttpPut("packages/{id}")]
@@ -101,20 +58,7 @@ namespace PresentationLayer.Controllers
             if (updated == null)
                 return NotFound(new { message = "Package not found" });
 
-            return Ok(new SubscriptionPackageDTO
-            {
-                Id = updated.Id,
-                Name = updated.Name,
-                Description = updated.Description,
-                Price = updated.Price,
-                DurationDays = updated.DurationDays,
-                EnergyKwh = updated.EnergyKwh,
-                IsActive = updated.IsActive,
-                ValidFrom = updated.ValidFrom,
-                ValidTo = updated.ValidTo,
-                CreatedAt = updated.CreatedAt,
-                UpdatedAt = updated.UpdatedAt
-            });
+            return Ok(updated);
         }
 
         [HttpDelete("packages/{id}")]
@@ -146,21 +90,7 @@ namespace PresentationLayer.Controllers
                     request.SubscriptionPackageId, 
                     request.PaymentMethod);
 
-                var dto = new UserSubscriptionDTO
-                {
-                    Id = subscription.Id,
-                    UserId = subscription.UserId,
-                    SubscriptionPackageId = subscription.SubscriptionPackageId,
-                    PurchasedAt = subscription.PurchasedAt,
-                    ActivatedAt = subscription.ActivatedAt,
-                    ExpiresAt = subscription.ExpiresAt,
-                    RemainingEnergyKwh = subscription.RemainingEnergyKwh,
-                    IsActive = subscription.IsActive,
-                    CreatedAt = subscription.CreatedAt,
-                    UpdatedAt = subscription.UpdatedAt
-                };
-
-                return Ok(dto);
+                return Ok(subscription);
             }
             catch (ArgumentException ex)
             {
@@ -177,22 +107,7 @@ namespace PresentationLayer.Controllers
                 return Unauthorized();
 
             var subscriptions = await _subscriptionService.GetUserSubscriptionsAsync(userId, activeOnly);
-            var dtos = subscriptions.Select((DataAccessLayer.Entities.UserSubscription s) => new UserSubscriptionDTO
-            {
-                Id = s.Id,
-                UserId = s.UserId,
-                SubscriptionPackageId = s.SubscriptionPackageId,
-                PackageName = s.SubscriptionPackage?.Name,
-                PurchasedAt = s.PurchasedAt,
-                ActivatedAt = s.ActivatedAt,
-                ExpiresAt = s.ExpiresAt,
-                RemainingEnergyKwh = s.RemainingEnergyKwh,
-                IsActive = s.IsActive,
-                CreatedAt = s.CreatedAt,
-                UpdatedAt = s.UpdatedAt
-            }).ToList();
-
-            return Ok(dtos);
+            return Ok(subscriptions);
         }
     }
 }

@@ -15,35 +15,33 @@ namespace BusinessLayer.Services
             _context = context;
         }
 
-        public async Task<IEnumerable<Vehicle>> GetVehiclesByUserAsync(Guid userId)
+        public async Task<IEnumerable<VehicleDTO>> GetVehiclesByUserAsync(Guid userId)
         {
             var userVehicles = await _context.UserVehicles
                 .Where(uv => uv.UserId == userId)
                 .Include(uv => uv.Vehicle)
                 .ToListAsync();
 
-            foreach (var userVehicle in userVehicles)
-            {
-                if (userVehicle.Vehicle != null)
-                {
-                    userVehicle.Vehicle.UserVehicles = new List<UserVehicle> { userVehicle };
-                }
-            }
-
             return userVehicles
                 .Where(uv => uv.Vehicle != null)
-                .Select(uv => uv.Vehicle!)
+                .Select(uv => MapToDTO(uv.Vehicle!, uv))
                 .ToList();
         }
 
-        public async Task<Vehicle?> GetVehicleByIdAsync(Guid vehicleId)
+        public async Task<VehicleDTO?> GetVehicleByIdAsync(Guid vehicleId)
         {
-            return await _context.Vehicles
+            var vehicle = await _context.Vehicles
                 .Include(v => v.UserVehicles)
                 .FirstOrDefaultAsync(v => v.Id == vehicleId);
+            
+            if (vehicle == null)
+                return null;
+
+            var userVehicle = vehicle.UserVehicles.FirstOrDefault();
+            return MapToDTO(vehicle, userVehicle);
         }
 
-        public async Task<Vehicle> CreateVehicleAsync(Guid userId, CreateVehicleRequest request)
+        public async Task<VehicleDTO> CreateVehicleAsync(Guid userId, CreateVehicleRequest request)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
@@ -85,10 +83,17 @@ namespace BusinessLayer.Services
             }
 
             await _context.SaveChangesAsync();
-            return vehicle;
+            
+            // Reload với navigation properties
+            var createdVehicle = await _context.Vehicles
+                .Include(v => v.UserVehicles)
+                .FirstOrDefaultAsync(v => v.Id == vehicle.Id);
+            
+            var createdUserVehicle = createdVehicle?.UserVehicles.FirstOrDefault();
+            return MapToDTO(createdVehicle!, createdUserVehicle);
         }
 
-        public async Task<Vehicle?> UpdateVehicleAsync(Guid vehicleId, UpdateVehicleRequest request)
+        public async Task<VehicleDTO?> UpdateVehicleAsync(Guid vehicleId, UpdateVehicleRequest request)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
@@ -128,7 +133,17 @@ namespace BusinessLayer.Services
             }
 
             await _context.SaveChangesAsync();
-            return existingVehicle;
+            
+            // Reload với navigation properties
+            var updatedVehicle = await _context.Vehicles
+                .Include(v => v.UserVehicles)
+                .FirstOrDefaultAsync(v => v.Id == vehicleId);
+            
+            if (updatedVehicle == null)
+                return null;
+
+            var updatedUserVehicle = updatedVehicle.UserVehicles.FirstOrDefault();
+            return MapToDTO(updatedVehicle, updatedUserVehicle);
         }
 
         public async Task<bool> DeleteVehicleAsync(Guid vehicleId)
@@ -161,6 +176,26 @@ namespace BusinessLayer.Services
                 uv.IsPrimary = uv.VehicleId == newPrimaryVehicleId;
                 uv.UpdatedAt = DateTime.UtcNow;
             }
+        }
+
+        private VehicleDTO MapToDTO(Vehicle vehicle, UserVehicle? userVehicle)
+        {
+            return new VehicleDTO
+            {
+                Id = vehicle.Id,
+                Make = vehicle.Make,
+                Model = vehicle.Model,
+                ModelYear = vehicle.ModelYear,
+                LicensePlate = vehicle.LicensePlate,
+                VehicleType = vehicle.VehicleType,
+                BatteryCapacityKwh = vehicle.BatteryCapacityKwh,
+                MaxChargingPowerKw = vehicle.MaxChargingPowerKw,
+                Color = vehicle.Color,
+                Notes = vehicle.Notes,
+                IsPrimary = userVehicle?.IsPrimary ?? false,
+                Nickname = userVehicle?.Nickname,
+                ChargePortLocation = userVehicle?.ChargePortLocation
+            };
         }
     }
 }

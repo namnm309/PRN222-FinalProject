@@ -20,24 +20,28 @@ namespace BusinessLayer.Services
             _reservationService = reservationService;
         }
 
-        public async Task<IEnumerable<PaymentTransaction>> GetPaymentsForUserAsync(Guid userId, int limit = 20)
+        public async Task<IEnumerable<PaymentTransactionDTO>> GetPaymentsForUserAsync(Guid userId, int limit = 20)
         {
-            return await _context.PaymentTransactions
+            var payments = await _context.PaymentTransactions
                 .Where(p => p.UserId == userId)
                 .OrderByDescending(p => p.CreatedAt)
                 .Take(limit)
                 .ToListAsync();
+            
+            return payments.Select(MapToDTO);
         }
 
-        public async Task<PaymentTransaction?> GetPaymentByIdAsync(Guid id)
+        public async Task<PaymentTransactionDTO?> GetPaymentByIdAsync(Guid id)
         {
-            return await _context.PaymentTransactions
+            var payment = await _context.PaymentTransactions
                 .Include(p => p.Reservation)
                 .Include(p => p.ChargingSession)
                 .FirstOrDefaultAsync(p => p.Id == id);
+            
+            return payment == null ? null : MapToDTO(payment);
         }
 
-        public async Task<PaymentTransaction> CreatePaymentAsync(Guid userId, CreatePaymentRequest request)
+        public async Task<PaymentTransactionDTO> CreatePaymentAsync(Guid userId, CreatePaymentRequest request)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
@@ -59,10 +63,17 @@ namespace BusinessLayer.Services
 
             _context.PaymentTransactions.Add(payment);
             await _context.SaveChangesAsync();
-            return payment;
+            
+            // Reload với navigation properties
+            var createdPayment = await _context.PaymentTransactions
+                .Include(p => p.Reservation)
+                .Include(p => p.ChargingSession)
+                .FirstOrDefaultAsync(p => p.Id == payment.Id);
+            
+            return MapToDTO(createdPayment!);
         }
 
-        public async Task<PaymentTransaction?> UpdatePaymentStatusAsync(Guid paymentId, PaymentStatus status, string? providerTransactionId = null)
+        public async Task<PaymentTransactionDTO?> UpdatePaymentStatusAsync(Guid paymentId, PaymentStatus status, string? providerTransactionId = null)
         {
             var payment = await _context.PaymentTransactions
                 .Include(p => p.Reservation)
@@ -101,10 +112,17 @@ namespace BusinessLayer.Services
             }
 
             await _context.SaveChangesAsync();
-            return payment;
+            
+            // Reload với navigation properties
+            var updatedPayment = await _context.PaymentTransactions
+                .Include(p => p.Reservation)
+                .Include(p => p.ChargingSession)
+                .FirstOrDefaultAsync(p => p.Id == paymentId);
+            
+            return updatedPayment == null ? null : MapToDTO(updatedPayment);
         }
 
-        public async Task<PaymentTransaction?> UpdatePaymentMetadataAsync(Guid paymentId, string metadata)
+        public async Task<PaymentTransactionDTO?> UpdatePaymentMetadataAsync(Guid paymentId, string metadata)
         {
             var payment = await _context.PaymentTransactions.FindAsync(paymentId);
             if (payment == null)
@@ -115,7 +133,14 @@ namespace BusinessLayer.Services
             payment.Metadata = metadata;
             payment.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            return payment;
+            
+            // Reload với navigation properties
+            var updatedPayment = await _context.PaymentTransactions
+                .Include(p => p.Reservation)
+                .Include(p => p.ChargingSession)
+                .FirstOrDefaultAsync(p => p.Id == paymentId);
+            
+            return updatedPayment == null ? null : MapToDTO(updatedPayment);
         }
 
         public async Task<MoMoPaymentRequest> PrepareMoMoPaymentAsync(Guid userId, CreateMoMoPaymentRequest request)
@@ -150,7 +175,7 @@ namespace BusinessLayer.Services
             var existingPayments = await GetPaymentsForUserAsync(userId, 100);
             var existingPayment = existingPayments.FirstOrDefault(p => p.ChargingSessionId == request.SessionId);
             
-            PaymentTransaction payment = existingPayment ?? await CreatePaymentAsync(userId, new CreatePaymentRequest
+            PaymentTransactionDTO paymentDto = existingPayment ?? await CreatePaymentAsync(userId, new CreatePaymentRequest
             {
                 ChargingSessionId = request.SessionId,
                 Amount = amount,
@@ -159,22 +184,67 @@ namespace BusinessLayer.Services
                 Description = description
             });
 
-            if (payment == null)
+            if (paymentDto == null)
                 throw new InvalidOperationException("Failed to create payment transaction");
 
-            if (payment.Amount <= 0)
-                throw new ArgumentException($"Invalid payment amount: {payment.Amount}. Amount must be greater than 0.");
+            if (paymentDto.Amount <= 0)
+                throw new ArgumentException($"Invalid payment amount: {paymentDto.Amount}. Amount must be greater than 0.");
 
             // Prepare MoMo payment request
-            var orderId = payment.Id.ToString("N"); // Format Guid without dashes
+            var orderId = paymentDto.Id.ToString("N"); // Format Guid without dashes
             var orderInfo = description;
-            var amountLong = (long)Math.Round(payment.Amount, 0);
+            var amountLong = (long)Math.Round(paymentDto.Amount, 0);
 
             return new MoMoPaymentRequest
             {
                 OrderId = orderId,
                 Amount = amountLong,
                 OrderInfo = orderInfo
+            };
+        }
+
+        private PaymentTransactionDTO MapToDTO(PaymentTransaction payment)
+        {
+            // Extract responseCode from Metadata if available
+            string? responseCode = null;
+            string? responseMessage = null;
+            
+            if (!string.IsNullOrEmpty(payment.Metadata))
+            {
+                try
+                {
+                    var metadata = System.Text.Json.JsonDocument.Parse(payment.Metadata);
+                    if (metadata.RootElement.TryGetProperty("responseCode", out var rc))
+                    {
+                        responseCode = rc.GetString();
+                    }
+                    if (metadata.RootElement.TryGetProperty("message", out var msg))
+                    {
+                        responseMessage = msg.GetString();
+                    }
+                }
+                catch
+                {
+                    // If metadata is not JSON, ignore
+                }
+            }
+            
+            return new PaymentTransactionDTO
+            {
+                Id = payment.Id,
+                UserId = payment.UserId,
+                ReservationId = payment.ReservationId,
+                ChargingSessionId = payment.ChargingSessionId,
+                Amount = payment.Amount,
+                Currency = payment.Currency,
+                Method = payment.Method,
+                Status = payment.Status,
+                ProviderTransactionId = payment.ProviderTransactionId,
+                ProcessedAt = payment.ProcessedAt,
+                Description = payment.Description,
+                Metadata = payment.Metadata,
+                ResponseCode = responseCode,
+                ResponseMessage = responseMessage
             };
         }
     }

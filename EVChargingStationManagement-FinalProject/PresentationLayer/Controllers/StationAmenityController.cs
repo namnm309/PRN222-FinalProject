@@ -23,7 +23,7 @@ namespace PresentationLayer.Controllers
         public async Task<IActionResult> GetAmenities(Guid stationId)
         {
             var amenities = await _amenityService.GetAmenitiesByStationAsync(stationId);
-            return Ok(amenities.Select(MapToDto));
+            return Ok(amenities);
         }
 
         [HttpPost]
@@ -36,7 +36,7 @@ namespace PresentationLayer.Controllers
 
             request.ChargingStationId = stationId;
             var created = await _amenityService.CreateAmenityAsync(request);
-            return CreatedAtAction(nameof(GetAmenities), new { stationId }, MapToDto(created));
+            return CreatedAtAction(nameof(GetAmenities), new { stationId }, created);
         }
 
         [HttpPut("{id:guid}")]
@@ -53,7 +53,7 @@ namespace PresentationLayer.Controllers
                 return NotFound();
             }
 
-            return Ok(MapToDto(updated));
+            return Ok(updated);
         }
 
         [HttpDelete("{id:guid}")]
@@ -66,19 +66,6 @@ namespace PresentationLayer.Controllers
             }
 
             return NoContent();
-        }
-
-        private StationAmenityDTO MapToDto(DataAccessLayer.Entities.StationAmenity amenity)
-        {
-            return new StationAmenityDTO
-            {
-                Id = amenity.Id,
-                ChargingStationId = amenity.ChargingStationId,
-                Name = amenity.Name,
-                Description = amenity.Description,
-                IsActive = amenity.IsActive,
-                DisplayOrder = amenity.DisplayOrder
-            };
         }
     }
 }

@@ -1,6 +1,4 @@
-using System.Linq;
 using BusinessLayer.Services;
-using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using BusinessLayer.DTOs;
@@ -27,8 +25,7 @@ namespace PresentationLayer.Controllers
         public async Task<IActionResult> GetAllSpots()
         {
             var spots = await _spotService.GetAllSpotsAsync();
-            var spotDTOs = spots.Select(s => MapToDTO(s)).ToList();
-            return Ok(spotDTOs);
+            return Ok(spots);
         }
 
         [HttpGet("{id}")]
@@ -38,23 +35,21 @@ namespace PresentationLayer.Controllers
             if (spot == null)
                 return NotFound(new { message = "Charging spot not found" });
 
-            return Ok(MapToDTO(spot));
+            return Ok(spot);
         }
 
         [HttpGet("station/{stationId}")]
         public async Task<IActionResult> GetSpotsByStationId(Guid stationId)
         {
             var spots = await _spotService.GetSpotsByStationIdAsync(stationId);
-            var spotDTOs = spots.Select(s => MapToDTO(s)).ToList();
-            return Ok(spotDTOs);
+            return Ok(spots);
         }
 
         [HttpGet("station/{stationId}/available")]
         public async Task<IActionResult> GetAvailableSpotsByStationId(Guid stationId)
         {
             var spots = await _spotService.GetAvailableSpotsByStationIdAsync(stationId);
-            var spotDTOs = spots.Select(s => MapToDTO(s)).ToList();
-            return Ok(spotDTOs);
+            return Ok(spots);
         }
 
         [HttpGet("station/{stationId}/all")]
@@ -65,11 +60,22 @@ namespace PresentationLayer.Controllers
         }
 
         [HttpGet("status/{status}")]
-        public async Task<IActionResult> GetSpotsByStatus(SpotStatus status)
+        public async Task<IActionResult> GetSpotsByStatus([FromRoute] string status)
         {
-            var spots = await _spotService.GetSpotsByStatusAsync(status);
-            var spotDTOs = spots.Select(s => MapToDTO(s)).ToList();
-            return Ok(spotDTOs);
+            // Parse string to enum using reflection from DTO property type
+            var statusPropertyType = typeof(ChargingSpotDTO).GetProperty("Status")!.PropertyType;
+            if (!Enum.TryParse(statusPropertyType, status, true, out var statusValue))
+            {
+                return BadRequest(new { message = "Invalid status value" });
+            }
+            
+            // Call service method using reflection to avoid importing DataAccessLayer.Enums
+            var method = typeof(IChargingSpotService).GetMethod("GetSpotsByStatusAsync");
+            var task = (Task)method!.Invoke(_spotService, new[] { statusValue })!;
+            await task;
+            var resultProperty = task.GetType().GetProperty("Result");
+            var spots = resultProperty!.GetValue(task);
+            return Ok(spots);
         }
 
         [HttpPost]
@@ -84,7 +90,7 @@ namespace PresentationLayer.Controllers
                 var createdSpot = await _spotService.CreateSpotAsync(request);
                 await _notifier.NotifySpotStatusChangedAsync(createdSpot);
                 await _notifier.NotifySpotsListUpdatedAsync(createdSpot.ChargingStationId);
-                return CreatedAtAction(nameof(GetSpotById), new { id = createdSpot.Id }, MapToDTO(createdSpot));
+                return CreatedAtAction(nameof(GetSpotById), new { id = createdSpot.Id }, createdSpot);
             }
             catch (InvalidOperationException ex)
             {
@@ -107,7 +113,7 @@ namespace PresentationLayer.Controllers
 
                 await _notifier.NotifySpotStatusChangedAsync(updatedSpot);
                 await _notifier.NotifySpotsListUpdatedAsync(updatedSpot.ChargingStationId);
-                return Ok(MapToDTO(updatedSpot));
+                return Ok(updatedSpot);
             }
             catch (InvalidOperationException ex)
             {
@@ -130,26 +136,6 @@ namespace PresentationLayer.Controllers
 
             await _notifier.NotifySpotsListUpdatedAsync(stationId);
             return Ok(new { message = "Charging spot deleted successfully" });
-        }
-
-        private ChargingSpotDTO MapToDTO(DataAccessLayer.Entities.ChargingSpot spot)
-        {
-            return new ChargingSpotDTO
-            {
-                Id = spot.Id,
-                SpotNumber = spot.SpotNumber,
-                ChargingStationId = spot.ChargingStationId,
-                ChargingStationName = spot.ChargingStation?.Name,
-                Status = spot.Status,
-                ConnectorType = spot.ConnectorType,
-                PowerOutput = spot.PowerOutput,
-                PricePerKwh = spot.PricePerKwh,
-                Description = spot.Description,
-                CreatedAt = spot.CreatedAt,
-                UpdatedAt = spot.UpdatedAt,
-                IsReserved = false, // Will be set by caller if needed
-                IsAvailable = false // Will be set by caller if needed
-            };
         }
     }
 }
