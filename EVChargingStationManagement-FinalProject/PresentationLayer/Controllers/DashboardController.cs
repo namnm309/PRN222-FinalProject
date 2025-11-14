@@ -1,4 +1,5 @@
 using BusinessLayer.Services;
+using BusinessLayer.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -33,13 +34,24 @@ namespace PresentationLayer.Controllers
         [HttpGet("sessions/all")]
         public async Task<IActionResult> GetAllSessions(
             [FromQuery] Guid? stationId = null,
-            [FromQuery] DataAccessLayer.Enums.ChargingSessionStatus? status = null,
+            [FromQuery] string? status = null,
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 50)
         {
-            var result = await _dashboardService.GetAllSessionsAsync(stationId, status, startDate, endDate, page, pageSize);
+            // Parse status string to enum using reflection
+            object? statusEnum = null;
+            if (!string.IsNullOrEmpty(status))
+            {
+                var statusType = typeof(ChargingSessionDTO).GetProperty("Status")!.PropertyType;
+                if (Enum.TryParse(statusType, status, true, out var parsedStatus))
+                {
+                    statusEnum = parsedStatus;
+                }
+            }
+            
+            var result = await _dashboardService.GetAllSessionsAsync(stationId, (dynamic?)statusEnum, startDate, endDate, page, pageSize);
             return Ok(result);
         }
     }

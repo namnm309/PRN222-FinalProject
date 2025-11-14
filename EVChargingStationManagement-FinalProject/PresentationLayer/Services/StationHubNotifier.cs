@@ -1,8 +1,6 @@
 using System.Collections.Generic;
-using System.Linq;
 using BusinessLayer.DTOs;
 using BusinessLayer.Services;
-using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.SignalR;
 using PresentationLayer.Hubs;
 
@@ -19,9 +17,9 @@ namespace PresentationLayer.Services
             _stationService = stationService;
         }
 
-        public Task NotifyReservationChangedAsync(DataAccessLayer.Entities.Reservation reservation)
+        public Task NotifyReservationChangedAsync(ReservationDTO reservation)
         {
-            var stationId = reservation.ChargingSpot?.ChargingStationId ?? Guid.Empty;
+            var stationId = reservation.ChargingStationId;
             var spotId = reservation.ChargingSpotId;
             var tasks = new List<Task>
             {
@@ -45,9 +43,9 @@ namespace PresentationLayer.Services
             return Task.WhenAll(tasks);
         }
 
-        public Task NotifySessionChangedAsync(DataAccessLayer.Entities.ChargingSession session)
+        public Task NotifySessionChangedAsync(ChargingSessionDTO session)
         {
-            var stationId = session.ChargingSpot?.ChargingStationId ?? Guid.Empty;
+            var stationId = session.ChargingStationId;
             var tasks = new List<Task>
             {
                 _hubContext.Clients.Group($"user-{session.UserId}")
@@ -63,14 +61,14 @@ namespace PresentationLayer.Services
             return Task.WhenAll(tasks);
         }
 
-        public Task NotifySpotStatusChangedAsync(DataAccessLayer.Entities.ChargingSpot spot)
+        public Task NotifySpotStatusChangedAsync(ChargingSpotDTO spot)
         {
             var stationId = spot.ChargingStationId;
             return _hubContext.Clients.Group($"station-{stationId}")
                 .SendAsync("SpotStatusUpdated", spot.Id, spot.Status.ToString());
         }
 
-        public Task NotifyNotificationReceivedAsync(DataAccessLayer.Entities.Notification notification)
+        public Task NotifyNotificationReceivedAsync(NotificationDTO notification)
         {
             return _hubContext.Clients.Group($"user-{notification.UserId}")
                 .SendAsync("NotificationReceived", notification.Id);
@@ -102,18 +100,6 @@ namespace PresentationLayer.Services
                 _hubContext.Clients.All.SendAsync("StationStatusUpdated", stationId, status, stationName),
                 _hubContext.Clients.Group($"station-{stationId}").SendAsync("StationStatusUpdated", stationId, status, stationName)
             );
-        }
-
-        private async Task<(int totalSpots, int availableSpots)> GetStationAvailabilityAsync(Guid stationId)
-        {
-            var station = await _stationService.GetStationByIdAsync(stationId);
-            if (station == null)
-                return (0, 0);
-
-            var spots = station.ChargingSpots?.ToList() ?? new List<DataAccessLayer.Entities.ChargingSpot>();
-            var totalSpots = spots.Count;
-            var availableSpots = spots.Count(s => s.Status == SpotStatus.Available);
-            return (totalSpots, availableSpots);
         }
     }
 }

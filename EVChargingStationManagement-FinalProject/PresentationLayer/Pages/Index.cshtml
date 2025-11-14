@@ -896,7 +896,7 @@
                 }
                 
                 // Gọi API để lấy danh sách stations mới nhất
-                var url = '/api/ChargingStation/nearest?lat=' + center.lat + '&lng=' + center.lng + '&radiusKm=' + radius;
+                var url = '/api/ChargingStation/merged?query=&lat=' + center.lat + '&lng=' + center.lng;
                 if (connectorType) {
                     url += '&connectorType=' + encodeURIComponent(connectorType);
                 }
@@ -2256,7 +2256,7 @@
                         var sortBy = sortByEl.value;
                         var radius = parseFloat(radiusEl.value) || 10;
 
-                        var url = '/api/ChargingStation/nearest?lat=' + center.lat + '&lng=' + center.lng + '&radiusKm=' + radius;
+                        var url = '/api/ChargingStation/merged?query=&lat=' + center.lat + '&lng=' + center.lng;
                         if (connectorType) {
                             url += '&connectorType=' + encodeURIComponent(connectorType);
                         }
@@ -2870,7 +2870,7 @@
                     var startTime = document.getElementById('reservation-start-time').value;
                     var endTime = document.getElementById('reservation-end-time').value;
                     var energy = document.getElementById('reservation-energy').value;
-                    var estimatedCostStr = document.getElementById('reservation-estimated-cost').value.replace(/,/g, '').trim();
+                    var estimatedCostStr = document.getElementById('reservation-estimated-cost').value.replace(/[.,]/g, '').trim();
                     var paymentMethodRadio = document.querySelector('input[name="paymentMethod"]:checked');
                     var notes = document.getElementById('reservation-notes').value;
 

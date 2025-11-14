@@ -15,47 +15,55 @@ namespace BusinessLayer.Services
             _context = context;
         }
 
-        public async Task<IEnumerable<ChargingSpot>> GetAllSpotsAsync()
+        public async Task<IEnumerable<ChargingSpotDTO>> GetAllSpotsAsync()
         {
-            return await _context.ChargingSpots
+            var spots = await _context.ChargingSpots
                 .Include(s => s.ChargingStation)
                 .OrderBy(s => s.ChargingStation!.Name)
                 .ThenBy(s => s.SpotNumber)
                 .ToListAsync();
+            
+            return spots.Select(MapToDTO);
         }
 
-        public async Task<ChargingSpot?> GetSpotByIdAsync(Guid id)
+        public async Task<ChargingSpotDTO?> GetSpotByIdAsync(Guid id)
         {
-            return await _context.ChargingSpots
+            var spot = await _context.ChargingSpots
                 .Include(s => s.ChargingStation)
                 .FirstOrDefaultAsync(s => s.Id == id);
+            
+            return spot == null ? null : MapToDTO(spot);
         }
 
-        public async Task<IEnumerable<ChargingSpot>> GetSpotsByStationIdAsync(Guid stationId)
+        public async Task<IEnumerable<ChargingSpotDTO>> GetSpotsByStationIdAsync(Guid stationId)
         {
-            return await _context.ChargingSpots
+            var spots = await _context.ChargingSpots
                 .Include(s => s.ChargingStation)
                 .Where(s => s.ChargingStationId == stationId)
                 .OrderBy(s => s.SpotNumber)
                 .ToListAsync();
+            
+            return spots.Select(MapToDTO);
         }
 
-        public async Task<IEnumerable<ChargingSpot>> GetSpotsByStatusAsync(SpotStatus status)
+        public async Task<IEnumerable<ChargingSpotDTO>> GetSpotsByStatusAsync(SpotStatus status)
         {
-            return await _context.ChargingSpots
+            var spots = await _context.ChargingSpots
                 .Include(s => s.ChargingStation)
                 .Where(s => s.Status == status)
                 .OrderBy(s => s.ChargingStation!.Name)
                 .ThenBy(s => s.SpotNumber)
                 .ToListAsync();
+            
+            return spots.Select(MapToDTO);
         }
 
-        public async Task<IEnumerable<ChargingSpot>> GetAvailableSpotsByStationIdAsync(Guid stationId)
+        public async Task<IEnumerable<ChargingSpotDTO>> GetAvailableSpotsByStationIdAsync(Guid stationId)
         {
             var now = DateTime.UtcNow;
             
             // Lấy các cổng trống: Status = Available, không có session đang chạy, không có reservation active, và station phải Active
-            return await _context.ChargingSpots
+            var spots = await _context.ChargingSpots
                 .Include(s => s.ChargingStation)
                 .Where(s => s.ChargingStationId == stationId &&
                            s.Status == SpotStatus.Available &&
@@ -69,9 +77,11 @@ namespace BusinessLayer.Services
                                                           r.ScheduledEndTime > now))
                 .OrderBy(s => s.SpotNumber)
                 .ToListAsync();
+            
+            return spots.Select(MapToDTO);
         }
 
-        public async Task<ChargingSpot> CreateSpotAsync(CreateChargingSpotRequest request)
+        public async Task<ChargingSpotDTO> CreateSpotAsync(CreateChargingSpotRequest request)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
@@ -104,10 +114,15 @@ namespace BusinessLayer.Services
             _context.ChargingSpots.Add(spot);
             await _context.SaveChangesAsync();
 
-            return spot;
+            // Reload với navigation properties
+            var createdSpot = await _context.ChargingSpots
+                .Include(s => s.ChargingStation)
+                .FirstOrDefaultAsync(s => s.Id == spot.Id);
+            
+            return MapToDTO(createdSpot!);
         }
 
-        public async Task<ChargingSpot?> UpdateSpotAsync(Guid id, UpdateChargingSpotRequest request)
+        public async Task<ChargingSpotDTO?> UpdateSpotAsync(Guid id, UpdateChargingSpotRequest request)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
@@ -134,7 +149,12 @@ namespace BusinessLayer.Services
 
             await _context.SaveChangesAsync();
 
-            return existingSpot;
+            // Reload với navigation properties
+            var updatedSpot = await _context.ChargingSpots
+                .Include(s => s.ChargingStation)
+                .FirstOrDefaultAsync(s => s.Id == id);
+            
+            return updatedSpot == null ? null : MapToDTO(updatedSpot);
         }
 
         public async Task<bool> DeleteSpotAsync(Guid id)
@@ -165,6 +185,26 @@ namespace BusinessLayer.Services
             }
 
             return await query.AnyAsync();
+        }
+
+        private ChargingSpotDTO MapToDTO(ChargingSpot spot)
+        {
+            return new ChargingSpotDTO
+            {
+                Id = spot.Id,
+                SpotNumber = spot.SpotNumber,
+                ChargingStationId = spot.ChargingStationId,
+                ChargingStationName = spot.ChargingStation?.Name,
+                Status = spot.Status,
+                ConnectorType = spot.ConnectorType,
+                PowerOutput = spot.PowerOutput,
+                PricePerKwh = spot.PricePerKwh,
+                Description = spot.Description,
+                CreatedAt = spot.CreatedAt,
+                UpdatedAt = spot.UpdatedAt,
+                IsReserved = false, // Will be set by caller if needed
+                IsAvailable = false // Will be set by caller if needed
+            };
         }
     }
 }

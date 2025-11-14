@@ -10,6 +10,8 @@ let pricePerKwh = 0;
 let previousStatus = null; // Track previous status to detect changes
 let powerVariationTimer = null; // Timer for power variation effect
 let basePowerKw = 0; // Base power for variation
+let userStoppedCharging = false; // Track if user manually stopped charging
+let notificationShown = false; // Ensure alert shows once
 
 // ChargingRing component instances
 let powerGauge = null;
@@ -129,9 +131,10 @@ async function loadSession(sessionId) {
                 // Reload progress để lấy giá trị cuối cùng
                 loadProgress(sessionId);
                 
-                // Chỉ hiển thị alert nếu đang từ InProgress chuyển sang Completed (staff dừng)
-                if (statusChanged) {
+                // Hiển thị alert nếu session được staff dừng và chưa hiển thị trước đó
+                if (!userStoppedCharging && !notificationShown && newSessionData.notes && newSessionData.notes.includes('Dừng bởi nhân viên')) {
                     alert('Phiên sạc đã được dừng bởi nhân viên trạm sạc. Vui lòng thanh toán.');
+                    notificationShown = true;
                 }
             } else {
                 actionsPanel.style.display = 'none';
@@ -455,6 +458,9 @@ async function stopCharging(sessionId) {
         return;
     }
 
+    // Đánh dấu user tự ngưng sạc
+    userStoppedCharging = true;
+
     // Dừng timer
     stopChargingSimulation();
 
@@ -482,6 +488,10 @@ async function stopCharging(sessionId) {
         if (response.ok) {
             const completedSession = await response.json();
             sessionData = completedSession;
+            
+            // Cập nhật previousStatus để tránh trigger thông báo staff khi SignalR reload
+            previousStatus = 'Completed';
+            
             alert('Đã ngưng sạc. Vui lòng thanh toán.');
             
             // Cập nhật UI
@@ -492,6 +502,9 @@ async function stopCharging(sessionId) {
             actionsPanel.style.display = 'block';
             btnStop.style.display = 'none';
             btnPayment.style.display = 'block';
+            
+            // Reset flag sau khi đã xử lý xong
+            userStoppedCharging = false;
         } else {
             const error = await response.json();
             alert('Lỗi: ' + (error.message || 'Không thể ngưng sạc'));

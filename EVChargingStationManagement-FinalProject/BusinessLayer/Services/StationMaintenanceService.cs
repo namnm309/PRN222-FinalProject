@@ -15,30 +15,34 @@ namespace BusinessLayer.Services
             _context = context;
         }
 
-        public async Task<IEnumerable<StationMaintenance>> GetAllMaintenancesAsync()
+        public async Task<IEnumerable<StationMaintenanceDTO>> GetAllMaintenancesAsync()
         {
-            return await _context.StationMaintenances
+            var maintenances = await _context.StationMaintenances
                 .Include(m => m.ChargingStation)
                 .Include(m => m.ChargingSpot)
                 .Include(m => m.ReportedByUser)
                 .Include(m => m.AssignedToUser)
                 .OrderByDescending(m => m.CreatedAt)
                 .ToListAsync();
+            
+            return maintenances.Select(MapToDTO);
         }
 
-        public async Task<StationMaintenance?> GetMaintenanceByIdAsync(Guid id)
+        public async Task<StationMaintenanceDTO?> GetMaintenanceByIdAsync(Guid id)
         {
-            return await _context.StationMaintenances
+            var maintenance = await _context.StationMaintenances
                 .Include(m => m.ChargingStation)
                 .Include(m => m.ChargingSpot)
                 .Include(m => m.ReportedByUser)
                 .Include(m => m.AssignedToUser)
                 .FirstOrDefaultAsync(m => m.Id == id);
+            
+            return maintenance == null ? null : MapToDTO(maintenance);
         }
 
-        public async Task<IEnumerable<StationMaintenance>> GetMaintenancesByStationIdAsync(Guid stationId)
+        public async Task<IEnumerable<StationMaintenanceDTO>> GetMaintenancesByStationIdAsync(Guid stationId)
         {
-            return await _context.StationMaintenances
+            var maintenances = await _context.StationMaintenances
                 .Include(m => m.ChargingStation)
                 .Include(m => m.ChargingSpot)
                 .Include(m => m.ReportedByUser)
@@ -46,11 +50,13 @@ namespace BusinessLayer.Services
                 .Where(m => m.ChargingStationId == stationId)
                 .OrderByDescending(m => m.CreatedAt)
                 .ToListAsync();
+            
+            return maintenances.Select(MapToDTO);
         }
 
-        public async Task<IEnumerable<StationMaintenance>> GetMaintenancesBySpotIdAsync(Guid spotId)
+        public async Task<IEnumerable<StationMaintenanceDTO>> GetMaintenancesBySpotIdAsync(Guid spotId)
         {
-            return await _context.StationMaintenances
+            var maintenances = await _context.StationMaintenances
                 .Include(m => m.ChargingStation)
                 .Include(m => m.ChargingSpot)
                 .Include(m => m.ReportedByUser)
@@ -58,11 +64,13 @@ namespace BusinessLayer.Services
                 .Where(m => m.ChargingSpotId == spotId)
                 .OrderByDescending(m => m.CreatedAt)
                 .ToListAsync();
+            
+            return maintenances.Select(MapToDTO);
         }
 
-        public async Task<IEnumerable<StationMaintenance>> GetMaintenancesByStatusAsync(MaintenanceStatus status)
+        public async Task<IEnumerable<StationMaintenanceDTO>> GetMaintenancesByStatusAsync(MaintenanceStatus status)
         {
-            return await _context.StationMaintenances
+            var maintenances = await _context.StationMaintenances
                 .Include(m => m.ChargingStation)
                 .Include(m => m.ChargingSpot)
                 .Include(m => m.ReportedByUser)
@@ -70,11 +78,23 @@ namespace BusinessLayer.Services
                 .Where(m => m.Status == status)
                 .OrderByDescending(m => m.CreatedAt)
                 .ToListAsync();
+            
+            return maintenances.Select(MapToDTO);
         }
 
-        public async Task<IEnumerable<StationMaintenance>> GetMaintenancesByUserIdAsync(Guid userId)
+        public async Task<IEnumerable<StationMaintenanceDTO>> GetMaintenancesByStatusStringAsync(string status)
         {
-            return await _context.StationMaintenances
+            if (!Enum.TryParse<MaintenanceStatus>(status, true, out var maintenanceStatus))
+            {
+                throw new ArgumentException($"Invalid status value: {status}", nameof(status));
+            }
+
+            return await GetMaintenancesByStatusAsync(maintenanceStatus);
+        }
+
+        public async Task<IEnumerable<StationMaintenanceDTO>> GetMaintenancesByUserIdAsync(Guid userId)
+        {
+            var maintenances = await _context.StationMaintenances
                 .Include(m => m.ChargingStation)
                 .Include(m => m.ChargingSpot)
                 .Include(m => m.ReportedByUser)
@@ -82,9 +102,11 @@ namespace BusinessLayer.Services
                 .Where(m => m.ReportedByUserId == userId || m.AssignedToUserId == userId)
                 .OrderByDescending(m => m.CreatedAt)
                 .ToListAsync();
+            
+            return maintenances.Select(MapToDTO);
         }
 
-        public async Task<StationMaintenance> CreateMaintenanceAsync(CreateStationMaintenanceRequest request)
+        public async Task<StationMaintenanceDTO> CreateMaintenanceAsync(CreateStationMaintenanceRequest request)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
@@ -121,10 +143,18 @@ namespace BusinessLayer.Services
             _context.StationMaintenances.Add(maintenance);
             await _context.SaveChangesAsync();
 
-            return maintenance;
+            // Reload với navigation properties
+            var createdMaintenance = await _context.StationMaintenances
+                .Include(m => m.ChargingStation)
+                .Include(m => m.ChargingSpot)
+                .Include(m => m.ReportedByUser)
+                .Include(m => m.AssignedToUser)
+                .FirstOrDefaultAsync(m => m.Id == maintenance.Id);
+            
+            return MapToDTO(createdMaintenance!);
         }
 
-        public async Task<StationMaintenance?> UpdateMaintenanceAsync(Guid id, UpdateStationMaintenanceRequest request)
+        public async Task<StationMaintenanceDTO?> UpdateMaintenanceAsync(Guid id, UpdateStationMaintenanceRequest request)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
@@ -164,7 +194,15 @@ namespace BusinessLayer.Services
 
             await _context.SaveChangesAsync();
 
-            return existingMaintenance;
+            // Reload với navigation properties
+            var updatedMaintenance = await _context.StationMaintenances
+                .Include(m => m.ChargingStation)
+                .Include(m => m.ChargingSpot)
+                .Include(m => m.ReportedByUser)
+                .Include(m => m.AssignedToUser)
+                .FirstOrDefaultAsync(m => m.Id == id);
+            
+            return updatedMaintenance == null ? null : MapToDTO(updatedMaintenance);
         }
 
         public async Task<bool> DeleteMaintenanceAsync(Guid id)
@@ -182,6 +220,31 @@ namespace BusinessLayer.Services
         public async Task<bool> MaintenanceExistsAsync(Guid id)
         {
             return await _context.StationMaintenances.AnyAsync(m => m.Id == id);
+        }
+
+        private StationMaintenanceDTO MapToDTO(StationMaintenance maintenance)
+        {
+            return new StationMaintenanceDTO
+            {
+                Id = maintenance.Id,
+                ChargingStationId = maintenance.ChargingStationId,
+                ChargingStationName = maintenance.ChargingStation?.Name,
+                ChargingSpotId = maintenance.ChargingSpotId,
+                ChargingSpotNumber = maintenance.ChargingSpot?.SpotNumber,
+                ReportedByUserId = maintenance.ReportedByUserId,
+                ReportedByUserName = maintenance.ReportedByUser?.FullName,
+                AssignedToUserId = maintenance.AssignedToUserId,
+                AssignedToUserName = maintenance.AssignedToUser?.FullName,
+                ScheduledDate = maintenance.ScheduledDate,
+                StartDate = maintenance.StartDate,
+                EndDate = maintenance.EndDate,
+                Status = maintenance.Status,
+                Title = maintenance.Title,
+                Description = maintenance.Description,
+                Notes = maintenance.Notes,
+                CreatedAt = maintenance.CreatedAt,
+                UpdatedAt = maintenance.UpdatedAt
+            };
         }
     }
 }

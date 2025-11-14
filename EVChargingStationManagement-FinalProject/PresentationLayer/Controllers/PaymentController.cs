@@ -3,8 +3,6 @@ using System.Security.Claims;
 using System.Text.Json;
 using BusinessLayer.DTOs;
 using BusinessLayer.Services;
-using DataAccessLayer.Entities;
-using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -45,7 +43,7 @@ namespace PresentationLayer.Controllers
         {
             var userId = GetUserId();
             var payments = await _paymentService.GetPaymentsForUserAsync(userId, limit);
-            return Ok(payments.Select(MapToDto));
+            return Ok(payments);
         }
 
         [HttpGet("{id:guid}")]
@@ -59,12 +57,12 @@ namespace PresentationLayer.Controllers
 
             var userId = GetUserId();
             var role = User.FindFirstValue(ClaimTypes.Role);
-            if (payment.UserId != userId && role != UserRole.Admin.ToString() && role != UserRole.CSStaff.ToString())
+            if (payment.UserId != userId && role != "Admin" && role != "CSStaff")
             {
                 return Forbid();
             }
 
-            return Ok(MapToDto(payment));
+            return Ok(payment);
         }
 
         [HttpPost]
@@ -87,7 +85,7 @@ namespace PresentationLayer.Controllers
             };
 
             var created = await _paymentService.CreatePaymentAsync(GetUserId(), paymentRequest);
-            return CreatedAtAction(nameof(GetPaymentById), new { id = created.Id }, MapToDto(created));
+            return CreatedAtAction(nameof(GetPaymentById), new { id = created.Id }, created);
         }
 
         [HttpPost("{id:guid}/status")]
@@ -105,17 +103,26 @@ namespace PresentationLayer.Controllers
                 return NotFound();
             }
 
-            if (updated.Reservation != null)
+            // Notify related entities if they exist
+            if (updated.ReservationId.HasValue)
             {
-                await _notifier.NotifyReservationChangedAsync(updated.Reservation);
+                var reservation = await _reservationService.GetReservationByIdAsync(updated.ReservationId.Value);
+                if (reservation != null)
+                {
+                    await _notifier.NotifyReservationChangedAsync(reservation);
+                }
             }
 
-            if (updated.ChargingSession != null)
+            if (updated.ChargingSessionId.HasValue)
             {
-                await _notifier.NotifySessionChangedAsync(updated.ChargingSession);
+                var session = await _sessionService.GetSessionByIdAsync(updated.ChargingSessionId.Value);
+                if (session != null)
+                {
+                    await _notifier.NotifySessionChangedAsync(session);
+                }
             }
 
-            return Ok(MapToDto(updated));
+            return Ok(updated);
         }
 
         [HttpPost("cash")]
@@ -145,10 +152,16 @@ namespace PresentationLayer.Controllers
             var existingPayments = await _paymentService.GetPaymentsForUserAsync(userId, 100);
             var existingPayment = existingPayments.FirstOrDefault(p => p.ChargingSessionId == request.SessionId);
 
+            // Get enum types using reflection
+            var statusType = typeof(PaymentTransactionDTO).GetProperty("Status")!.PropertyType;
+            var methodType = typeof(PaymentTransactionDTO).GetProperty("Method")!.PropertyType;
+            var capturedStatus = Enum.Parse(statusType, "Captured", true);
+            var cashMethod = Enum.Parse(methodType, "Cash", true);
+
             // If payment already exists and is captured, return it
-            if (existingPayment != null && existingPayment.Status == PaymentStatus.Captured)
-                {
-                    return Ok(MapToDto(existingPayment));
+            if (existingPayment != null && existingPayment.Status.ToString() == "Captured")
+            {
+                return Ok(existingPayment);
             }
 
             // Create or reuse payment transaction with Cash method
@@ -157,7 +170,7 @@ namespace PresentationLayer.Controllers
                     ChargingSessionId = request.SessionId,
                     Amount = request.Amount > 0 ? request.Amount : (session.Cost ?? 0),
                     Currency = "VND",
-                    Method = PaymentMethod.Cash,
+                    Method = (dynamic)cashMethod,
                 Description = request.Description ?? $"Thanh toán tiền mặt cho phiên sạc {session.Id}"
             });
 
@@ -165,7 +178,7 @@ namespace PresentationLayer.Controllers
             // Note: If payment method is different, it will remain as is, but status will be updated
             payment = await _paymentService.UpdatePaymentStatusAsync(
                 payment.Id,
-                PaymentStatus.Captured,
+                (dynamic)capturedStatus,
                 $"CASH-{DateTime.UtcNow:yyyyMMddHHmmss}");
 
             if (payment == null)
@@ -174,17 +187,25 @@ namespace PresentationLayer.Controllers
             }
 
             // Notify related entities
-            if (payment.ChargingSession != null)
+            if (payment.ChargingSessionId.HasValue)
             {
-                await _notifier.NotifySessionChangedAsync(payment.ChargingSession);
+                var sessionEntity = await _sessionService.GetSessionByIdAsync(payment.ChargingSessionId.Value);
+                if (sessionEntity != null)
+                {
+                    await _notifier.NotifySessionChangedAsync(sessionEntity);
+                }
             }
 
-            if (payment.Reservation != null)
+            if (payment.ReservationId.HasValue)
             {
-                await _notifier.NotifyReservationChangedAsync(payment.Reservation);
+                var reservationEntity = await _reservationService.GetReservationByIdAsync(payment.ReservationId.Value);
+                if (reservationEntity != null)
+                {
+                    await _notifier.NotifyReservationChangedAsync(reservationEntity);
+                }
             }
 
-            return Ok(MapToDto(payment));
+            return Ok(payment);
         }
 
         [HttpPost("vnpay/create")]
@@ -213,7 +234,7 @@ namespace PresentationLayer.Controllers
             var userId = GetUserId();
             decimal amount = request.Amount;
             string description = "";
-                var payment = (PaymentTransaction?)null;
+                var payment = (PaymentTransactionDTO?)null;
 
             // Handle reservation payment
             if (request.ReservationId.HasValue)
@@ -243,12 +264,16 @@ namespace PresentationLayer.Controllers
                 var existingPayments = await _paymentService.GetPaymentsForUserAsync(userId, 100);
                 var existingPayment = existingPayments.FirstOrDefault(p => p.ReservationId == request.ReservationId);
                 
+                // Get enum type using reflection
+                var methodType = typeof(PaymentTransactionDTO).GetProperty("Method")!.PropertyType;
+                var vnpayMethod = Enum.Parse(methodType, "VNPay", true);
+                
                 payment = existingPayment ?? await _paymentService.CreatePaymentAsync(userId, new CreatePaymentRequest
                     {
                         ReservationId = request.ReservationId.Value,
                         Amount = amount,
                         Currency = "VND",
-                        Method = PaymentMethod.VNPay,
+                        Method = (dynamic)vnpayMethod,
                     Description = description
                 });
 
@@ -289,12 +314,16 @@ namespace PresentationLayer.Controllers
                 var existingPayments = await _paymentService.GetPaymentsForUserAsync(userId, 100);
                 var existingPayment = existingPayments.FirstOrDefault(p => p.ChargingSessionId == request.SessionId);
                 
+                // Get enum type using reflection
+                var methodType = typeof(PaymentTransactionDTO).GetProperty("Method")!.PropertyType;
+                var vnpayMethod = Enum.Parse(methodType, "VNPay", true);
+                
                 payment = existingPayment ?? await _paymentService.CreatePaymentAsync(userId, new CreatePaymentRequest
                     {
                         ChargingSessionId = request.SessionId.Value,
                         Amount = amount,
                         Currency = "VND",
-                        Method = PaymentMethod.VNPay,
+                        Method = (dynamic)vnpayMethod,
                     Description = description
                 });
 
@@ -337,18 +366,15 @@ namespace PresentationLayer.Controllers
                 if (string.IsNullOrWhiteSpace(returnUrl))
                 {
                     returnUrl = "https://example.com/vnpay/return";
-                    Console.WriteLine($"[VNPay] ReturnUrl not configured, using valid domain format for UI testing: {returnUrl}");
                 }
                 
                 // Convert localhost to valid domain format if needed (for UI testing)
                 // This prevents error 72 while still allowing UI testing
                 if (returnUrl.Contains("localhost") || returnUrl.Contains("127.0.0.1") || returnUrl.Contains("::1"))
                 {
-                    var originalUrl = returnUrl;
                     returnUrl = returnUrl.Replace("localhost", "example.com")
                                        .Replace("127.0.0.1", "example.com")
                                        .Replace("::1", "example.com");
-                    Console.WriteLine($"[VNPay] Converted localhost URL for UI testing: {originalUrl} -> {returnUrl}");
                 }
                 
                 // Add paymentId to returnUrl
@@ -356,9 +382,6 @@ namespace PresentationLayer.Controllers
                 {
                 returnUrl += (returnUrl.Contains("?") ? "&" : "?") + $"paymentId={payment.Id}";
             }
-
-                Console.WriteLine($"[VNPay] Creating payment URL with ReturnUrl: {returnUrl}");
-                Console.WriteLine($"[VNPay] Payment ID: {payment.Id}, Amount: {payment.Amount}");
 
                 // Create VNPay payment URL with comprehensive error handling
                 string paymentUrl;
@@ -368,19 +391,14 @@ namespace PresentationLayer.Controllers
                 }
                 catch (ArgumentNullException ex)
                 {
-                    Console.WriteLine($"[VNPay Create] ArgumentNullException: {ex.Message}");
                     return BadRequest(new { message = ex.Message, error = "Invalid payment data" });
                 }
                 catch (ArgumentException ex)
                 {
-                    Console.WriteLine($"[VNPay Create] ArgumentException: {ex.Message}");
                     return BadRequest(new { message = ex.Message, error = "Invalid payment parameters" });
                 }
                 catch (InvalidOperationException ex)
                 {
-                    Console.WriteLine($"[VNPay Create] InvalidOperationException: {ex.Message}");
-                    Console.WriteLine($"[VNPay Create] Stack trace: {ex.StackTrace}");
-                    
                     // Check if it's a configuration error
                     if (ex.Message.Contains("not configured") || ex.Message.Contains("TmnCode") || ex.Message.Contains("HashSecret"))
                     {
@@ -398,10 +416,6 @@ namespace PresentationLayer.Controllers
                 }
                 catch (Exception ex)
                 {
-                    // Log the exception for debugging
-                    Console.WriteLine($"[VNPay Create] Unexpected error: {ex.GetType().Name}");
-                    Console.WriteLine($"[VNPay Create] Message: {ex.Message}");
-                    Console.WriteLine($"[VNPay Create] Stack trace: {ex.StackTrace}");
                     return StatusCode(500, new { 
                         message = "Có lỗi xảy ra khi tạo thanh toán VNPay", 
                         error = ex.Message,
@@ -415,9 +429,6 @@ namespace PresentationLayer.Controllers
             }
             catch (Exception ex)
             {
-                // Log the exception for debugging
-                Console.WriteLine($"[VNPay Create] Unexpected error: {ex.Message}");
-                Console.WriteLine($"[VNPay Create] Stack trace: {ex.StackTrace}");
                 return StatusCode(500, new { message = "Có lỗi xảy ra khi tạo thanh toán VNPay", error = ex.Message });
             }
         }
@@ -430,19 +441,10 @@ namespace PresentationLayer.Controllers
             // VNPay sends callback as GET or POST with query parameters
             var queryParams = Request.Query.ToDictionary(q => q.Key, q => q.Value.ToString());
             
-            // Log received parameters for debugging
-            Console.WriteLine($"[VNPay Callback] Received {queryParams.Count} parameters");
-            foreach (var param in queryParams)
-            {
-                Console.WriteLine($"[VNPay Callback] {param.Key} = {param.Value}");
-            }
-            
             var callbackResult = _vnPayService.ValidateCallback(queryParams);
 
             if (!callbackResult.Success || string.IsNullOrEmpty(callbackResult.OrderId))
             {
-                // Log signature verification failure
-                Console.WriteLine($"[VNPay Callback] Signature verification failed: {callbackResult.Message}");
                 // Return error response but still acknowledge receipt to VNPay
                 return BadRequest(new { RspCode = "97", Message = callbackResult.Message ?? "Invalid callback" });
             }
@@ -486,10 +488,15 @@ namespace PresentationLayer.Controllers
                 updatedAt = DateTime.UtcNow
             });
 
-            var newStatus = callbackResult.Success ? PaymentStatus.Captured : PaymentStatus.Failed;
+            // Get enum type using reflection
+            var statusType = typeof(PaymentTransactionDTO).GetProperty("Status")!.PropertyType;
+            var capturedStatus = Enum.Parse(statusType, "Captured", true);
+            var failedStatus = Enum.Parse(statusType, "Failed", true);
+            var newStatus = callbackResult.Success ? capturedStatus : failedStatus;
+            
             var updated = await _paymentService.UpdatePaymentStatusAsync(
                 paymentId, 
-                newStatus, 
+                (dynamic)newStatus, 
                 callbackResult.TransactionNo);
 
             if (updated == null)
@@ -499,17 +506,24 @@ namespace PresentationLayer.Controllers
 
             // Update metadata with responseCode
             await _paymentService.UpdatePaymentMetadataAsync(paymentId, metadata);
-            Console.WriteLine($"[VNPay Callback] Payment {paymentId} - ResponseCode: {callbackResult.ResponseCode}, Status: {newStatus}");
 
             // Notify related entities
-            if (updated.ChargingSession != null)
+            if (updated.ChargingSessionId.HasValue)
             {
-                await _notifier.NotifySessionChangedAsync(updated.ChargingSession);
+                var sessionEntity = await _sessionService.GetSessionByIdAsync(updated.ChargingSessionId.Value);
+                if (sessionEntity != null)
+                {
+                    await _notifier.NotifySessionChangedAsync(sessionEntity);
+                }
             }
 
-            if (updated.Reservation != null)
+            if (updated.ReservationId.HasValue)
             {
-                await _notifier.NotifyReservationChangedAsync(updated.Reservation);
+                var reservationEntity = await _reservationService.GetReservationByIdAsync(updated.ReservationId.Value);
+                if (reservationEntity != null)
+                {
+                    await _notifier.NotifyReservationChangedAsync(reservationEntity);
+                }
             }
 
             // Return success response for VNPay IPN
@@ -721,10 +735,15 @@ namespace PresentationLayer.Controllers
                 return NotFound(new { message = "Payment not found" });
             }
 
-            var newStatus = callbackResult.Success ? PaymentStatus.Captured : PaymentStatus.Failed;
+            // Get enum type using reflection
+            var statusType = typeof(PaymentTransactionDTO).GetProperty("Status")!.PropertyType;
+            var capturedStatus = Enum.Parse(statusType, "Captured", true);
+            var failedStatus = Enum.Parse(statusType, "Failed", true);
+            var newStatus = callbackResult.Success ? capturedStatus : failedStatus;
+            
             var updated = await _paymentService.UpdatePaymentStatusAsync(
                 paymentId, 
-                newStatus, 
+                (dynamic)newStatus, 
                 callbackResult.TransactionNo);
 
             if (updated == null)
@@ -733,14 +752,22 @@ namespace PresentationLayer.Controllers
             }
 
             // Notify related entities
-            if (updated.ChargingSession != null)
+            if (updated.ChargingSessionId.HasValue)
             {
-                await _notifier.NotifySessionChangedAsync(updated.ChargingSession);
+                var sessionEntity = await _sessionService.GetSessionByIdAsync(updated.ChargingSessionId.Value);
+                if (sessionEntity != null)
+                {
+                    await _notifier.NotifySessionChangedAsync(sessionEntity);
+                }
             }
 
-            if (updated.Reservation != null)
+            if (updated.ReservationId.HasValue)
             {
-                await _notifier.NotifyReservationChangedAsync(updated.Reservation);
+                var reservationEntity = await _reservationService.GetReservationByIdAsync(updated.ReservationId.Value);
+                if (reservationEntity != null)
+                {
+                    await _notifier.NotifyReservationChangedAsync(reservationEntity);
+                }
             }
 
             // Return success response for MoMo IPN
@@ -803,21 +830,35 @@ namespace PresentationLayer.Controllers
                             var payment = await _paymentService.GetPaymentByIdAsync(paymentId);
                             if (payment != null)
                             {
-                                var newStatus = callbackResult.Success ? PaymentStatus.Captured : PaymentStatus.Failed;
+                                // Get enum type using reflection
+                                var statusType = typeof(PaymentTransactionDTO).GetProperty("Status")!.PropertyType;
+                                var capturedStatus = Enum.Parse(statusType, "Captured", true);
+                                var failedStatus = Enum.Parse(statusType, "Failed", true);
+                                var newStatus = callbackResult.Success ? capturedStatus : failedStatus;
+                                
                                 await _paymentService.UpdatePaymentStatusAsync(
                                     paymentId,
-                                    newStatus,
+                                    (dynamic)newStatus,
                                     callbackResult.TransactionNo);
 
                                 // Notify related entities
-                                if (payment.ChargingSession != null)
+                                var updatedPayment = await _paymentService.GetPaymentByIdAsync(paymentId);
+                                if (updatedPayment?.ChargingSessionId.HasValue == true)
                                 {
-                                    await _notifier.NotifySessionChangedAsync(payment.ChargingSession);
+                                    var sessionEntity = await _sessionService.GetSessionByIdAsync(updatedPayment.ChargingSessionId.Value);
+                                    if (sessionEntity != null)
+                                    {
+                                        await _notifier.NotifySessionChangedAsync(sessionEntity);
+                                    }
                                 }
 
-                                if (payment.Reservation != null)
+                                if (updatedPayment?.ReservationId.HasValue == true)
                                 {
-                                    await _notifier.NotifyReservationChangedAsync(payment.Reservation);
+                                    var reservationEntity = await _reservationService.GetReservationByIdAsync(updatedPayment.ReservationId.Value);
+                                    if (reservationEntity != null)
+                                    {
+                                        await _notifier.NotifyReservationChangedAsync(reservationEntity);
+                                    }
                                 }
                             }
                         }
@@ -851,50 +892,6 @@ namespace PresentationLayer.Controllers
             }
         }
 
-        private PaymentTransactionDTO MapToDto(PaymentTransaction payment)
-        {
-            // Extract responseCode from Metadata if available
-            string? responseCode = null;
-            string? responseMessage = null;
-            
-            if (!string.IsNullOrEmpty(payment.Metadata))
-            {
-                try
-                {
-                    var metadata = System.Text.Json.JsonDocument.Parse(payment.Metadata);
-                    if (metadata.RootElement.TryGetProperty("responseCode", out var rc))
-                    {
-                        responseCode = rc.GetString();
-                    }
-                    if (metadata.RootElement.TryGetProperty("message", out var msg))
-                    {
-                        responseMessage = msg.GetString();
-                    }
-                }
-                catch
-                {
-                    // If metadata is not JSON, ignore
-                }
-            }
-            
-            return new PaymentTransactionDTO
-            {
-                Id = payment.Id,
-                UserId = payment.UserId,
-                ReservationId = payment.ReservationId,
-                ChargingSessionId = payment.ChargingSessionId,
-                Amount = payment.Amount,
-                Currency = payment.Currency,
-                Method = payment.Method,
-                Status = payment.Status,
-                ProviderTransactionId = payment.ProviderTransactionId,
-                ProcessedAt = payment.ProcessedAt,
-                Description = payment.Description,
-                Metadata = payment.Metadata,
-                ResponseCode = responseCode,
-                ResponseMessage = responseMessage
-            };
-        }
 
         private Guid GetUserId()
         {
