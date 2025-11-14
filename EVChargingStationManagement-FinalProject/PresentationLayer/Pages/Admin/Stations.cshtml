@@ -6,9 +6,14 @@
 
 <section class="page-header">
     <h2>@ViewData["Title"]</h2>
-    <a href="/Admin/Stations/AddStation" class="btn btn-primary">
-        <i class="bi bi-plus-circle"></i> Thêm trạm sạc
-    </a>
+    <div style="display: flex; gap: 12px;">
+        <a href="/Admin/Stations/AddStation" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Thêm trạm sạc
+        </a>
+        <button type="button" class="btn btn-success" id="btn-add-my-station" data-bs-toggle="modal" data-bs-target="#addMyStationModal">
+            <i class="bi bi-geo-alt-fill"></i> Thêm trạm sạc của tôi
+        </button>
+    </div>
 </section>
 
 <section class="filters">
@@ -208,6 +213,154 @@
     }
 </style>
 
+<!-- Modal Add My Station with Map -->
+<div class="modal fade" id="addMyStationModal" tabindex="-1" aria-labelledby="addMyStationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" style="max-width: 95vw; height: 90vh; margin: 5vh auto;">
+        <div class="modal-content" style="height: 100%; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addMyStationModalLabel">Thêm trạm sạc của tôi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body" style="flex: 1; overflow: hidden; padding: 0;">
+                <div style="display: flex; height: 100%; gap: 0;">
+                    <!-- Left: Form Section -->
+                    <div class="form-section" style="width: 45%; background: white; border-right: 1px solid #e5e7eb; overflow-y: auto; padding: 24px;">
+                        <form id="myStationForm">
+                            <div class="mb-3">
+                                <label for="myStationName" class="form-label">Tên trạm <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="myStationName" name="name" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="myStationAddress" class="form-label">Địa chỉ <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="myStationAddress" name="address" required>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="myStationCity" class="form-label">Thành phố</label>
+                                    <input type="text" class="form-control" id="myStationCity" name="city">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="myStationProvince" class="form-label">Tỉnh/Thành</label>
+                                    <input type="text" class="form-control" id="myStationProvince" name="province">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="myStationPostalCode" class="form-label">Mã bưu điện</label>
+                                <input type="text" class="form-control" id="myStationPostalCode" name="postalCode">
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="myStationLatitude" class="form-label">Vĩ độ <span class="text-danger">*</span></label>
+                                    <input type="number" step="any" min="-90" max="90" class="form-control" id="myStationLatitude" name="latitude" readonly required>
+                                    <small class="text-muted">Click trên map để chọn</small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="myStationLongitude" class="form-label">Kinh độ <span class="text-danger">*</span></label>
+                                    <input type="number" step="any" min="-180" max="180" class="form-control" id="myStationLongitude" name="longitude" readonly required>
+                                    <small class="text-muted">Click trên map để chọn</small>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="myStationPhone" class="form-label">Số điện thoại</label>
+                                    <input type="tel" class="form-control" id="myStationPhone" name="phone">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="myStationEmail" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="myStationEmail" name="email">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="myStationStatus" class="form-label">Trạng thái <span class="text-danger">*</span></label>
+                                <select class="form-select" id="myStationStatus" name="status" required>
+                                    <option value="0">Active</option>
+                                    <option value="1">Inactive</option>
+                                    <option value="2">Maintenance</option>
+                                </select>
+                            </div>
+
+                            <!-- Charging Spots Configuration -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <label class="form-label fw-bold mb-0">Cấu hình cổng sạc</label>
+                                    <button type="button" class="btn btn-sm btn-primary" id="btn-add-my-spot">
+                                        <i class="bi bi-plus-circle"></i> Thêm cổng sạc
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="mySpotsContainer" class="spots-container mb-3">
+                                <!-- Spots will be added here dynamically -->
+                            </div>
+
+                            <div id="mySpotsEmpty" class="text-center text-muted py-3" style="display: none;">
+                                <small>Chưa có cổng sạc nào. Nhấn "Thêm cổng sạc" để thêm.</small>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="myStationOpeningTime" class="form-label">Giờ mở cửa</label>
+                                    <input type="time" class="form-control" id="myStationOpeningTime" name="openingTime">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="myStationClosingTime" class="form-label">Giờ đóng cửa</label>
+                                    <input type="time" class="form-control" id="myStationClosingTime" name="closingTime">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="myStationIs24Hours" name="is24Hours">
+                                    <label class="form-check-label" for="myStationIs24Hours">
+                                        24/7
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="myStationDescription" class="form-label">Mô tả</label>
+                                <textarea class="form-control" id="myStationDescription" name="description" rows="3"></textarea>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Right: Map Section -->
+                    <div class="map-section" style="flex: 1; position: relative; background: #f0f0f0;">
+                        <div id="myStationMap" style="width: 100%; height: 100%;"></div>
+                        
+                        <!-- Map Controls -->
+                        <div class="map-overlay-bar" style="position: absolute; bottom: 24px; left: 24px; display: flex; gap: 12px; z-index: 1000;">
+                            <button id="btn-my-location" class="btn-current-location-map" title="Vị trí của tôi" style="background: white; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 8px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.15); color: #155DFC;">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M10 2C6.48 2 3.5 4.98 3.5 8.5C3.5 13.25 10 18 10 18C10 18 16.5 13.25 16.5 8.5C16.5 4.98 13.52 2 10 2Z" stroke="currentColor" stroke-width="1.5"/>
+                                    <circle cx="10" cy="8.5" r="3" stroke="currentColor" stroke-width="1.5"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Instruction Text -->
+                        <div style="position: absolute; top: 24px; left: 50%; transform: translateX(-50%); background: rgba(255, 255, 255, 0.95); padding: 12px 24px; border-radius: 8px; box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.15); z-index: 1000; font-size: 14px; color: #333;">
+                            <i class="bi bi-cursor-fill"></i> Click trên map để chọn vị trí trạm sạc
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" id="saveMyStationBtn">Lưu trạm sạc</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="~/js/admin-stations.js" asp-append-version="true"></script>
 }

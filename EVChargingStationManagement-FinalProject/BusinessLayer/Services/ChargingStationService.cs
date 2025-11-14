@@ -1,3 +1,4 @@
+using BusinessLayer.DTOs;
 using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
@@ -14,31 +15,37 @@ namespace BusinessLayer.Services
             _context = context;
         }
 
-        public async Task<IEnumerable<ChargingStation>> GetAllStationsAsync()
+        public async Task<IEnumerable<ChargingStationDTO>> GetAllStationsAsync()
         {
-            return await _context.ChargingStations
+            var stations = await _context.ChargingStations
                 .Include(s => s.ChargingSpots)
                 .OrderBy(s => s.Name)
                 .ToListAsync();
+            
+            return stations.Select(MapToDTO);
         }
 
-        public async Task<ChargingStation?> GetStationByIdAsync(Guid id)
+        public async Task<ChargingStationDTO?> GetStationByIdAsync(Guid id)
         {
-            return await _context.ChargingStations
+            var station = await _context.ChargingStations
                 .Include(s => s.ChargingSpots)
                 .FirstOrDefaultAsync(s => s.Id == id);
+            
+            return station == null ? null : MapToDTO(station);
         }
 
-        public async Task<IEnumerable<ChargingStation>> GetStationsByStatusAsync(StationStatus status)
+        public async Task<IEnumerable<ChargingStationDTO>> GetStationsByStatusAsync(StationStatus status)
         {
-            return await _context.ChargingStations
+            var stations = await _context.ChargingStations
                 .Include(s => s.ChargingSpots)
                 .Where(s => s.Status == status)
                 .OrderBy(s => s.Name)
                 .ToListAsync();
+            
+            return stations.Select(MapToDTO);
         }
 
-        public async Task<IEnumerable<ChargingStation>> GetNearestStationsAsync(decimal latitude, decimal longitude, double radiusKm = 10, StationStatus? status = null, string? connectorType = null)
+        public async Task<IEnumerable<ChargingStationDTO>> GetNearestStationsAsync(decimal latitude, decimal longitude, double radiusKm = 10, StationStatus? status = null, string? connectorType = null)
         {
             var query = _context.ChargingStations
                 .Include(s => s.ChargingSpots)
@@ -75,7 +82,7 @@ namespace BusinessLayer.Services
                 .Select(x => x.Station)
                 .ToList();
 
-            return stationsWithDistance;
+            return stationsWithDistance.Select(MapToDTO);
         }
 
         private double CalculateDistanceKm(double lat1, double lon1, double lat2, double lon2)
@@ -97,54 +104,96 @@ namespace BusinessLayer.Services
             return degrees * Math.PI / 180.0;
         }
 
-        public async Task<ChargingStation> CreateStationAsync(ChargingStation station)
+        public async Task<ChargingStationDTO> CreateStationAsync(CreateChargingStationRequest request)
         {
-            if (station == null)
-                throw new ArgumentNullException(nameof(station));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
 
-            station.Id = Guid.NewGuid();
-            station.CreatedAt = DateTime.UtcNow;
-            station.UpdatedAt = DateTime.UtcNow;
+            var station = new ChargingStation
+            {
+                Id = Guid.NewGuid(),
+                Name = request.Name,
+                Address = request.Address,
+                City = request.City,
+                Province = request.Province,
+                PostalCode = request.PostalCode,
+                Latitude = request.Latitude,
+                Longitude = request.Longitude,
+                Phone = request.Phone,
+                Email = request.Email,
+                Status = request.Status,
+                Description = request.Description,
+                OpeningTime = request.OpeningTime,
+                ClosingTime = request.ClosingTime,
+                Is24Hours = request.Is24Hours,
+                SerpApiPlaceId = request.SerpApiPlaceId,
+                ExternalRating = request.ExternalRating,
+                ExternalReviewCount = request.ExternalReviewCount,
+                IsFromSerpApi = !string.IsNullOrWhiteSpace(request.SerpApiPlaceId),
+                SerpApiLastSynced = !string.IsNullOrWhiteSpace(request.SerpApiPlaceId) ? DateTime.UtcNow : null,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
             _context.ChargingStations.Add(station);
             await _context.SaveChangesAsync();
 
-            return station;
+            // Reload với navigation properties
+            var createdStation = await _context.ChargingStations
+                .Include(s => s.ChargingSpots)
+                .FirstOrDefaultAsync(s => s.Id == station.Id);
+            
+            return MapToDTO(createdStation!);
         }
 
-        public async Task<ChargingStation?> UpdateStationAsync(Guid id, ChargingStation station)
+        public async Task<ChargingStationDTO?> UpdateStationAsync(Guid id, UpdateChargingStationRequest request)
         {
-            if (station == null)
-                throw new ArgumentNullException(nameof(station));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
 
             var existingStation = await _context.ChargingStations.FindAsync(id);
             if (existingStation == null)
                 return null;
 
-            existingStation.Name = station.Name;
-            existingStation.Address = station.Address;
-            existingStation.City = station.City;
-            existingStation.Province = station.Province;
-            existingStation.PostalCode = station.PostalCode;
-            existingStation.Latitude = station.Latitude;
-            existingStation.Longitude = station.Longitude;
-            existingStation.Phone = station.Phone;
-            existingStation.Email = station.Email;
-            existingStation.Status = station.Status;
-            existingStation.Description = station.Description;
-            existingStation.OpeningTime = station.OpeningTime;
-            existingStation.ClosingTime = station.ClosingTime;
-            existingStation.Is24Hours = station.Is24Hours;
-            existingStation.SerpApiPlaceId = station.SerpApiPlaceId;
-            existingStation.ExternalRating = station.ExternalRating;
-            existingStation.ExternalReviewCount = station.ExternalReviewCount;
-            existingStation.IsFromSerpApi = !string.IsNullOrWhiteSpace(station.SerpApiPlaceId);
-            existingStation.SerpApiLastSynced = !string.IsNullOrWhiteSpace(station.SerpApiPlaceId) ? DateTime.UtcNow : existingStation.SerpApiLastSynced;
+            existingStation.Name = request.Name;
+            existingStation.Address = request.Address;
+            existingStation.City = request.City;
+            existingStation.Province = request.Province;
+            existingStation.PostalCode = request.PostalCode;
+            existingStation.Latitude = request.Latitude;
+            existingStation.Longitude = request.Longitude;
+            existingStation.Phone = request.Phone;
+            existingStation.Email = request.Email;
+            existingStation.Status = request.Status;
+            existingStation.Description = request.Description;
+            existingStation.OpeningTime = request.OpeningTime;
+            existingStation.ClosingTime = request.ClosingTime;
+            existingStation.Is24Hours = request.Is24Hours;
+            
+            // Only update SerpApi fields if provided
+            if (request.SerpApiPlaceId != null)
+            {
+                existingStation.SerpApiPlaceId = request.SerpApiPlaceId;
+                existingStation.IsFromSerpApi = !string.IsNullOrWhiteSpace(request.SerpApiPlaceId);
+                existingStation.SerpApiLastSynced = !string.IsNullOrWhiteSpace(request.SerpApiPlaceId) ? DateTime.UtcNow : existingStation.SerpApiLastSynced;
+            }
+            
+            if (request.ExternalRating.HasValue)
+                existingStation.ExternalRating = request.ExternalRating;
+            
+            if (request.ExternalReviewCount.HasValue)
+                existingStation.ExternalReviewCount = request.ExternalReviewCount;
+            
             existingStation.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 
-            return existingStation;
+            // Reload với navigation properties
+            var updatedStation = await _context.ChargingStations
+                .Include(s => s.ChargingSpots)
+                .FirstOrDefaultAsync(s => s.Id == id);
+            
+            return updatedStation == null ? null : MapToDTO(updatedStation);
         }
 
         public async Task<bool> DeleteStationAsync(Guid id)
@@ -162,6 +211,48 @@ namespace BusinessLayer.Services
         public async Task<bool> StationExistsAsync(Guid id)
         {
             return await _context.ChargingStations.AnyAsync(s => s.Id == id);
+        }
+
+        private ChargingStationDTO MapToDTO(ChargingStation station)
+        {
+            var spots = station.ChargingSpots?.ToList() ?? new List<ChargingSpot>();
+            // Lấy thông tin từ spot đầu tiên (hoặc spot có sẵn đầu tiên)
+            var firstSpot = spots.FirstOrDefault(s => s.Status == SpotStatus.Available) ?? spots.FirstOrDefault();
+            
+            // Nếu station không Active, thì AvailableSpots = 0
+            var availableSpots = station.Status == StationStatus.Active 
+                ? spots.Count(s => s.Status == SpotStatus.Available)
+                : 0;
+            
+            return new ChargingStationDTO
+            {
+                Id = station.Id,
+                Name = station.Name,
+                Address = station.Address,
+                City = station.City,
+                Province = station.Province,
+                PostalCode = station.PostalCode,
+                Latitude = station.Latitude,
+                Longitude = station.Longitude,
+                Phone = station.Phone,
+                Email = station.Email,
+                Status = station.Status,
+                Description = station.Description,
+                OpeningTime = station.OpeningTime,
+                ClosingTime = station.ClosingTime,
+                Is24Hours = station.Is24Hours,
+                CreatedAt = station.CreatedAt,
+                UpdatedAt = station.UpdatedAt,
+                TotalSpots = spots.Count,
+                AvailableSpots = availableSpots,
+                ConnectorType = firstSpot?.ConnectorType,
+                PricePerKwh = firstSpot?.PricePerKwh,
+                SerpApiPlaceId = station.SerpApiPlaceId,
+                ExternalRating = station.ExternalRating,
+                ExternalReviewCount = station.ExternalReviewCount,
+                IsFromSerpApi = station.IsFromSerpApi,
+                SerpApiLastSynced = station.SerpApiLastSynced
+            };
         }
     }
 }

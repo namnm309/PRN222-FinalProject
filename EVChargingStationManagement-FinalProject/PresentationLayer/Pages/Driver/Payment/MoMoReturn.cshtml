@@ -1,8 +1,8 @@
 @page
-@model PresentationLayer.Pages.Driver.Payment.VnPayReturnModel
+@model PresentationLayer.Pages.Driver.Payment.MoMoReturnModel
 @{
     Layout = "~/Pages/Shared/_DashboardLayout.cshtml";
-    ViewData["Title"] = "Driver • Kết quả thanh toán";
+    ViewData["Title"] = "Driver • Kết quả thanh toán MoMo";
 }
 
 <section class="page-header">
@@ -26,15 +26,15 @@
             const urlParams = new URLSearchParams(window.location.search);
             
             try {
-                let url = '/api/Payment/vnpay/return';
+                let url = '/api/Payment/momo/return';
                 // Add paymentId first if available
                 if (paymentId) {
                     url += '?paymentId=' + encodeURIComponent(paymentId);
                 }
-                // Add all VNPay query params (vnp_*) - these are needed for signature validation
+                // Add all MoMo query params - these are needed for signature validation
                 urlParams.forEach((value, key) => {
-                    // Only add VNPay params (vnp_*) and exclude paymentId to avoid duplication
-                    if (key.startsWith('vnp_') && key !== 'paymentId') {
+                    // Only add MoMo params and exclude paymentId to avoid duplication
+                    if (key !== 'paymentId') {
                         url += (url.includes('?') ? '&' : '?') + key + '=' + encodeURIComponent(value);
                     }
                 });

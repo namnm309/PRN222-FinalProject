@@ -71,6 +71,22 @@ namespace BusinessLayer.Services
             return (users, totalCount);
         }
 
+        public async Task<(IEnumerable<UserManagementDTO> users, int totalCount)> GetAllUsersByRoleStringAsync(
+            int page = 1,
+            int pageSize = 50,
+            string? roleFilter = null,
+            bool? isActiveFilter = null,
+            string? searchTerm = null)
+        {
+            UserRole? role = null;
+            if (!string.IsNullOrEmpty(roleFilter) && Enum.TryParse<UserRole>(roleFilter, true, out var parsedRole))
+            {
+                role = parsedRole;
+            }
+
+            return await GetAllUsersAsync(page, pageSize, role, isActiveFilter, searchTerm);
+        }
+
         public async Task<UserManagementDTO?> GetUserByIdAsync(Guid userId)
         {
             var user = await _context.Users

@@ -1,4 +1,5 @@
 using System.Linq;
+using BusinessLayer.DTOs;
 using DataAccessLayer.Data;
 using DataAccessLayer.Entities;
 using DataAccessLayer.Enums;
@@ -15,26 +16,30 @@ namespace BusinessLayer.Services
             _context = context;
         }
 
-        public async Task<IEnumerable<ChargingSession>> GetSessionsForUserAsync(Guid userId, int limit = 20)
+        public async Task<IEnumerable<ChargingSessionDTO>> GetSessionsForUserAsync(Guid userId, int limit = 20)
         {
-            return await _context.ChargingSessions
+            var sessions = await _context.ChargingSessions
                 .Include(cs => cs.ChargingSpot)!
                     .ThenInclude(s => s.ChargingStation)
                 .Include(cs => cs.Vehicle)
                 .Include(cs => cs.Reservation)
+                .Include(cs => cs.User)
                 .Where(cs => cs.UserId == userId)
                 .OrderByDescending(cs => cs.SessionStartTime)
                 .Take(limit)
                 .ToListAsync();
+            
+            return sessions.Select(MapToDTO);
         }
 
-        public async Task<IEnumerable<ChargingSession>> GetActiveSessionsAsync(Guid? stationId = null)
+        public async Task<IEnumerable<ChargingSessionDTO>> GetActiveSessionsAsync(Guid? stationId = null)
         {
             var query = _context.ChargingSessions
                 .Include(cs => cs.User)
                 .Include(cs => cs.Vehicle)
                 .Include(cs => cs.ChargingSpot)!
                     .ThenInclude(s => s.ChargingStation)
+                .Include(cs => cs.Reservation)
                 .Where(cs => cs.Status == ChargingSessionStatus.InProgress);
 
             if (stationId.HasValue)
@@ -42,38 +47,47 @@ namespace BusinessLayer.Services
                 query = query.Where(cs => cs.ChargingSpot != null && cs.ChargingSpot.ChargingStationId == stationId.Value);
             }
 
-            return await query.ToListAsync();
+            var sessions = await query.ToListAsync();
+            return sessions.Select(MapToDTO);
         }
 
-        public async Task<ChargingSession?> GetActiveSessionForUserAsync(Guid userId)
+        public async Task<ChargingSessionDTO?> GetActiveSessionForUserAsync(Guid userId)
         {
-            return await _context.ChargingSessions
+            var session = await _context.ChargingSessions
                 .Include(cs => cs.ChargingSpot)!
                     .ThenInclude(s => s.ChargingStation)
                 .Include(cs => cs.Vehicle)
                 .Include(cs => cs.Reservation)
+                .Include(cs => cs.User)
                 .Where(cs => cs.UserId == userId && cs.Status == ChargingSessionStatus.InProgress)
                 .OrderByDescending(cs => cs.SessionStartTime)
                 .FirstOrDefaultAsync();
+            
+            return session == null ? null : MapToDTO(session);
         }
 
-        public async Task<ChargingSession?> GetSessionByIdAsync(Guid id)
+        public async Task<ChargingSessionDTO?> GetSessionByIdAsync(Guid id)
         {
-            return await _context.ChargingSessions
+            var session = await _context.ChargingSessions
                 .Include(cs => cs.User)
                 .Include(cs => cs.Vehicle)
                 .Include(cs => cs.Reservation)
                 .Include(cs => cs.ChargingSpot)!
                     .ThenInclude(s => s.ChargingStation)
                 .FirstOrDefaultAsync(cs => cs.Id == id);
+            
+            return session == null ? null : MapToDTO(session);
         }
 
-        public async Task<ChargingSession> StartSessionAsync(Guid userId, ChargingSession session)
+        public async Task<ChargingSessionDTO> StartSessionAsync(Guid userId, StartChargingSessionRequest request)
         {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
             var spot = await _context.ChargingSpots
                 .Include(s => s.ChargingSessions.Where(cs => cs.Status == ChargingSessionStatus.InProgress))
                 .Include(s => s.ChargingStation)
-                .FirstOrDefaultAsync(s => s.Id == session.ChargingSpotId);
+                .FirstOrDefaultAsync(s => s.Id == request.ChargingSpotId);
 
             if (spot == null)
             {
@@ -96,15 +110,29 @@ namespace BusinessLayer.Services
                 throw new InvalidOperationException("Charging spot already has an active session.");
             }
 
-            session.Id = Guid.NewGuid();
-            session.UserId = userId;
-            session.Status = ChargingSessionStatus.InProgress;
-            session.SessionStartTime = DateTime.UtcNow;
-            session.CreatedAt = DateTime.UtcNow;
-            session.UpdatedAt = DateTime.UtcNow;
+            var session = new ChargingSession
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ChargingSpotId = request.ChargingSpotId,
+                ReservationId = request.ReservationId,
+                VehicleId = request.VehicleId,
+                EnergyRequestedKwh = request.EnergyRequestedKwh,
+                TargetSocPercentage = request.TargetSocPercentage,
+                QrCodeScanned = request.QrCode,
+                Notes = request.Notes,
+                Status = ChargingSessionStatus.InProgress,
+                SessionStartTime = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
-            // Lưu pricePerKwh từ spot nếu chưa có
-            if (!session.PricePerKwh.HasValue && spot.PricePerKwh.HasValue)
+            // Lưu pricePerKwh từ request hoặc từ spot
+            if (request.PricePerKwh.HasValue)
+            {
+                session.PricePerKwh = request.PricePerKwh.Value;
+            }
+            else if (spot.PricePerKwh.HasValue)
             {
                 session.PricePerKwh = spot.PricePerKwh.Value;
             }
@@ -126,10 +154,20 @@ namespace BusinessLayer.Services
             spot.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-            return session;
+            
+            // Reload với navigation properties
+            var createdSession = await _context.ChargingSessions
+                .Include(cs => cs.ChargingSpot)!
+                    .ThenInclude(s => s.ChargingStation)
+                .Include(cs => cs.Vehicle)
+                .Include(cs => cs.Reservation)
+                .Include(cs => cs.User)
+                .FirstOrDefaultAsync(cs => cs.Id == session.Id);
+            
+            return MapToDTO(createdSession!);
         }
 
-        public async Task<ChargingSession?> CompleteSessionAsync(Guid sessionId, decimal energyDeliveredKwh, decimal cost, decimal? pricePerKwh, string? notes)
+        public async Task<ChargingSessionDTO?> CompleteSessionAsync(Guid sessionId, decimal energyDeliveredKwh, decimal cost, decimal? pricePerKwh, string? notes)
         {
             var session = await _context.ChargingSessions
                 .Include(cs => cs.ChargingSpot)
@@ -180,10 +218,20 @@ namespace BusinessLayer.Services
             }
 
             await _context.SaveChangesAsync();
-            return session;
+            
+            // Reload với navigation properties
+            var completedSession = await _context.ChargingSessions
+                .Include(cs => cs.ChargingSpot)!
+                    .ThenInclude(s => s.ChargingStation)
+                .Include(cs => cs.Vehicle)
+                .Include(cs => cs.Reservation)
+                .Include(cs => cs.User)
+                .FirstOrDefaultAsync(cs => cs.Id == sessionId);
+            
+            return completedSession == null ? null : MapToDTO(completedSession);
         }
 
-        public async Task<ChargingSession?> UpdateSessionStatusAsync(Guid sessionId, ChargingSessionStatus status, string? notes = null)
+        public async Task<ChargingSessionDTO?> UpdateSessionStatusAsync(Guid sessionId, ChargingSessionStatus status, string? notes = null)
         {
             var session = await _context.ChargingSessions
                 .Include(cs => cs.ChargingSpot)
@@ -216,7 +264,46 @@ namespace BusinessLayer.Services
             }
 
             await _context.SaveChangesAsync();
-            return session;
+            
+            // Reload với navigation properties
+            var updatedSession = await _context.ChargingSessions
+                .Include(cs => cs.ChargingSpot)!
+                    .ThenInclude(s => s.ChargingStation)
+                .Include(cs => cs.Vehicle)
+                .Include(cs => cs.Reservation)
+                .Include(cs => cs.User)
+                .FirstOrDefaultAsync(cs => cs.Id == sessionId);
+            
+            return updatedSession == null ? null : MapToDTO(updatedSession);
+        }
+
+        private ChargingSessionDTO MapToDTO(ChargingSession session)
+        {
+            return new ChargingSessionDTO
+            {
+                Id = session.Id,
+                ChargingSpotId = session.ChargingSpotId,
+                ChargingSpotNumber = session.ChargingSpot?.SpotNumber,
+                ChargingStationId = session.ChargingSpot?.ChargingStationId ?? Guid.Empty,
+                ChargingStationName = session.ChargingSpot?.ChargingStation?.Name,
+                UserId = session.UserId,
+                UserName = session.User != null ? (session.User.FullName ?? session.User.Email) : null,
+                VehicleId = session.VehicleId,
+                VehicleName = session.Vehicle != null ? $"{session.Vehicle.Make} {session.Vehicle.Model}" : null,
+                ReservationId = session.ReservationId,
+                ScheduledStartTime = session.Reservation?.ScheduledStartTime,
+                ScheduledEndTime = session.Reservation?.ScheduledEndTime,
+                Status = session.Status,
+                SessionStartTime = session.SessionStartTime,
+                SessionEndTime = session.SessionEndTime,
+                EnergyDeliveredKwh = session.EnergyDeliveredKwh,
+                EnergyRequestedKwh = session.EnergyRequestedKwh,
+                Cost = session.Cost,
+                PricePerKwh = session.PricePerKwh,
+                ChargingSpotPower = session.ChargingSpot?.PowerOutput,
+                ExternalSessionId = session.ExternalSessionId,
+                Notes = session.Notes
+            };
         }
     }
 }

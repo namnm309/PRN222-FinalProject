@@ -1,7 +1,6 @@
 using System.Linq;
 using BusinessLayer.DTOs;
 using BusinessLayer.Services;
-using DataAccessLayer.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -24,53 +23,37 @@ namespace PresentationLayer.Controllers
         public async Task<IActionResult> GetAmenities(Guid stationId)
         {
             var amenities = await _amenityService.GetAmenitiesByStationAsync(stationId);
-            return Ok(amenities.Select(MapToDto));
+            return Ok(amenities);
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateAmenity(Guid stationId, [FromBody] StationAmenityDTO dto)
+        public async Task<IActionResult> CreateAmenity(Guid stationId, [FromBody] CreateStationAmenityRequest request)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var amenity = new StationAmenity
-            {
-                ChargingStationId = stationId,
-                Name = dto.Name,
-                Description = dto.Description,
-                IsActive = dto.IsActive,
-                DisplayOrder = dto.DisplayOrder
-            };
-
-            var created = await _amenityService.CreateAmenityAsync(amenity);
-            return CreatedAtAction(nameof(GetAmenities), new { stationId }, MapToDto(created));
+            request.ChargingStationId = stationId;
+            var created = await _amenityService.CreateAmenityAsync(request);
+            return CreatedAtAction(nameof(GetAmenities), new { stationId }, created);
         }
 
         [HttpPut("{id:guid}")]
-        public async Task<IActionResult> UpdateAmenity(Guid stationId, Guid id, [FromBody] StationAmenityDTO dto)
+        public async Task<IActionResult> UpdateAmenity(Guid stationId, Guid id, [FromBody] UpdateStationAmenityRequest request)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var amenity = new StationAmenity
-            {
-                Name = dto.Name,
-                Description = dto.Description,
-                IsActive = dto.IsActive,
-                DisplayOrder = dto.DisplayOrder
-            };
-
-            var updated = await _amenityService.UpdateAmenityAsync(id, amenity);
+            var updated = await _amenityService.UpdateAmenityAsync(id, request);
             if (updated == null)
             {
                 return NotFound();
             }
 
-            return Ok(MapToDto(updated));
+            return Ok(updated);
         }
 
         [HttpDelete("{id:guid}")]
@@ -83,19 +66,6 @@ namespace PresentationLayer.Controllers
             }
 
             return NoContent();
-        }
-
-        private StationAmenityDTO MapToDto(StationAmenity amenity)
-        {
-            return new StationAmenityDTO
-            {
-                Id = amenity.Id,
-                ChargingStationId = amenity.ChargingStationId,
-                Name = amenity.Name,
-                Description = amenity.Description,
-                IsActive = amenity.IsActive,
-                DisplayOrder = amenity.DisplayOrder
-            };
         }
     }
 }

@@ -1,9 +1,6 @@
-using System.Linq;
 using System.Security.Claims;
 using BusinessLayer.DTOs;
 using BusinessLayer.Services;
-using DataAccessLayer.Entities;
-using DataAccessLayer.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -43,7 +40,7 @@ namespace PresentationLayer.Controllers
         {
             var userId = GetUserId();
             var sessions = await _sessionService.GetSessionsForUserAsync(userId, limit);
-            return Ok(sessions.Select(MapToDto));
+            return Ok(sessions);
         }
 
         [HttpGet("active")]
@@ -51,7 +48,7 @@ namespace PresentationLayer.Controllers
         public async Task<IActionResult> GetActiveSessions([FromQuery] Guid? stationId)
         {
             var sessions = await _sessionService.GetActiveSessionsAsync(stationId);
-            return Ok(sessions.Select(MapToDto));
+            return Ok(sessions);
         }
 
         [HttpGet("me/active")]
@@ -64,7 +61,7 @@ namespace PresentationLayer.Controllers
             {
                 return NotFound(new { message = "No active session found" });
             }
-            return Ok(MapToDto(session));
+            return Ok(session);
         }
 
         [HttpGet("{id:guid}")]
@@ -78,12 +75,13 @@ namespace PresentationLayer.Controllers
 
             var userId = GetUserId();
             var role = User.FindFirstValue(ClaimTypes.Role);
-            if (session.UserId != userId && role != UserRole.Admin.ToString() && role != UserRole.CSStaff.ToString())
+            // Check role using string comparison instead of enum
+            if (session.UserId != userId && role != "Admin" && role != "CSStaff")
             {
                 return Forbid();
             }
 
-            return Ok(MapToDto(session));
+            return Ok(session);
         }
 
         [HttpPost]
@@ -95,27 +93,24 @@ namespace PresentationLayer.Controllers
                 return BadRequest(ModelState);
             }
 
-            var session = new ChargingSession
-            {
-                ChargingSpotId = request.ChargingSpotId,
-                ReservationId = request.ReservationId,
-                VehicleId = request.VehicleId,
-                EnergyRequestedKwh = request.EnergyRequestedKwh,
-                PricePerKwh = request.PricePerKwh,
-                Notes = request.Notes
-            };
-
-            var created = await _sessionService.StartSessionAsync(GetUserId(), session);
+            var created = await _sessionService.StartSessionAsync(GetUserId(), request);
             await _notifier.NotifySessionChangedAsync(created);
             
-            // Notify station availability change
-            var stationId = created.ChargingSpot?.ChargingStationId ?? Guid.Empty;
-            if (stationId != Guid.Empty)
+            // Notify spot status change (spot becomes occupied)
+            var spot = await _spotService.GetSpotByIdAsync(created.ChargingSpotId);
+            if (spot != null)
             {
-                await NotifyStationAvailabilityAsync(stationId);
+                await _notifier.NotifySpotStatusChangedAsync(spot);
+                await _notifier.NotifySpotsListUpdatedAsync(spot.ChargingStationId);
             }
             
-            return CreatedAtAction(nameof(GetSessionById), new { id = created.Id }, MapToDto(created));
+            // Notify station availability change
+            if (created.ChargingStationId != Guid.Empty)
+            {
+                await NotifyStationAvailabilityAsync(created.ChargingStationId);
+            }
+            
+            return CreatedAtAction(nameof(GetSessionById), new { id = created.Id }, created);
         }
 
         [HttpPost("{id:guid}/complete")]
@@ -136,13 +131,12 @@ namespace PresentationLayer.Controllers
             await _notifier.NotifySessionChangedAsync(session);
             
             // Notify station availability change
-            var stationId = session.ChargingSpot?.ChargingStationId ?? Guid.Empty;
-            if (stationId != Guid.Empty)
+            if (session.ChargingStationId != Guid.Empty)
             {
-                await NotifyStationAvailabilityAsync(stationId);
+                await NotifyStationAvailabilityAsync(session.ChargingStationId);
             }
             
-            return Ok(MapToDto(session));
+            return Ok(session);
         }
 
         [HttpPatch("{id:guid}/status")]
@@ -153,7 +147,9 @@ namespace PresentationLayer.Controllers
             {
                 return BadRequest(ModelState);
             }
-            if (!Enum.IsDefined(typeof(ChargingSessionStatus), request.Status))
+            // Validate enum using reflection from DTO
+            var statusType = typeof(ChargingSessionDTO).GetProperty("Status")!.PropertyType;
+            if (!Enum.IsDefined(statusType, request.Status))
             {
                 return BadRequest(new { message = "Trạng thái không hợp lệ" });
             }
@@ -167,13 +163,12 @@ namespace PresentationLayer.Controllers
             await _notifier.NotifySessionChangedAsync(session);
             
             // Notify station availability change when status changes
-            var stationId = session.ChargingSpot?.ChargingStationId ?? Guid.Empty;
-            if (stationId != Guid.Empty)
+            if (session.ChargingStationId != Guid.Empty)
             {
-                await NotifyStationAvailabilityAsync(stationId);
+                await NotifyStationAvailabilityAsync(session.ChargingStationId);
             }
             
-            return Ok(MapToDto(session));
+            return Ok(session);
         }
 
         [HttpPost("scan-qr")]
@@ -192,33 +187,41 @@ namespace PresentationLayer.Controllers
                 return NotFound(new { message = "Charging spot not found" });
 
             // Kiểm tra station status - chỉ cho phép bắt đầu sạc khi station Active
-            if (spot.ChargingStation == null || spot.ChargingStation.Status != StationStatus.Active)
+            var station = await _stationService.GetStationByIdAsync(spot.ChargingStationId);
+            if (station == null || station.Status.ToString() != "Active")
                 return BadRequest(new { message = "Trạm sạc hiện không khả dụng để bắt đầu sạc." });
-
-            if (spot.Status != SpotStatus.Available)
+            
+            if (spot.Status.ToString() != "Available")
                 return BadRequest(new { message = "Charging spot is not available" });
 
-            var session = new ChargingSession
+            var startRequest = new StartChargingSessionRequest
             {
                 ChargingSpotId = spotId.Value,
                 ReservationId = request.ReservationId,
                 VehicleId = request.VehicleId,
                 TargetSocPercentage = request.TargetSocPercentage,
                 EnergyRequestedKwh = request.EnergyRequestedKwh,
-                QrCodeScanned = request.QrCode
+                QrCode = request.QrCode
             };
 
-            var created = await _sessionService.StartSessionAsync(GetUserId(), session);
+            var created = await _sessionService.StartSessionAsync(GetUserId(), startRequest);
             await _notifier.NotifySessionChangedAsync(created);
             
-            // Notify station availability change
-            var stationId = created.ChargingSpot?.ChargingStationId ?? Guid.Empty;
-            if (stationId != Guid.Empty)
+            // Notify spot status change (spot becomes occupied)
+            var updatedSpot = await _spotService.GetSpotByIdAsync(created.ChargingSpotId);
+            if (updatedSpot != null)
             {
-                await NotifyStationAvailabilityAsync(stationId);
+                await _notifier.NotifySpotStatusChangedAsync(updatedSpot);
+                await _notifier.NotifySpotsListUpdatedAsync(updatedSpot.ChargingStationId);
             }
             
-            return CreatedAtAction(nameof(GetSessionById), new { id = created.Id }, MapToDto(created));
+            // Notify station availability change
+            if (created.ChargingStationId != Guid.Empty)
+            {
+                await NotifyStationAvailabilityAsync(created.ChargingStationId);
+            }
+            
+            return CreatedAtAction(nameof(GetSessionById), new { id = created.Id }, created);
         }
 
         [HttpGet("{id:guid}/progress")]
@@ -232,7 +235,7 @@ namespace PresentationLayer.Controllers
             if (session == null)
                 return NotFound();
 
-            if (session.UserId != userId && role != UserRole.Admin.ToString() && role != UserRole.CSStaff.ToString())
+            if (session.UserId != userId && role != "Admin" && role != "CSStaff")
                 return Forbid();
 
             var progress = await _progressService.GetProgressAsync(id);
@@ -272,40 +275,11 @@ namespace PresentationLayer.Controllers
             if (session == null)
                 return NotFound();
 
-            if (session.UserId != userId && role != UserRole.Admin.ToString() && role != UserRole.CSStaff.ToString())
+            if (session.UserId != userId && role != "Admin" && role != "CSStaff")
                 return Forbid();
 
             var history = await _progressService.GetProgressHistoryAsync(id);
             return Ok(history);
-        }
-
-        private ChargingSessionDTO MapToDto(ChargingSession session)
-        {
-            return new ChargingSessionDTO
-            {
-                Id = session.Id,
-                ChargingSpotId = session.ChargingSpotId,
-                ChargingSpotNumber = session.ChargingSpot?.SpotNumber,
-                ChargingStationId = session.ChargingSpot?.ChargingStationId ?? Guid.Empty,
-                ChargingStationName = session.ChargingSpot?.ChargingStation?.Name,
-                UserId = session.UserId,
-                UserName = session.User != null ? (session.User.FullName ?? session.User.Email) : null,
-                VehicleId = session.VehicleId,
-                VehicleName = session.Vehicle != null ? $"{session.Vehicle.Make} {session.Vehicle.Model}" : null,
-                ReservationId = session.ReservationId,
-                ScheduledStartTime = session.Reservation?.ScheduledStartTime,
-                ScheduledEndTime = session.Reservation?.ScheduledEndTime,
-                Status = session.Status,
-                SessionStartTime = session.SessionStartTime,
-                SessionEndTime = session.SessionEndTime,
-                EnergyDeliveredKwh = session.EnergyDeliveredKwh,
-                EnergyRequestedKwh = session.EnergyRequestedKwh,
-                Cost = session.Cost,
-                PricePerKwh = session.PricePerKwh,
-                ChargingSpotPower = session.ChargingSpot?.PowerOutput,
-                ExternalSessionId = session.ExternalSessionId,
-                Notes = session.Notes
-            };
         }
 
         private Guid GetUserId()
@@ -319,12 +293,13 @@ namespace PresentationLayer.Controllers
             var station = await _stationService.GetStationByIdAsync(stationId);
             if (station != null)
             {
-                var spots = station.ChargingSpots?.ToList() ?? new List<ChargingSpot>();
-                var totalSpots = spots.Count;
+                var spots = await _spotService.GetSpotsByStationIdAsync(stationId);
+                var spotsList = spots.ToList();
+                var totalSpots = spotsList.Count;
                 
                 // Nếu station không Active, thì availableSpots = 0
-                var availableSpots = station.Status == StationStatus.Active 
-                    ? spots.Count(s => s.Status == SpotStatus.Available)
+                var availableSpots = station.Status.ToString() == "Active" 
+                    ? spotsList.Count(s => s.Status.ToString() == "Available")
                     : 0;
                 
                 await _notifier.NotifyStationAvailabilityChangedAsync(stationId, totalSpots, availableSpots);

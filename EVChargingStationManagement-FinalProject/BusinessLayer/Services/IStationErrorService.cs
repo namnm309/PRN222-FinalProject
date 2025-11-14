@@ -1,18 +1,19 @@
-using DataAccessLayer.Entities;
+using BusinessLayer.DTOs;
 using DataAccessLayer.Enums;
 
 namespace BusinessLayer.Services
 {
     public interface IStationErrorService
     {
-        Task<IEnumerable<StationError>> GetAllErrorsAsync();
-        Task<StationError?> GetErrorByIdAsync(Guid id);
-        Task<IEnumerable<StationError>> GetErrorsByStationIdAsync(Guid stationId);
-        Task<IEnumerable<StationError>> GetErrorsBySpotIdAsync(Guid spotId);
-        Task<IEnumerable<StationError>> GetErrorsByStatusAsync(ErrorStatus status);
-        Task<IEnumerable<StationError>> GetErrorsByUserIdAsync(Guid userId);
-        Task<StationError> CreateErrorAsync(StationError error);
-        Task<StationError?> UpdateErrorAsync(Guid id, StationError error);
+        Task<IEnumerable<StationErrorDTO>> GetAllErrorsAsync();
+        Task<StationErrorDTO?> GetErrorByIdAsync(Guid id);
+        Task<IEnumerable<StationErrorDTO>> GetErrorsByStationIdAsync(Guid stationId);
+        Task<IEnumerable<StationErrorDTO>> GetErrorsBySpotIdAsync(Guid spotId);
+        Task<IEnumerable<StationErrorDTO>> GetErrorsByStatusAsync(ErrorStatus status);
+        Task<IEnumerable<StationErrorDTO>> GetErrorsByStatusStringAsync(string status);
+        Task<IEnumerable<StationErrorDTO>> GetErrorsByUserIdAsync(Guid userId);
+        Task<StationErrorDTO> CreateErrorAsync(CreateStationErrorRequest request);
+        Task<StationErrorDTO?> UpdateErrorAsync(Guid id, UpdateStationErrorRequest request);
         Task<bool> DeleteErrorAsync(Guid id);
         Task<bool> ErrorExistsAsync(Guid id);
     }
