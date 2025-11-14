@@ -17,6 +17,7 @@ namespace BusinessLayer.DTOs
         public DateTime UpdatedAt { get; set; }
         public bool IsReserved { get; set; } // Có active reservation không
         public bool IsAvailable { get; set; } // Có thể đặt được không
+        public bool IsOnline { get; set; } = true; // Trạng thái online/offline
     }
 
     public class CreateChargingSpotRequest

@@ -153,20 +153,19 @@
 
         spotsDetailModalTitle.textContent = `Chi tiết điểm sạc - ${station.name}`;
 
-        // Load full station details with spots if not already loaded
-        let spots = station.chargingSpots || [];
-        if (!spots || spots.length === 0) {
-            try {
-                const response = await fetch(`/api/ChargingStation/${stationId}`, {
-                    credentials: 'include'
-                });
-                if (response.ok) {
-                    const fullStation = await response.json();
-                    spots = fullStation.chargingSpots || [];
-                }
-            } catch (error) {
-                console.error('Error loading station details:', error);
+        // Load spots for this station
+        let spots = [];
+        try {
+            const response = await fetch(`/api/ChargingSpot/station/${stationId}`, {
+                credentials: 'include'
+            });
+            if (response.ok) {
+                spots = await response.json();
+            } else {
+                console.error('Failed to load spots:', response.status, response.statusText);
             }
+        } catch (error) {
+            console.error('Error loading spots:', error);
         }
 
         if (!spots || spots.length === 0) {
@@ -176,13 +175,14 @@
                 const spotStatus = getSpotStatusText(spot.status);
                 const spotStatusClass = getSpotStatusBadgeClass(spot.status);
                 const isOnline = spot.isOnline !== false; // Default to online if not specified
+                const powerOutput = spot.powerOutput || spot.powerKw || spot.power || '--';
                 
                 return `
                     <tr>
-                        <td><strong>${spot.spotNumber || spot.number || '--'}</strong></td>
+                        <td><strong>${escapeHtml(spot.spotNumber || spot.number || '--')}</strong></td>
                         <td><span class="badge ${spotStatusClass}">${spotStatus}</span></td>
-                        <td>${spot.powerKw || spot.power || '--'} kW</td>
-                        <td>${spot.connectorType || '--'}</td>
+                        <td>${powerOutput} kW</td>
+                        <td>${escapeHtml(spot.connectorType || '--')}</td>
                         <td><span class="badge ${isOnline ? 'bg-success' : 'bg-danger'}">${isOnline ? 'Online' : 'Offline'}</span></td>
                     </tr>
                 `;
